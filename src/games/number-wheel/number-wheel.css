@@ -1,0 +1,382 @@
+/* ---------------------------------------------------------------------------
+   Number-wheel game styles — self-contained within this game module.
+   A different game ships its own stylesheet; the platform provides only
+   shared primitives (buttons, chips, page layout) in styles/app.css.
+--------------------------------------------------------------------------- */
+
+:root {
+  /* Wheel geometry — game-scoped tokens (scales with the smaller viewport
+     dimension so the game fits on portrait and landscape kiosks). */
+  --wheel-w: clamp(95px, 16vmin, 180px);
+  --wheel-h: clamp(170px, 36vmin, 340px);
+  --digit-font: clamp(40px, 12vmin, 108px);
+}
+
+.number-wheel-game {
+  position: relative;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(10px, 2.2vmin, 24px);
+}
+
+.number-wheel-game__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: min(1100px, 94vw);
+  gap: 16px;
+}
+
+.number-wheel-game__title {
+  font-size: clamp(17px, 3vmin, 30px);
+  font-weight: 600;
+  color: var(--text-dim);
+}
+
+.number-wheel-game__exit {
+  padding: clamp(8px, 1.6vmin, 14px) clamp(18px, 3vmin, 28px);
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface-raised);
+  color: var(--text-dim);
+  font-size: clamp(13px, 2.2vmin, 18px);
+  font-weight: 600;
+  cursor: pointer;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.12s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+.number-wheel-game__exit:active {
+  transform: scale(0.95);
+  color: var(--text);
+}
+
+.number-wheel-game__main {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(12px, 2.8vmin, 30px);
+}
+
+/* --- Target display -------------------------------------------------------- */
+
+.target {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(2px, 0.6vmin, 6px);
+}
+
+.target__label {
+  font-size: clamp(13px, 2.2vmin, 19px);
+  font-weight: 600;
+  color: var(--gold);
+}
+
+/* Digits stay left-to-right (hundreds first) even inside the RTL page. */
+.target__value {
+  direction: ltr;
+  font-size: clamp(44px, 9.5vmin, 92px);
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+  text-shadow: 0 0 44px rgba(255, 200, 87, 0.28);
+}
+
+/* --- Wheels ---------------------------------------------------------------- */
+
+/* Wheel order is meaningful (hundreds, tens, ones) — always left to right. */
+.wheel-group {
+  direction: ltr;
+  display: flex;
+  align-items: center;
+  gap: clamp(12px, 2.4vmin, 28px);
+}
+
+.number-wheel {
+  position: relative;
+  width: var(--wheel-w);
+  height: var(--wheel-h);
+  border-radius: clamp(14px, 2vmin, 20px);
+  background: var(--wheel-bg);
+  border: 2px solid var(--border);
+  box-shadow:
+    inset 0 8px 24px rgba(0, 0, 0, 0.55),
+    0 18px 40px rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+  transition: border-color 0.35s ease, box-shadow 0.35s ease;
+}
+
+/* Rolling: cool accent edge, digits slightly dimmed and blurred. */
+.number-wheel--rolling {
+  border-color: rgba(62, 198, 255, 0.4);
+}
+
+.number-wheel--rolling .number-wheel__digit {
+  opacity: 0.78;
+}
+
+.number-wheel__strip:not([data-reduced-motion="true"]) {
+  transition: filter 0.3s ease;
+}
+
+.number-wheel--rolling .number-wheel__strip:not([data-reduced-motion="true"]) {
+  filter: blur(1.6px);
+}
+
+/* Locked: warm gold edge and glow, digits return to full brightness. */
+.number-wheel--locked {
+  border-color: rgba(255, 200, 87, 0.65);
+  box-shadow:
+    inset 0 8px 24px rgba(0, 0, 0, 0.55),
+    0 0 30px rgba(255, 200, 87, 0.22),
+    0 18px 40px rgba(0, 0, 0, 0.35);
+}
+
+.number-wheel--locked .number-wheel__digit {
+  color: #ffe3a3;
+}
+
+/* Short pulse the instant a wheel locks. */
+.number-wheel--just-locked {
+  animation: wheel-lock-pulse 0.55s ease;
+}
+
+@keyframes wheel-lock-pulse {
+  0% {
+    transform: scale(1);
+  }
+  35% {
+    transform: scale(1.04);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.number-wheel__window {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.number-wheel__strip {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  will-change: transform;
+}
+
+.number-wheel__digit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: calc(var(--wheel-h) / 3);
+  font-size: var(--digit-font);
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+  transition: color 0.35s ease, opacity 0.3s ease;
+}
+
+/* Emphasis band behind the centered (current) digit. */
+.number-wheel__center {
+  position: absolute;
+  top: calc(100% / 3);
+  left: 0;
+  right: 0;
+  height: calc(100% / 3);
+  background: rgba(255, 255, 255, 0.05);
+  border-top: 1px solid rgba(255, 255, 255, 0.09);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.09);
+}
+
+/* Edge fades that mask digits sliding in and out of the window. */
+.number-wheel__fade {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 26%;
+  pointer-events: none;
+}
+
+.number-wheel__fade--top {
+  top: 0;
+  background: linear-gradient(
+    180deg,
+    var(--wheel-bg) 6%,
+    var(--wheel-bg-transparent) 100%
+  );
+}
+
+.number-wheel__fade--bottom {
+  bottom: 0;
+  background: linear-gradient(
+    0deg,
+    var(--wheel-bg) 6%,
+    var(--wheel-bg-transparent) 100%
+  );
+}
+
+/* --- Controls -------------------------------------------------------------- */
+
+.controls {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(10px, 2vmin, 18px);
+}
+
+/* Progress dots: one per wheel (left to right, matching the wheels). */
+.stop-dots {
+  direction: ltr;
+  display: flex;
+  gap: clamp(10px, 1.8vmin, 16px);
+}
+
+.stop-dot {
+  width: clamp(10px, 1.6vmin, 14px);
+  height: clamp(10px, 1.6vmin, 14px);
+  border-radius: 50%;
+  background: var(--surface-raised);
+  border: 1px solid var(--border-strong);
+  transition: background-color 0.3s ease, border-color 0.3s ease,
+    box-shadow 0.3s ease;
+}
+
+.stop-dot--done {
+  background: var(--gold);
+  border-color: var(--gold);
+  box-shadow: 0 0 12px rgba(255, 200, 87, 0.5);
+}
+
+/* --- Result overlay (scoped to the game stage, so the host chrome and its
+   continue/error bars stay reachable) -------------------------------------- */
+
+.result {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(16px, 3vmin, 40px);
+  background: rgba(7, 10, 18, 0.8);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  animation: result-fade-in 0.35s ease both;
+}
+
+@keyframes result-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.result__card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(8px, 1.8vmin, 18px);
+  padding: clamp(22px, 4.5vmin, 52px) clamp(30px, 8vmin, 96px);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: clamp(20px, 3vmin, 28px);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.5);
+  text-align: center;
+  animation: card-enter 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.15) both;
+}
+
+@keyframes card-enter {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.result__row {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(1px, 0.4vmin, 4px);
+}
+
+.result__label {
+  font-size: clamp(12px, 2vmin, 17px);
+  font-weight: 600;
+  color: var(--text-dim);
+}
+
+/* Numeric values stay left-to-right inside the RTL result card. */
+.result__value {
+  direction: ltr;
+  font-size: clamp(40px, 8.5vmin, 80px);
+  font-weight: 700;
+  line-height: 1.05;
+  font-variant-numeric: tabular-nums;
+}
+
+.result__value--xl {
+  font-size: clamp(54px, 11.5vmin, 106px);
+}
+
+.result__prize {
+  direction: ltr;
+  font-size: clamp(46px, 9.5vmin, 92px);
+  font-weight: 700;
+  line-height: 1.05;
+  font-variant-numeric: tabular-nums;
+  color: var(--gold);
+  text-shadow: 0 0 44px rgba(255, 200, 87, 0.35);
+}
+
+.result__percent {
+  font-size: clamp(13px, 2.2vmin, 19px);
+  color: var(--text-dim);
+}
+
+.result__note {
+  font-size: clamp(15px, 2.6vmin, 22px);
+  font-weight: 600;
+  color: var(--gold);
+}
+
+.result__perfect-title {
+  font-size: clamp(44px, 10vmin, 96px);
+  font-weight: 800;
+  color: var(--gold);
+  animation: perfect-glow 1.6s ease-in-out infinite;
+}
+
+@keyframes perfect-glow {
+  0%,
+  100% {
+    text-shadow: 0 0 34px rgba(255, 200, 87, 0.45);
+  }
+  50% {
+    text-shadow: 0 0 70px rgba(255, 200, 87, 0.85);
+  }
+}
+
+.result--perfect .result__card {
+  border-color: rgba(255, 200, 87, 0.45);
+  box-shadow:
+    0 0 90px rgba(255, 200, 87, 0.2),
+    0 30px 80px rgba(0, 0, 0, 0.5);
+}

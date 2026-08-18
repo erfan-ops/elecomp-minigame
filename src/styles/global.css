@@ -1,0 +1,96 @@
+/* ---------------------------------------------------------------------------
+   Kiosk-first global styles.
+
+   The game platform fills the viewport, never scrolls, and cannot be
+   accidentally selected or zoomed — this is a touchscreen installation,
+   not a website.
+--------------------------------------------------------------------------- */
+
+/* Bundled Persian font, shipped with the kiosk build (public/BYekan+.ttf).
+   Only the Regular face is bundled; 600–800 weights are synthesized by the
+   browser so the design keeps its emphasis hierarchy. */
+@font-face {
+  font-family: "B Yekan";
+  src: url("/BYekan+.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  color-scheme: dark;
+
+  /* Palette */
+  --bg: #0a0e17;
+  --bg-glow: rgba(62, 198, 255, 0.07);
+  --surface: #101726;
+  --surface-raised: #161f33;
+  --wheel-bg: #0d1422;
+  --wheel-bg-transparent: rgba(13, 20, 34, 0);
+  --border: rgba(255, 255, 255, 0.1);
+  --border-strong: rgba(255, 255, 255, 0.26);
+  --text: #eaf0fa;
+  --text-dim: #8b96ac;
+  --accent: #3ec6ff;
+  --start: #26b06e;
+  --start-text: #052414;
+  --stop: #e23d57;
+  --gold: #ffc857;
+  --silver: #c9d4e3;
+  --bronze: #d9a066;
+  --danger: #ff7b8a;
+
+  /* Buttons — comfortably above the 60px touch-target minimum */
+  --btn-min-h: clamp(60px, 8.5vmin, 84px);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  overflow: hidden;
+  overscroll-behavior: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  /* Persian-first stack: the bundled B Yekan face renders all Persian text;
+     Segoe UI and Bahnschrift cover any glyphs the font lacks (e.g. "$"). */
+  font-family: "B Yekan", "Segoe UI", "Segoe UI Variable Display", Bahnschrift,
+    system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+
+h1,
+p {
+  margin: 0;
+}
+
+button {
+  font-family: inherit;
+}
+
+/* Keep the game functional but calm when reduced motion is requested:
+   decorative CSS animations are skipped; the JS-driven wheel physics simply
+   runs at a gentler speed (see REDUCED_MOTION_SPEED_FACTOR in gameConfig). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

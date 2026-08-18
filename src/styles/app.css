@@ -1,0 +1,614 @@
+/* ---------------------------------------------------------------------------
+   Platform styles: page shell, shared buttons, registration + keyboards,
+   category selection, game host chrome, and the leaderboard.
+   Game-specific styles live in the game's own stylesheet.
+--------------------------------------------------------------------------- */
+
+.app {
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+  background:
+    radial-gradient(1100px 700px at 50% -12%, var(--bg-glow), transparent 62%),
+    var(--bg);
+}
+
+.page {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: clamp(14px, 3vmin, 40px);
+  gap: clamp(12px, 2.6vmin, 28px);
+  overflow: hidden;
+}
+
+.page__title {
+  font-size: clamp(22px, 4vmin, 40px);
+  font-weight: 700;
+  text-align: center;
+  color: var(--text);
+}
+
+.page__actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(10px, 2vmin, 16px);
+}
+
+/* --- Shared buttons -------------------------------------------------------- */
+
+.btn {
+  min-height: var(--btn-min-h);
+  min-width: clamp(240px, 32vmin, 340px);
+  padding: 0 clamp(28px, 5vmin, 56px);
+  border: none;
+  border-radius: clamp(16px, 2.4vmin, 22px);
+  font-size: clamp(24px, 4.2vmin, 36px);
+  font-weight: 700;
+  cursor: pointer;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.12s ease, box-shadow 0.2s ease,
+    background-color 0.2s ease, opacity 0.2s ease;
+}
+
+.btn:active {
+  transform: scale(0.96);
+}
+
+.btn:focus-visible {
+  outline: 3px solid rgba(62, 198, 255, 0.8);
+  outline-offset: 4px;
+}
+
+.btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.btn:disabled:active {
+  transform: none;
+}
+
+.btn--primary {
+  background: var(--start);
+  color: var(--start-text);
+  box-shadow: 0 12px 34px rgba(38, 176, 110, 0.35);
+}
+
+.btn--ghost {
+  min-width: 0;
+  background: var(--surface-raised);
+  color: var(--text);
+  border: 2px solid var(--border-strong);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+}
+
+/* Game buttons — shared primitives used by every game module. */
+.btn--start {
+  background: var(--start);
+  color: var(--start-text);
+  box-shadow: 0 12px 34px rgba(38, 176, 110, 0.35);
+}
+
+.btn--stop {
+  background: var(--stop);
+  color: #ffffff;
+  box-shadow: 0 12px 38px rgba(226, 61, 87, 0.45);
+  animation: stop-attention 1.8s ease-in-out infinite;
+}
+
+@keyframes stop-attention {
+  0%,
+  100% {
+    box-shadow: 0 12px 38px rgba(226, 61, 87, 0.45);
+  }
+  50% {
+    box-shadow: 0 12px 60px rgba(226, 61, 87, 0.75);
+  }
+}
+
+/* --- Confetti (shared celebration primitive) ------------------------------- */
+
+.confetti {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.confetti__piece {
+  position: absolute;
+  top: -12px;
+  border-radius: 2px;
+  opacity: 0;
+  animation-name: confetti-fall;
+  animation-timing-function: linear;
+  animation-fill-mode: both;
+}
+
+@keyframes confetti-fall {
+  0% {
+    transform: translate3d(0, -6vh, 0) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translate3d(var(--drift, 0px), 110vh, 0)
+      rotate(var(--spin, 540deg));
+    opacity: 0.1;
+  }
+}
+
+/* --- Registration ---------------------------------------------------------- */
+
+.page--registration {
+  justify-content: center;
+  gap: clamp(10px, 2.4vmin, 24px);
+}
+
+.registration__header {
+  text-align: center;
+}
+
+.registration__subtitle {
+  margin-top: clamp(6px, 1.2vmin, 12px);
+  font-size: clamp(15px, 2.6vmin, 22px);
+  color: var(--text-dim);
+}
+
+.registration__form {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: clamp(10px, 2.2vmin, 18px);
+  width: min(520px, 92vw);
+}
+
+/* Kiosk form fields: tappable surfaces, never real <input>s, so the
+   browser/OS keyboard never appears. */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(2px, 0.5vmin, 5px);
+}
+
+.field__label {
+  font-size: clamp(13px, 2.2vmin, 18px);
+  font-weight: 600;
+  color: var(--text-dim);
+  padding-inline-start: 8px;
+}
+
+.field__control {
+  display: flex;
+  align-items: center;
+  gap: clamp(6px, 1.2vmin, 10px);
+  min-height: clamp(56px, 8.6vmin, 76px);
+  padding: 0 clamp(14px, 2.6vmin, 24px);
+  background: var(--surface);
+  border: 2px solid var(--border);
+  border-radius: clamp(14px, 2.2vmin, 20px);
+  font-size: clamp(20px, 3.6vmin, 30px);
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.field--active .field__control {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(62, 198, 255, 0.14), 0 0 24px rgba(62, 198, 255, 0.1);
+}
+
+.field--error .field__control {
+  border-color: var(--danger);
+}
+
+/* Only the mobile number field renders left-to-right (fixed +98 prefix and
+   digit grouping); name fields stay RTL so Persian text reads naturally. */
+.field--ltr .field__control,
+.field--ltr .field__value,
+.field--ltr .field__placeholder {
+  direction: ltr;
+}
+
+.field--ltr .field__value {
+  letter-spacing: 1px;
+}
+
+/* Fixed country prefix — displayed, never editable. */
+.field__prefix {
+  direction: ltr;
+  font-size: clamp(18px, 3.2vmin, 26px);
+  font-weight: 700;
+  color: var(--gold);
+  padding-inline-end: clamp(6px, 1.2vmin, 10px);
+  border-inline-end: 2px solid var(--border);
+}
+
+.field__value {
+  font-variant-numeric: tabular-nums;
+}
+
+.field__placeholder {
+  color: var(--text-dim);
+  opacity: 0.55;
+  font-weight: 400;
+}
+
+.field__caret {
+  width: 2px;
+  align-self: stretch;
+  margin: 10px 0;
+  background: var(--accent);
+  animation: caret-blink 1s steps(1) infinite;
+}
+
+@keyframes caret-blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+.field__error {
+  font-size: clamp(12px, 2vmin, 16px);
+  color: var(--danger);
+  padding-inline-start: 8px;
+}
+
+/* --- Virtual keyboards ----------------------------------------------------- */
+
+.keyboard-dock {
+  width: min(620px, 94vw);
+  margin-top: auto;
+}
+
+.keyboard {
+  display: grid;
+  direction: ltr;
+  grid-template-columns: repeat(3, 1fr);
+  gap: clamp(6px, 1.2vmin, 10px);
+  padding: clamp(10px, 2vmin, 18px);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: clamp(16px, 2.4vmin, 22px);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.4);
+}
+
+.keyboard--letters {
+  display: flex;
+  direction: ltr;
+  flex-direction: column;
+}
+
+.keyboard__row {
+  display: flex;
+  gap: clamp(4px, 0.9vmin, 8px);
+}
+
+.keyboard__row + .keyboard__row {
+  margin-top: clamp(4px, 0.9vmin, 8px);
+}
+
+.keyboard__key {
+  flex: 1;
+  min-height: clamp(50px, 8.2vmin, 70px);
+  border: none;
+  border-radius: clamp(10px, 1.6vmin, 14px);
+  background: var(--surface-raised);
+  color: var(--text);
+  font-size: clamp(22px, 3.6vmin, 32px);
+  font-weight: 600;
+  cursor: pointer;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.1s ease, background-color 0.15s ease;
+}
+
+.keyboard__key:active {
+  transform: scale(0.92);
+  background: var(--border-strong);
+}
+
+.keyboard__key--wide {
+  flex: 3;
+}
+
+.keyboard__key--action {
+  color: var(--gold);
+}
+
+/* --- Category selection ---------------------------------------------------- */
+
+.page--category {
+  justify-content: center;
+}
+
+.category-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(10px, 2.2vmin, 20px);
+  width: min(880px, 94vw);
+}
+
+.category-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: clamp(84px, 11.5vmin, 116px);
+  border-radius: clamp(16px, 2.4vmin, 24px);
+  background: var(--surface);
+  border: 2px solid var(--border);
+  color: var(--text);
+  font-size: clamp(20px, 3.4vmin, 30px);
+  font-weight: 700;
+  cursor: pointer;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.12s ease, border-color 0.2s ease, box-shadow 0.2s ease,
+    background-color 0.2s ease;
+}
+
+.category-card:active {
+  transform: scale(0.97);
+}
+
+.category-card--selected {
+  border-color: var(--gold);
+  background: rgba(255, 200, 87, 0.07);
+  box-shadow: 0 0 26px rgba(255, 200, 87, 0.16);
+}
+
+.category-card__check {
+  position: absolute;
+  top: 10px;
+  inset-inline-end: 10px;
+  width: clamp(22px, 3.2vmin, 28px);
+  height: clamp(22px, 3.2vmin, 28px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--gold);
+  color: #201a05;
+  font-size: clamp(13px, 2vmin, 16px);
+  font-weight: 800;
+  opacity: 0;
+  transform: scale(0.5);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.category-card--selected .category-card__check {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* --- Game host chrome ------------------------------------------------------ */
+
+.page--game {
+  padding: clamp(10px, 2vmin, 20px);
+  gap: clamp(8px, 1.6vmin, 16px);
+  justify-content: flex-start;
+}
+
+.game-page__topbar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(8px, 1.6vmin, 14px);
+  width: 100%;
+}
+
+.chip {
+  padding: clamp(6px, 1.2vmin, 10px) clamp(16px, 2.8vmin, 26px);
+  border-radius: 999px;
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  font-size: clamp(13px, 2.2vmin, 18px);
+  font-weight: 600;
+  color: var(--text-dim);
+}
+
+.chip--sector {
+  color: var(--gold);
+  border-color: rgba(255, 200, 87, 0.35);
+}
+
+.game-page__stage {
+  position: relative;
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  display: flex;
+}
+
+.game-page__stage > * {
+  flex: 1;
+  min-width: 0;
+}
+
+.game-page__statusbar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(10px, 2vmin, 16px);
+  min-height: calc(var(--btn-min-h) * 0.8);
+}
+
+.game-page__status {
+  font-size: clamp(15px, 2.6vmin, 21px);
+  color: var(--text-dim);
+}
+
+.game-page__status--error {
+  color: var(--danger);
+}
+
+/* --- Leaderboard ----------------------------------------------------------- */
+
+.page--leaderboard {
+  justify-content: flex-start;
+  gap: clamp(10px, 2vmin, 20px);
+}
+
+.leaderboard {
+  flex: 1;
+  min-height: 0;
+  width: min(860px, 94vw);
+  overflow-y: auto;
+  touch-action: pan-y;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.leaderboard::-webkit-scrollbar {
+  width: 8px;
+}
+
+.leaderboard::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 4px;
+}
+
+.leaderboard__status {
+  margin: 0;
+  padding: clamp(20px, 4vmin, 40px);
+  font-size: clamp(16px, 2.8vmin, 24px);
+  color: var(--text-dim);
+  text-align: center;
+}
+
+.leaderboard__status--error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(10px, 2vmin, 16px);
+  color: var(--danger);
+}
+
+.leaderboard__table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0 clamp(8px, 1.4vmin, 12px);
+  table-layout: fixed;
+}
+
+.leaderboard__table th {
+  padding: 0 clamp(8px, 1.6vmin, 14px) clamp(4px, 0.8vmin, 8px);
+  font-size: clamp(13px, 2.2vmin, 18px);
+  font-weight: 600;
+  color: var(--text-dim);
+  text-align: center;
+}
+
+.leaderboard__col-rank {
+  width: clamp(70px, 10vmin, 110px);
+}
+
+.leaderboard__col-score {
+  width: clamp(80px, 12vmin, 130px);
+}
+
+.leaderboard-row td {
+  padding: clamp(10px, 1.8vmin, 16px) clamp(8px, 1.6vmin, 14px);
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  font-size: clamp(16px, 2.8vmin, 24px);
+  font-weight: 600;
+  text-align: center;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.leaderboard-row td:first-child {
+  border-inline-start: 1px solid var(--border);
+  border-start-start-radius: 16px;
+  border-end-start-radius: 16px;
+}
+
+.leaderboard-row td:last-child {
+  border-inline-end: 1px solid var(--border);
+  border-start-end-radius: 16px;
+  border-end-end-radius: 16px;
+}
+
+.leaderboard__score {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Top three — subtle metallic treatments. */
+.leaderboard-row--gold td {
+  background: rgba(255, 200, 87, 0.1);
+  border-color: rgba(255, 200, 87, 0.42);
+}
+
+.leaderboard-row--silver td {
+  background: rgba(201, 212, 227, 0.08);
+  border-color: rgba(201, 212, 227, 0.36);
+}
+
+.leaderboard-row--bronze td {
+  background: rgba(217, 160, 102, 0.08);
+  border-color: rgba(217, 160, 102, 0.36);
+}
+
+.rank-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: clamp(36px, 5.4vmin, 50px);
+  height: clamp(36px, 5.4vmin, 50px);
+  border-radius: 50%;
+  background: var(--surface-raised);
+  border: 1px solid var(--border-strong);
+  font-weight: 700;
+  font-size: clamp(16px, 2.8vmin, 24px);
+  font-variant-numeric: tabular-nums;
+}
+
+.rank-badge--gold {
+  background: rgba(255, 200, 87, 0.16);
+  border-color: var(--gold);
+  color: var(--gold);
+  box-shadow: 0 0 16px rgba(255, 200, 87, 0.25);
+}
+
+.rank-badge--silver {
+  background: rgba(201, 212, 227, 0.14);
+  border-color: var(--silver);
+  color: var(--silver);
+}
+
+.rank-badge--bronze {
+  background: rgba(217, 160, 102, 0.14);
+  border-color: var(--bronze);
+  color: var(--bronze);
+}
+
+/* The current player's own row. */
+.leaderboard-row--me td {
+  border-top-width: 2px;
+  border-bottom-width: 2px;
+  border-color: rgba(62, 198, 255, 0.5);
+}
+
+.leaderboard__me {
+  display: inline-block;
+  margin-inline-start: 8px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: rgba(62, 198, 255, 0.16);
+  color: var(--accent);
+  font-size: clamp(11px, 1.9vmin, 15px);
+  font-weight: 700;
+}

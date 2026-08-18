@@ -1,0 +1,213 @@
+/* ---------------------------------------------------------------------------
+   Ten-second game styles — self-contained within this game module.
+   Shared primitives (.btn, .btn--start/--stop, .confetti) come from
+   styles/app.css.
+--------------------------------------------------------------------------- */
+
+.ten-second-game {
+  position: relative;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(10px, 2.2vmin, 24px);
+}
+
+.ten-second-game__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: min(1100px, 94vw);
+  gap: 16px;
+}
+
+.ten-second-game__title {
+  font-size: clamp(17px, 3vmin, 30px);
+  font-weight: 600;
+  color: var(--text-dim);
+}
+
+.ten-second-game__exit {
+  padding: clamp(8px, 1.6vmin, 14px) clamp(18px, 3vmin, 28px);
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface-raised);
+  color: var(--text-dim);
+  font-size: clamp(13px, 2.2vmin, 18px);
+  font-weight: 600;
+  cursor: pointer;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.12s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+.ten-second-game__exit:active {
+  transform: scale(0.95);
+  color: var(--text);
+}
+
+.ten-second-game__main {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(14px, 3vmin, 30px);
+}
+
+/* The visual centerpiece. Opacity is driven per frame by the game (fade-out
+   mechanic); the element itself stays unselectable and unclickable. */
+.ten-second-game__timer {
+  direction: ltr;
+  font-size: clamp(100px, 24vmin, 240px);
+  font-weight: 800;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+  text-shadow: 0 0 60px rgba(62, 198, 255, 0.25);
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.ten-second-game__intro {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(4px, 1vmin, 10px);
+  text-align: center;
+}
+
+.ten-second-game__instruction {
+  font-size: clamp(15px, 2.6vmin, 22px);
+  color: var(--text-dim);
+  max-width: min(640px, 90vw);
+}
+
+/* --- Result overlay (scoped to the game stage) ----------------------------- */
+
+.ten-second-result {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(16px, 3vmin, 40px);
+  background: rgba(7, 10, 18, 0.8);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  animation: ten-second-result-fade 0.35s ease both;
+}
+
+@keyframes ten-second-result-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.ten-second-result__card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(8px, 1.8vmin, 18px);
+  padding: clamp(22px, 4.5vmin, 52px) clamp(30px, 8vmin, 96px);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: clamp(20px, 3vmin, 28px);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.5);
+  text-align: center;
+  animation: ten-second-card-enter 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.15) both;
+}
+
+@keyframes ten-second-card-enter {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.ten-second-result__row {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(1px, 0.4vmin, 4px);
+}
+
+.ten-second-result__title {
+  font-size: clamp(24px, 4.4vmin, 42px);
+  font-weight: 700;
+  color: var(--text);
+}
+
+.ten-second-result__label {
+  font-size: clamp(12px, 2vmin, 17px);
+  font-weight: 600;
+  color: var(--text-dim);
+}
+
+/* Timing values are technical — Latin digits, left-to-right. */
+.ten-second-result__value {
+  direction: ltr;
+  font-size: clamp(36px, 7.5vmin, 70px);
+  font-weight: 700;
+  line-height: 1.05;
+  font-variant-numeric: tabular-nums;
+}
+
+.ten-second-result__value--xl {
+  font-size: clamp(48px, 10vmin, 96px);
+}
+
+.ten-second-result__prize {
+  direction: ltr;
+  font-size: clamp(42px, 8.5vmin, 82px);
+  font-weight: 700;
+  line-height: 1.05;
+  font-variant-numeric: tabular-nums;
+  color: var(--gold);
+  text-shadow: 0 0 44px rgba(255, 200, 87, 0.35);
+}
+
+.ten-second-result__percent {
+  font-size: clamp(13px, 2.2vmin, 19px);
+  color: var(--text-dim);
+}
+
+.ten-second-result__note {
+  font-size: clamp(15px, 2.6vmin, 22px);
+  font-weight: 600;
+  color: var(--gold);
+}
+
+.ten-second-result__perfect-title {
+  font-size: clamp(44px, 10vmin, 96px);
+  font-weight: 800;
+  color: var(--gold);
+  animation: ten-second-perfect-glow 1.6s ease-in-out infinite;
+}
+
+@keyframes ten-second-perfect-glow {
+  0%,
+  100% {
+    text-shadow: 0 0 34px rgba(255, 200, 87, 0.45);
+  }
+  50% {
+    text-shadow: 0 0 70px rgba(255, 200, 87, 0.85);
+  }
+}
+
+.ten-second-result--perfect .ten-second-result__card {
+  border-color: rgba(255, 200, 87, 0.45);
+  box-shadow:
+    0 0 90px rgba(255, 200, 87, 0.2),
+    0 30px 80px rgba(0, 0, 0, 0.5);
+}
