@@ -280,23 +280,7 @@
   box-shadow: 0 18px 44px rgba(0, 0, 0, 0.4);
 }
 
-.keyboard--letters {
-  display: flex;
-  direction: ltr;
-  flex-direction: column;
-}
-
-.keyboard__row {
-  display: flex;
-  gap: clamp(4px, 0.9vmin, 8px);
-}
-
-.keyboard__row + .keyboard__row {
-  margin-top: clamp(4px, 0.9vmin, 8px);
-}
-
 .keyboard__key {
-  flex: 1;
   min-height: clamp(50px, 8.2vmin, 70px);
   border: none;
   border-radius: clamp(10px, 1.6vmin, 14px);
@@ -314,10 +298,6 @@
 .keyboard__key:active {
   transform: scale(0.92);
   background: var(--border-strong);
-}
-
-.keyboard__key--wide {
-  flex: 3;
 }
 
 .keyboard__key--action {
@@ -420,6 +400,12 @@
 .chip--sector {
   color: var(--gold);
   border-color: rgba(255, 200, 87, 0.35);
+}
+
+/* Masked mobile numbers are technical values — left-to-right, Latin digits. */
+.chip--user {
+  direction: ltr;
+  font-variant-numeric: tabular-nums;
 }
 
 .game-page__stage {
@@ -544,6 +530,13 @@
 .leaderboard__score {
   font-weight: 700;
   font-variant-numeric: tabular-nums;
+}
+
+/* Mobile numbers are technical values — left-to-right, Latin digits. */
+.leaderboard__mobile {
+  direction: ltr;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 1px;
 }
 
 /* Top three — subtle metallic treatments. */

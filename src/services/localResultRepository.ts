@@ -13,8 +13,6 @@ function isGameSessionResult(value: unknown): value is GameSessionResult {
   return (
     typeof v.userId === "string" &&
     typeof v.mobile === "string" &&
-    typeof v.firstName === "string" &&
-    typeof v.lastName === "string" &&
     typeof v.sectorId === "string" &&
     typeof v.sectorName === "string" &&
     typeof v.gameId === "string" &&

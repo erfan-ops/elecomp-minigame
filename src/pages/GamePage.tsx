@@ -2,6 +2,7 @@ import { useCallback, useMemo, useRef } from "react";
 import { useAppSession } from "../app/AppSession";
 import type { GameContext, GameResult } from "../domain/game";
 import type { GameSessionResult } from "../domain/gameResult";
+import { formatMaskedMobile } from "../domain/user";
 import { getActiveGame } from "../games/registry";
 
 /**
@@ -19,8 +20,6 @@ export function GamePage() {
   const context = useMemo<GameContext>(
     () => ({
       userId: user?.id ?? "",
-      firstName: user?.firstName ?? "",
-      lastName: user?.lastName ?? "",
       mobile: user?.mobile ?? "",
       sector: category ?? { id: "", name: "" },
     }),
@@ -35,8 +34,6 @@ export function GamePage() {
       const sessionResult: GameSessionResult = {
         userId: user.id,
         mobile: user.mobile,
-        firstName: user.firstName,
-        lastName: user.lastName,
         sectorId: category.id,
         sectorName: category.name,
         gameId: activeGame.id,
@@ -56,9 +53,7 @@ export function GamePage() {
   return (
     <div className="page page--game">
       <div className="game-page__topbar">
-        <span className="chip chip--user">
-          {user.firstName} {user.lastName}
-        </span>
+        <span className="chip chip--user">{formatMaskedMobile(user.mobile)}</span>
         <span className="chip chip--sector">{category.name}</span>
       </div>
 

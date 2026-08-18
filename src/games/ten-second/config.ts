@@ -18,10 +18,10 @@ export const TARGET_TIME = 10.0;
 export const PERFECT_TOLERANCE = 0.02;
 
 /** How long the timer stays fully visible after START (seconds). */
-export const TIMER_VISIBLE_FOR = 2;
+export const TIMER_VISIBLE_FOR = 3;
 
 /** How long the fade from fully visible to invisible takes (seconds). */
-export const TIMER_FADE_DURATION = 2;
+export const TIMER_FADE_DURATION = 3;
 
 /** Full prize value awarded for a perfect stop. */
 export const BASE_PRIZE = 100;

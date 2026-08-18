@@ -8,9 +8,8 @@
  */
 export interface GameSessionResult {
   userId: string;
+  /** Canonical mobile number — the player's identity. */
   mobile: string;
-  firstName: string;
-  lastName: string;
 
   sectorId: string;
   sectorName: string;
@@ -31,7 +30,7 @@ export interface GameSessionResult {
 export interface LeaderboardEntry {
   rank: number;
   userId: string;
-  firstName: string;
-  lastName: string;
+  /** Canonical mobile number, displayed as the player's identity. */
+  mobile: string;
   score: number;
 }

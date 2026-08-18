@@ -55,6 +55,6 @@ Each game in `src/games/<id>/` is self-contained (own `config.ts` for organizer 
 
 ### Kiosk constraints
 
-- No real `<input>` elements anywhere — form fields are tappable surfaces driven by the on-screen keyboards (`src/components/VirtualNumericKeyboard.tsx`, `VirtualKeyboard.tsx`), so the browser/OS keyboard never appears. Keep it that way.
+- No real `<input>` elements anywhere — the mobile field is a tappable surface driven by the on-screen numeric keyboard (`src/components/VirtualNumericKeyboard.tsx`), so the browser/OS keyboard never appears. Keep it that way. The mobile number is the player's identity (no name collection): `User` has only `{ id, mobile }`. On public screens the mobile is shown **masked** (`912 *** 4567` via `formatMaskedMobile` in `src/domain/user.ts`); the canonical `+98…` value is always stored/reported unmasked, and mobiles stay in Latin digits (the bundled font renders Persian glyph shapes).
 - No page scrolling (only the leaderboard list scrolls internally), `user-select: none`, `touch-action: manipulation` on everything tappable, context menu blocked at the app root.
 - `prefers-reduced-motion` slows the wheels and disables decorative animations; the game stays functional.

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAppSession } from "../app/AppSession";
 import type { LeaderboardEntry } from "../domain/gameResult";
+import { formatMaskedMobile } from "../domain/user";
 import { buildLeaderboard, resultRepository } from "../services";
 import { toPersianDigits } from "../utils/persian";
 
@@ -62,8 +63,7 @@ export function LeaderboardPage() {
             <thead>
               <tr>
                 <th className="leaderboard__col-rank">رتبه</th>
-                <th>نام</th>
-                <th>نام خانوادگی</th>
+                <th>شماره موبایل</th>
                 <th className="leaderboard__col-score">امتیاز</th>
               </tr>
             </thead>
@@ -85,15 +85,14 @@ export function LeaderboardPage() {
                         {toPersianDigits(entry.rank)}
                       </span>
                     </td>
-                    <td>
-                      {entry.firstName}
+                    <td className="leaderboard__mobile">
+                      {formatMaskedMobile(entry.mobile)}
                       {isMe && (
                         <span className="leaderboard__me" aria-label="شما">
                           شما
                         </span>
                       )}
                     </td>
-                    <td>{entry.lastName}</td>
                     <td className="leaderboard__score">{toPersianDigits(entry.score)}</td>
                   </tr>
                 );

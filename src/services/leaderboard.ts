@@ -28,8 +28,7 @@ export function buildLeaderboard(results: GameSessionResult[]): LeaderboardEntry
   return sorted.map((result, index) => ({
     rank: index + 1,
     userId: result.userId,
-    firstName: result.firstName,
-    lastName: result.lastName,
+    mobile: result.mobile,
     score: result.score,
   }));
 }

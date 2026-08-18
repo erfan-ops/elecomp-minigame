@@ -5,9 +5,11 @@ React + TypeScript + Vite — no runtime dependencies beyond React, no canvas,
 no game engine, no router library.
 
 The kiosk journey: **ثبت‌نام → انتخاب دسته‌بندی → بازی → ثبت نتیجه → جدول
-برترین‌ها → کاربر جدید**. The whole application is optimized for a vertical
-touchscreen without a physical keyboard: all text input happens through
-on-screen virtual keyboards.
+برترین‌ها → کاربر جدید**. Registration collects only the **mobile number**
+(the player's identity for the session, the leaderboard, and future
+billing). The whole application is optimized for a vertical touchscreen
+without a physical keyboard: input happens through an on-screen numeric
+keyboard.
 
 ## Running
 
@@ -110,7 +112,7 @@ top three with metallic rank styling.
 src/
 ├── app/            AppSession (central kiosk session), App, routes
 ├── pages/          Registration, CategorySelection, Game (game host), Leaderboard
-├── components/     Virtual keyboards (numeric + Persian letters) and shared UI
+├── components/     VirtualNumericKeyboard (on-screen numeric keyboard) and shared UI
 ├── domain/         User, Category, game contract, GameSessionResult, LeaderboardEntry
 ├── services/       GameResultRepository interface, local impl, leaderboard builder
 ├── games/          Game registry + one folder per pluggable game

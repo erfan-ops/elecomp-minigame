@@ -10,7 +10,7 @@
 import type { Category } from "../domain/category";
 
 /** The id of the game the kiosk currently runs — see src/games/registry.ts. */
-export const ACTIVE_GAME_ID = "number-wheel";
+export const ACTIVE_GAME_ID = "ten-second";
 
 /** Sector categories the player can choose from. */
 export const CATEGORIES: readonly Category[] = [
