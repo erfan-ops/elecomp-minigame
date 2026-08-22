@@ -325,7 +325,7 @@
 
 /* Numeric values stay left-to-right inside the RTL result card. */
 .result__value {
-  direction: ltr;
+  direction: rtl;
   font-size: clamp(40px, 8.5vmin, 80px);
   font-weight: 700;
   line-height: 1.05;
@@ -337,7 +337,7 @@
 }
 
 .result__prize {
-  direction: ltr;
+  direction: rtl;
   font-size: clamp(46px, 9.5vmin, 92px);
   font-weight: 700;
   line-height: 1.05;
@@ -349,6 +349,16 @@
 .result__percent {
   font-size: clamp(13px, 2.2vmin, 19px);
   color: var(--text-dim);
+}
+
+/* Fun message replacing the prize when no digit matches. */
+.result__fun-message {
+  margin: clamp(4px, 1vmin, 10px) 0 0;
+  max-width: min(520px, 78vw);
+  font-size: clamp(18px, 3.4vmin, 30px);
+  font-weight: 700;
+  color: var(--gold);
+  text-align: center;
 }
 
 .result__note {

@@ -1,4 +1,3 @@
-import { toPersianDigits } from "../../../utils/persian";
 import type { GameState, StoppedCount } from "../types";
 
 const TOTAL_WHEELS = 3;
@@ -7,11 +6,10 @@ interface GameControlsProps {
   state: GameState;
   stoppedCount: StoppedCount;
   onStart: () => void;
-  onStop: () => void;
 }
 
-/** START / STOP — the primary touch interaction of the game. */
-export function GameControls({ state, stoppedCount, onStart, onStop }: GameControlsProps) {
+/** START (touch) + progress dots. STOP comes from the presenter's keyboard. */
+export function GameControls({ state, stoppedCount, onStart }: GameControlsProps) {
   if (state === "IDLE") {
     return (
       <div className="controls">
@@ -23,6 +21,9 @@ export function GameControls({ state, stoppedCount, onStart, onStop }: GameContr
   }
 
   if (state === "RUNNING") {
+    // The STOP presses come from the presenter's keyboard (Page Up /
+    // Page Down / b / F5 — the same keys also start the game from IDLE).
+    // There is deliberately no on-screen stop button.
     return (
       <div className="controls">
         <div className="stop-dots" aria-hidden="true">
@@ -33,14 +34,6 @@ export function GameControls({ state, stoppedCount, onStart, onStop }: GameContr
             />
           ))}
         </div>
-        <button
-          type="button"
-          className="btn btn--stop"
-          onClick={onStop}
-          aria-label={`توقف چرخ بعدی، ${toPersianDigits(TOTAL_WHEELS - stoppedCount)} چرخ باقی مانده`}
-        >
-          توقف
-        </button>
       </div>
     );
   }

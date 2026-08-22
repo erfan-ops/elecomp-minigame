@@ -12,7 +12,7 @@ import { getActiveGame } from "../games/registry";
  */
 export function GamePage() {
   const session = useAppSession();
-  const { user, category } = session;
+  const { user, category, survey } = session;
   const activeGame = getActiveGame();
   const GameComponent = activeGame.Component;
   const submittedRef = useRef(false);
@@ -26,14 +26,16 @@ export function GamePage() {
     [user, category],
   );
 
-  /** Combine the game's result with the user, sector, and game id, then persist. */
+  /** Combine the game's result with the user, survey, sector, and game id, then persist. */
   const handleComplete = useCallback(
     (result: GameResult) => {
-      if (!user || !category || submittedRef.current) return;
+      if (!user || !category || !survey || submittedRef.current) return;
       submittedRef.current = true;
       const sessionResult: GameSessionResult = {
         userId: user.id,
         mobile: user.mobile,
+        employeeCount: survey.employeeCount,
+        hasBenefits: survey.hasBenefits,
         sectorId: category.id,
         sectorName: category.name,
         gameId: activeGame.id,
@@ -44,11 +46,11 @@ export function GamePage() {
       };
       void session.submitResult(sessionResult);
     },
-    [user, category, activeGame.id, session],
+    [user, category, survey, activeGame.id, session],
   );
 
-  // Defensive: GAME is only reachable with a registered user and sector.
-  if (!user || !category) return null;
+  // Defensive: GAME is only reachable with a registered user, survey, and sector.
+  if (!user || !category || !survey) return null;
 
   return (
     <div className="page page--game">

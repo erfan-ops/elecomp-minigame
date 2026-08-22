@@ -4,12 +4,14 @@ A touch-first Persian (RTL) kiosk platform for conference events, built with
 React + TypeScript + Vite — no runtime dependencies beyond React, no canvas,
 no game engine, no router library.
 
-The kiosk journey: **ثبت‌نام → انتخاب دسته‌بندی → بازی → ثبت نتیجه → جدول
-برترین‌ها → کاربر جدید**. Registration collects only the **mobile number**
-(the player's identity for the session, the leaderboard, and future
-billing). The whole application is optimized for a vertical touchscreen
-without a physical keyboard: input happens through an on-screen numeric
-keyboard.
+The kiosk journey: **ثبت‌نام → نظرسنجی → انتخاب دسته‌بندی → بازی → ثبت نتیجه
+→ جدول برترین‌ها → کاربر جدید**. Registration collects the **mobile
+number** (the player's identity for the session, the leaderboard, and
+future billing); the survey asks for the organization's headcount and
+whether the player receives benefits (رفاهیات). Both answers are persisted
+with every game result. The whole application is optimized for a vertical
+touchscreen without a physical keyboard: input happens through an
+on-screen numeric keyboard.
 
 ## Running
 
@@ -60,7 +62,7 @@ into a `GameSessionResult` and hands it to the result repository.
 | id | name | description |
 | --- | --- | --- |
 | `number-wheel` | بازی اعداد | Stop three rolling digit wheels to match a target number |
-| `ten-second` | ده ثانیه | Stop a fading mental timer as close to 10.00 s as possible |
+| `ten-second` | ده ثانیه | Stop a blurring mental timer as close to 10.00 s as possible |
 
 ### Adding or swapping a game
 
@@ -111,7 +113,7 @@ top three with metallic rank styling.
 ```
 src/
 ├── app/            AppSession (central kiosk session), App, routes
-├── pages/          Registration, CategorySelection, Game (game host), Leaderboard
+├── pages/          Registration, Survey, CategorySelection, Game (game host), Leaderboard
 ├── components/     VirtualNumericKeyboard (on-screen numeric keyboard) and shared UI
 ├── domain/         User, Category, game contract, GameSessionResult, LeaderboardEntry
 ├── services/       GameResultRepository interface, local impl, leaderboard builder

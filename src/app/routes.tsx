@@ -8,6 +8,7 @@ import { CategorySelectionPage } from "../pages/CategorySelectionPage";
 import { GamePage } from "../pages/GamePage";
 import { LeaderboardPage } from "../pages/LeaderboardPage";
 import { RegistrationPage } from "../pages/RegistrationPage";
+import { SurveyPage } from "../pages/SurveyPage";
 import type { AppPhase } from "./AppSession";
 
 export interface AppRoute {
@@ -19,6 +20,7 @@ export interface AppRoute {
 
 export const APP_ROUTES: readonly AppRoute[] = [
   { id: "REGISTRATION", label: "ثبت‌نام", component: RegistrationPage },
+  { id: "SURVEY", label: "نظرسنجی", component: SurveyPage },
   { id: "CATEGORY", label: "انتخاب دسته‌بندی", component: CategorySelectionPage },
   { id: "GAME", label: "بازی", component: GamePage },
   { id: "LEADERBOARD", label: "جدول برترین‌ها", component: LeaderboardPage },

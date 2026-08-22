@@ -1,25 +1,43 @@
-import { BASE_PRIZE, CURRENCY_SYMBOL, PRIZE_TIERS } from "./config";
-import type { PrizeResult } from "./types";
+import { formatPersianNumber } from "../../utils/persian";
+import {
+  CURRENCY_SYMBOL,
+  PRIZE_EXACT_0,
+  PRIZE_EXACT_1,
+  PRIZE_EXACT_2,
+  PRIZE_EXACT_3,
+} from "./config";
+import type { Digits, WheelPrizeResult } from "./types";
 
 /**
- * Calculate the prize for a round: the closer the result is to the target,
- * the larger the share of the base prize. Pure function — all tuning happens
- * in ./config.ts.
+ * Count digits that match the target exactly, in the same position.
+ * Position matters — a digit that appears elsewhere in the target
+ * counts for nothing.
  */
-export function calculatePrize(target: number, result: number): number {
-  return calculatePrizeResult(target, result).prize;
+export function countExactMatches(target: Digits, result: Digits): number {
+  return target.reduce(
+    (matches, digit, index) => (digit === result[index] ? matches + 1 : matches),
+    0,
+  );
 }
 
-/** Full prize breakdown: distance, awarded percentage, and prize amount. */
-export function calculatePrizeResult(target: number, result: number): PrizeResult {
-  const distance = Math.abs(target - result);
-  const tier = PRIZE_TIERS.find((entry) => distance <= entry.maxDistance);
-  const percentage = tier?.percentage ?? 0;
-  const prize = Math.round((BASE_PRIZE * percentage) / 100);
-  return { distance, percentage, prize };
+/**
+ * Prize by exact digit matches. Closeness to the target earns nothing —
+ * only exact matches pay.
+ */
+export function calculatePrizeResult(target: Digits, result: Digits): WheelPrizeResult {
+  const correctDigits = countExactMatches(target, result);
+  const prize =
+    correctDigits === 3
+      ? PRIZE_EXACT_3
+      : correctDigits === 2
+        ? PRIZE_EXACT_2
+        : correctDigits === 1
+          ? PRIZE_EXACT_1
+          : PRIZE_EXACT_0;
+  return { correctDigits, prize, perfect: correctDigits === 3 };
 }
 
-/** Render a prize amount with the configured currency symbol, e.g. "$90". */
+/** 5000000 → "۵٬۰۰۰٬۰۰۰ تومان" */
 export function formatPrize(prize: number): string {
-  return `${CURRENCY_SYMBOL}${prize}`;
+  return `${formatPersianNumber(prize)} ${CURRENCY_SYMBOL}`;
 }

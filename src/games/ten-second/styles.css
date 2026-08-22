@@ -55,8 +55,9 @@
   gap: clamp(14px, 3vmin, 30px);
 }
 
-/* The visual centerpiece. Opacity is driven per frame by the game (fade-out
-   mechanic); the element itself stays unselectable and unclickable. */
+/* The visual centerpiece. The blur filter is driven per frame by the game
+   (blur ramp mechanic — the seconds become unreadable); the element itself
+   stays unselectable and unclickable. */
 .ten-second-game__timer {
   direction: ltr;
   font-size: clamp(100px, 24vmin, 240px);
@@ -65,6 +66,7 @@
   font-variant-numeric: tabular-nums;
   color: var(--text);
   text-shadow: 0 0 60px rgba(62, 198, 255, 0.25);
+  will-change: filter;
   pointer-events: none;
   user-select: none;
   -webkit-user-select: none;

@@ -28,11 +28,12 @@ export interface GameSnapshot {
   digits: Digits;
 }
 
-/** Result of comparing the player's number against the target. */
-export interface PrizeResult {
-  distance: number;
-  /** Percentage of the base prize awarded, 0–100. */
-  percentage: number;
-  /** Final prize amount in configured units. */
+/** Outcome of comparing the player's digits against the target. */
+export interface WheelPrizeResult {
+  /** How many digits match the target exactly, in the right positions. */
+  correctDigits: number;
+  /** Prize for the number of exact matches. */
   prize: number;
+  /** True when all three digits match. */
+  perfect: boolean;
 }

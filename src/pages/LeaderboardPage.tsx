@@ -3,7 +3,7 @@ import { useAppSession } from "../app/AppSession";
 import type { LeaderboardEntry } from "../domain/gameResult";
 import { formatMaskedMobile } from "../domain/user";
 import { buildLeaderboard, resultRepository } from "../services";
-import { toPersianDigits } from "../utils/persian";
+import { formatPersianNumber, toPersianDigits } from "../utils/persian";
 
 type LoadState = "loading" | "loaded" | "error";
 
@@ -11,8 +11,7 @@ const RANK_TIERS = { 1: "gold", 2: "silver", 3: "bronze" } as const;
 
 /**
  * Leaderboard — generated from stored game results (never hard-coded rows).
- * Top three ranks get distinct metallic styling; the current user's row is
- * marked with «شما».
+ * Top three ranks get distinct metallic styling.
  */
 export function LeaderboardPage() {
   const session = useAppSession();
@@ -33,8 +32,6 @@ export function LeaderboardPage() {
   useEffect(() => {
     void load();
   }, [load]);
-
-  const currentUserId = session.user?.id;
 
   return (
     <div className="page page--leaderboard">
@@ -64,17 +61,16 @@ export function LeaderboardPage() {
               <tr>
                 <th className="leaderboard__col-rank">رتبه</th>
                 <th>شماره موبایل</th>
-                <th className="leaderboard__col-score">امتیاز</th>
+                <th className="leaderboard__col-score">جایزه</th>
               </tr>
             </thead>
             <tbody>
               {entries.map((entry) => {
                 const tier = RANK_TIERS[entry.rank as keyof typeof RANK_TIERS] ?? null;
-                const isMe = entry.userId === currentUserId;
                 const rowClass = [
                   "leaderboard-row",
                   tier ? `leaderboard-row--${tier}` : "",
-                  isMe ? "leaderboard-row--me" : "",
+                  // isMe ? "leaderboard-row--me" : "",
                 ]
                   .filter(Boolean)
                   .join(" ");
@@ -87,13 +83,13 @@ export function LeaderboardPage() {
                     </td>
                     <td className="leaderboard__mobile">
                       {formatMaskedMobile(entry.mobile)}
-                      {isMe && (
+                      {/* {isMe && (
                         <span className="leaderboard__me" aria-label="شما">
                           شما
                         </span>
-                      )}
+                      )} */}
                     </td>
-                    <td className="leaderboard__score">{toPersianDigits(entry.score)}</td>
+                    <td className="leaderboard__score">{formatPersianNumber(entry.score)}</td>
                   </tr>
                 );
               })}

@@ -1,16 +1,18 @@
 import { Confetti } from "../../../components/Confetti";
 import { toPersianDigits } from "../../../utils/persian";
-import { BASE_PRIZE, CURRENCY_SYMBOL } from "../config";
 import { formatDigits } from "../gameEngine";
 import { formatPrize } from "../prizeCalculator";
-import type { Digits, PrizeResult } from "../types";
+import type { Digits, WheelPrizeResult } from "../types";
 
 interface ResultDisplayProps {
   target: Digits;
   final: Digits;
-  result: PrizeResult;
+  result: WheelPrizeResult;
   reducedMotion: boolean;
 }
+
+/** Shown when no digit matches — fun instead of a prize line. */
+const ZERO_MATCH_MESSAGE = "خیلی کند بودی، دفعه ی بعدی بیشتر دقت کن";
 
 function ResultRow({ label, value, big = false }: { label: string; value: string; big?: boolean }) {
   return (
@@ -23,11 +25,12 @@ function ResultRow({ label, value, big = false }: { label: string; value: string
 
 /**
  * In-game result screen shown after the third STOP.
- * Navigation happens outside the game (the host renders its own continue
- * button), so this screen carries no buttons of its own.
+ * Prizes come from EXACT digit matches only; navigation happens outside the
+ * game (the host renders its own continue button), so this screen carries
+ * no buttons of its own.
  */
 export function ResultDisplay({ target, final, result, reducedMotion }: ResultDisplayProps) {
-  const perfect = result.distance === 0;
+  const perfect = result.perfect;
 
   return (
     <div
@@ -45,23 +48,26 @@ export function ResultDisplay({ target, final, result, reducedMotion }: ResultDi
             <span className="result__value result__value--xl">
               {toPersianDigits(formatDigits(final))}
             </span>
-            <span className="result__note">به هدف زدی!</span>
+            <span className="result__note">هر سه رقم درست بود!</span>
             <span className="result__label">جایزه</span>
-            <span className="result__prize">{toPersianDigits(formatPrize(result.prize))}</span>
+            <span className="result__prize">{formatPrize(result.prize)}</span>
           </>
         ) : (
           <>
-            <ResultRow label="هدف" value={toPersianDigits(formatDigits(target))} />
             <ResultRow label="عدد شما" value={toPersianDigits(formatDigits(final))} big />
-            <ResultRow label="اختلاف" value={toPersianDigits(result.distance)} />
-            <div className="result__row">
-              <span className="result__label">جایزه</span>
-              <span className="result__prize">{toPersianDigits(formatPrize(result.prize))}</span>
-              <span className="result__percent">
-                {toPersianDigits(result.percentage)}٪ از {CURRENCY_SYMBOL}
-                {toPersianDigits(BASE_PRIZE)}
-              </span>
-            </div>
+            <ResultRow label="عدد هدف" value={toPersianDigits(formatDigits(target))} />
+            <ResultRow
+              label="رقم‌های درست"
+              value={`${toPersianDigits(result.correctDigits)} از ۳`}
+            />
+            {result.correctDigits === 0 ? (
+              <p className="result__fun-message">{ZERO_MATCH_MESSAGE}</p>
+            ) : (
+              <div className="result__row">
+                <span className="result__label">جایزه</span>
+                <span className="result__prize">{formatPrize(result.prize)}</span>
+              </div>
+            )}
           </>
         )}
       </div>

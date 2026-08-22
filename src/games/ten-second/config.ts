@@ -17,11 +17,17 @@ export const TARGET_TIME = 10.0;
 /** Difference (in seconds) at or below which the result counts as "perfect". */
 export const PERFECT_TOLERANCE = 0.02;
 
-/** How long the timer stays fully visible after START (seconds). */
+/** How long the timer stays fully sharp after START (seconds). */
 export const TIMER_VISIBLE_FOR = 3;
 
-/** How long the fade from fully visible to invisible takes (seconds). */
-export const TIMER_FADE_DURATION = 3;
+/** How long the blur ramp from sharp to fully unreadable takes (seconds). */
+export const TIMER_BLUR_DURATION = 3;
+
+/**
+ * Blur radius applied once the ramp completes — large enough that the
+ * changing seconds on the huge timer digits cannot be read.
+ */
+export const TIMER_MAX_BLUR_PX = 120;
 
 /** Full prize value awarded for a perfect stop. */
 export const BASE_PRIZE = 100;

@@ -11,6 +11,10 @@ export interface GameSessionResult {
   /** Canonical mobile number — the player's identity. */
   mobile: string;
 
+  /** Survey answers, collected between registration and category selection. */
+  employeeCount: number;
+  hasBenefits: boolean;
+
   sectorId: string;
   sectorName: string;
 

@@ -14,10 +14,11 @@ import {
 import type { ReactNode } from "react";
 import type { Category } from "../domain/category";
 import type { GameSessionResult } from "../domain/gameResult";
+import type { SurveyAnswers } from "../domain/survey";
 import type { User } from "../domain/user";
 import { resultRepository } from "../services";
 
-export type AppPhase = "REGISTRATION" | "CATEGORY" | "GAME" | "LEADERBOARD";
+export type AppPhase = "REGISTRATION" | "SURVEY" | "CATEGORY" | "GAME" | "LEADERBOARD";
 
 export type SaveStatus = "idle" | "saving" | "saved" | "error";
 
@@ -25,11 +26,15 @@ interface AppSessionValue {
   phase: AppPhase;
   user: User | null;
   category: Category | null;
+  /** The organization survey answered after registration. */
+  survey: SurveyAnswers | null;
   /** Persistence state of the current session's game result. */
   saveStatus: SaveStatus;
   savedResult: GameSessionResult | null;
-  /** Registration completed → category selection. */
+  /** Registration completed → survey. */
   register: (user: User) => void;
+  /** Survey answered → category selection. */
+  completeSurvey: (survey: SurveyAnswers) => void;
   /** Category chosen → game. */
   selectCategory: (category: Category) => void;
   /** Persist a fully combined session result (built by the game host). */
@@ -48,6 +53,7 @@ interface SessionState {
   phase: AppPhase;
   user: User | null;
   category: Category | null;
+  survey: SurveyAnswers | null;
   saveStatus: SaveStatus;
   savedResult: GameSessionResult | null;
 }
@@ -57,6 +63,7 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
     phase: "REGISTRATION",
     user: null,
     category: null,
+    survey: null,
     saveStatus: "idle",
     savedResult: null,
   });
@@ -68,12 +75,17 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
   const register = useCallback((user: User) => {
     pendingResultRef.current = null;
     setState({
-      phase: "CATEGORY",
+      phase: "SURVEY",
       user,
       category: null,
+      survey: null,
       saveStatus: "idle",
       savedResult: null,
     });
+  }, []);
+
+  const completeSurvey = useCallback((survey: SurveyAnswers) => {
+    setState((prev) => (prev.user ? { ...prev, phase: "CATEGORY", survey } : prev));
   }, []);
 
   const selectCategory = useCallback((category: Category) => {
@@ -121,6 +133,7 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
       phase: "REGISTRATION",
       user: null,
       category: null,
+      survey: null,
       saveStatus: "idle",
       savedResult: null,
     });
@@ -131,9 +144,11 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
       phase: state.phase,
       user: state.user,
       category: state.category,
+      survey: state.survey,
       saveStatus: state.saveStatus,
       savedResult: state.savedResult,
       register,
+      completeSurvey,
       selectCategory,
       submitResult,
       retrySave,
@@ -144,9 +159,11 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
       state.phase,
       state.user,
       state.category,
+      state.survey,
       state.saveStatus,
       state.savedResult,
       register,
+      completeSurvey,
       selectCategory,
       submitResult,
       retrySave,

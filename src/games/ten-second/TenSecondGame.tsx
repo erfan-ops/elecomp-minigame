@@ -8,7 +8,7 @@ import {
   createInitialSnapshot,
   elapsedSeconds,
   tenSecondReducer,
-  timerOpacity,
+  timerBlurPx,
 } from "./gameEngine";
 import { calculateOutcome, formatPrize } from "./prizeCalculator";
 import type { TimingOutcome } from "./types";
@@ -22,8 +22,8 @@ import "./styles.css";
  *
  * Timing principle: the authoritative elapsed time is derived only from
  * high-resolution timestamps captured at START and STOP; the rAF loop
- * below is purely presentation (it renders the visual timer and its fade)
- * and never feeds the scoring math.
+ * below is purely presentation (it renders the visual timer and its blur
+ * ramp) and never feeds the scoring math.
  */
 
 /** Displayed timer text, capped so long waits never overflow the layout. */
@@ -47,7 +47,7 @@ export function TenSecondGame({ onComplete, onExit }: GameProps) {
   const completedRef = useRef(false);
   const reducedMotion = usePrefersReducedMotion();
 
-  // Presentation loop: updates the visible timer and its fade-out.
+  // Presentation loop: updates the visible timer and its blur ramp.
   // The real measurement always comes from the captured timestamps.
   useEffect(() => {
     if (snapshot.phase !== "RUNNING" || snapshot.startedAt === null) return;
@@ -58,7 +58,7 @@ export function TenSecondGame({ onComplete, onExit }: GameProps) {
       const timer = timerRef.current;
       if (timer) {
         timer.textContent = formatTimerDisplay(elapsed);
-        timer.style.opacity = String(timerOpacity(elapsed));
+        timer.style.filter = `blur(${timerBlurPx(elapsed)}px)`;
       }
       raf = requestAnimationFrame(frame);
     };
@@ -119,7 +119,7 @@ export function TenSecondGame({ onComplete, onExit }: GameProps) {
         {snapshot.phase === "IDLE" && (
           <div className="ten-second-game__intro">
             <p className="ten-second-game__instruction">
-              زمان‌سنج را در ذهن خود دنبال کنید؛ بعد از چند ثانیه ناپدید می‌شود.
+              زمان‌سنج را در ذهن خود دنبال کنید؛ بعد از چند ثانیه تار و ناخوانا می‌شود.
             </p>
             <p className="ten-second-game__instruction">
               وقتی فکر می‌کنید دقیقاً ۱۰ ثانیه گذشته است، توقف را بزنید.
