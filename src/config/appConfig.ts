@@ -12,6 +12,12 @@ import type { Category } from "../domain/category";
 /** The id of the game the kiosk currently runs — see src/games/registry.ts. */
 export const ACTIVE_GAME_ID = "number-wheel";
 
+/**
+ * How many times a player may retry the game after winning nothing.
+ * A player who has won anything can never retry, regardless of this value.
+ */
+export const MAX_GAME_ATTEMPTS = 3;
+
 /** Sector categories the player can choose from. */
 export const CATEGORIES: readonly Category[] = [
   { id: "fashion", name: "پوشاک" },

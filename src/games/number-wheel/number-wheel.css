@@ -79,14 +79,79 @@
 }
 
 /* Digits stay left-to-right (hundreds first) even inside the RTL page. */
-.target__value {
+.target__digits {
   direction: ltr;
+  display: flex;
+  gap: clamp(6px, 1.2vmin, 12px);
+}
+
+.target__digit {
+  position: relative;
+  padding: 0;
+  border: none;
+  background: transparent;
+  font-family: inherit;
   font-size: clamp(44px, 9.5vmin, 92px);
   font-weight: 700;
   line-height: 1;
   font-variant-numeric: tabular-nums;
   color: var(--text);
   text-shadow: 0 0 44px rgba(255, 200, 87, 0.28);
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  cursor: pointer;
+}
+
+/* Edit affordance: a small arrow above each digit while the target is settable. */
+.target__digit:not(:disabled)::after {
+  content: "▲";
+  position: absolute;
+  top: -0.5em;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: clamp(10px, 1.8vmin, 14px);
+  color: var(--gold);
+  text-shadow: none;
+}
+
+.target__digit:active:not(:disabled) {
+  transform: scale(0.92);
+}
+
+.target__digit:disabled {
+  cursor: default;
+}
+
+.target__hint {
+  font-size: clamp(11px, 1.9vmin, 15px);
+  color: var(--text-dim);
+}
+
+.target__random {
+  min-width: 0;
+  min-height: clamp(42px, 6vmin, 56px);
+  padding: 0 clamp(18px, 3vmin, 28px);
+  font-size: clamp(15px, 2.5vmin, 21px);
+}
+
+/* --- Game instructions (IDLE only) ----------------------------------------- */
+
+.number-wheel-game__instructions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(2px, 0.6vmin, 6px);
+  max-width: min(760px, 92vw);
+  padding: clamp(8px, 1.6vmin, 14px) clamp(14px, 2.6vmin, 24px);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: clamp(12px, 2vmin, 18px);
+  text-align: center;
+}
+
+.number-wheel-game__instructions p {
+  font-size: clamp(13px, 2.2vmin, 18px);
+  color: var(--text-dim);
 }
 
 /* --- Wheels ---------------------------------------------------------------- */
@@ -116,6 +181,42 @@
 /* Rolling: cool accent edge, digits slightly dimmed and blurred. */
 .number-wheel--rolling {
   border-color: rgba(62, 198, 255, 0.4);
+}
+
+/* The next wheel a STOP press will lock — unmistakably highlighted. */
+.number-wheel--active {
+  border-color: rgba(255, 255, 255, 0.9);
+  animation: wheel-active-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes wheel-active-pulse {
+  0%,
+  100% {
+    box-shadow:
+      inset 0 8px 24px rgba(0, 0, 0, 0.55),
+      0 0 26px rgba(62, 198, 255, 0.35),
+      0 18px 40px rgba(0, 0, 0, 0.35);
+  }
+  50% {
+    box-shadow:
+      inset 0 8px 24px rgba(0, 0, 0, 0.55),
+      0 0 48px rgba(62, 198, 255, 0.65),
+      0 18px 40px rgba(0, 0, 0, 0.35);
+  }
+}
+
+.number-wheel__next-badge {
+  position: absolute;
+  top: clamp(6px, 1.2vmin, 10px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 5;
+  padding: 2px 12px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #04121d;
+  font-size: clamp(11px, 1.9vmin, 15px);
+  font-weight: 700;
 }
 
 .number-wheel--rolling .number-wheel__digit {

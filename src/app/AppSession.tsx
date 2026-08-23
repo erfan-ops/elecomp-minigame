@@ -16,6 +16,7 @@ import type { Category } from "../domain/category";
 import type { GameSessionResult } from "../domain/gameResult";
 import type { SurveyAnswers } from "../domain/survey";
 import type { User } from "../domain/user";
+import { MAX_GAME_ATTEMPTS } from "../config/appConfig";
 import { resultRepository } from "../services";
 
 export type AppPhase = "REGISTRATION" | "SURVEY" | "CATEGORY" | "GAME" | "LEADERBOARD";
@@ -28,6 +29,8 @@ interface AppSessionValue {
   category: Category | null;
   /** The organization survey answered after registration. */
   survey: SurveyAnswers | null;
+  /** 1-based attempt number of the game currently being played. */
+  attempt: number;
   /** Persistence state of the current session's game result. */
   saveStatus: SaveStatus;
   savedResult: GameSessionResult | null;
@@ -41,6 +44,8 @@ interface AppSessionValue {
   submitResult: (result: GameSessionResult) => Promise<void>;
   /** Re-attempt persistence after a failure. */
   retrySave: () => Promise<void>;
+  /** Play the game again (only offered after a zero-win result, up to MAX_GAME_ATTEMPTS). */
+  retry: () => void;
   /** Continue after the result was shown → leaderboard. */
   goToLeaderboard: () => void;
   /** End the session and return to registration with a clean slate. */
@@ -54,6 +59,7 @@ interface SessionState {
   user: User | null;
   category: Category | null;
   survey: SurveyAnswers | null;
+  attempt: number;
   saveStatus: SaveStatus;
   savedResult: GameSessionResult | null;
 }
@@ -64,6 +70,7 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
     user: null,
     category: null,
     survey: null,
+    attempt: 1,
     saveStatus: "idle",
     savedResult: null,
   });
@@ -79,6 +86,7 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
       user,
       category: null,
       survey: null,
+      attempt: 1,
       saveStatus: "idle",
       savedResult: null,
     });
@@ -126,6 +134,14 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
     setState((prev) => ({ ...prev, phase: "LEADERBOARD" }));
   }, []);
 
+  const retry = useCallback(() => {
+    setState((prev) =>
+      prev.user && prev.saveStatus === "saved" && prev.attempt < MAX_GAME_ATTEMPTS
+        ? { ...prev, attempt: prev.attempt + 1, saveStatus: "idle", savedResult: null }
+        : prev,
+    );
+  }, []);
+
   const startNewUser = useCallback(() => {
     pendingResultRef.current = null;
     savingRef.current = false;
@@ -134,6 +150,7 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
       user: null,
       category: null,
       survey: null,
+      attempt: 1,
       saveStatus: "idle",
       savedResult: null,
     });
@@ -145,6 +162,7 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
       user: state.user,
       category: state.category,
       survey: state.survey,
+      attempt: state.attempt,
       saveStatus: state.saveStatus,
       savedResult: state.savedResult,
       register,
@@ -152,6 +170,7 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
       selectCategory,
       submitResult,
       retrySave,
+      retry,
       goToLeaderboard,
       startNewUser,
     }),
@@ -160,6 +179,7 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
       state.user,
       state.category,
       state.survey,
+      state.attempt,
       state.saveStatus,
       state.savedResult,
       register,
@@ -167,6 +187,7 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
       selectCategory,
       submitResult,
       retrySave,
+      retry,
       goToLeaderboard,
       startNewUser,
     ],

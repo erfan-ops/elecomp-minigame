@@ -23,7 +23,7 @@ export function toCanonicalMobile(digits: string): string {
 
 /** True when exactly the right number of digits is present. */
 export function isValidMobileDigits(digits: string): boolean {
-  return new RegExp(`^\\d{${MOBILE_DIGIT_COUNT}}$`).test(digits);
+  return new RegExp(`^9\\d{${MOBILE_DIGIT_COUNT-1}}$`).test(digits);
 }
 
 /** "9121234567" → "912 123 4567" (display-only grouping, 3-3-4). */

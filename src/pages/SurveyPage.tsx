@@ -23,6 +23,8 @@ export function SurveyPage() {
   const [hasBenefits, setHasBenefits] = useState<boolean | null>(null);
   const [countError, setCountError] = useState<string | null>(null);
   const [benefitsError, setBenefitsError] = useState<string | null>(null);
+  /** Non-working users can skip both questions entirely. */
+  const [notEmployed, setNotEmployed] = useState(false);
 
   const count = countDigits === "" ? null : parseInt(countDigits, 10);
 
@@ -43,7 +45,20 @@ export function SurveyPage() {
     setCountFocused(false); // done typing — hide the keyboard
   };
 
+  const toggleNotEmployed = () => {
+    const next = !notEmployed;
+    setNotEmployed(next);
+    setCountFocused(false); // the keyboard is not needed while skipping
+    setCountError(null);
+    setBenefitsError(null);
+  };
+
   const handleSubmit = () => {
+    // Skipped survey: record the non-working defaults and move on.
+    if (notEmployed) {
+      completeSurvey({ employeeCount: 0, hasBenefits: false });
+      return;
+    }
     let valid = true;
     if (countDigits === "") {
       setCountError(COUNT_EMPTY_ERROR);
@@ -65,72 +80,87 @@ export function SurveyPage() {
     <div className="page page--survey">
       <h1 className="page__title">نظرسنجی</h1>
 
-      <p className="survey__question">
-        <span className="survey__question-number">۱.</span>
-        تعداد افراد سازمانی که در آن کار می‌کنید
-      </p>
+      <div className={`survey__questions${notEmployed ? " survey__questions--skipped" : ""}`}>
+        <p className="survey__question">
+          <span className="survey__question-number">۱.</span>
+          تعداد افراد سازمانی که در آن کار می‌کنید
+        </p>
 
-      <div className={`survey__field field field--ltr${countError ? " field--error" : ""}`}>
-        <div
-          className="field__control"
-          role="textbox"
-          aria-label={`تعداد افراد سازمان${countDigits ? `: ${countDigits}` : ""}`}
-          onClick={() => setCountFocused(true)}
-        >
-          {countDigits ? (
-            <span className="field__value">{countDigits}</span>
-          ) : (
-            <span className="field__placeholder">123</span>
+        <div className={`survey__field field field--ltr${countError ? " field--error" : ""}`}>
+          <div
+            className="field__control"
+            role="textbox"
+            aria-label={`تعداد افراد سازمان${countDigits ? `: ${countDigits}` : ""}`}
+            onClick={() => setCountFocused(true)}
+          >
+            {countDigits ? (
+              <span className="field__value">{countDigits}</span>
+            ) : (
+              <span className="field__placeholder">123</span>
+            )}
+            {countFocused && <span className="field__caret" aria-hidden="true" />}
+          </div>
+          {countError && (
+            <span className="field__error" role="alert">
+              {countError}
+            </span>
           )}
-          {countFocused && <span className="field__caret" aria-hidden="true" />}
         </div>
-        {countError && (
+
+        <p className="survey__question">
+          <span className="survey__question-number">۲.</span>
+          آیا در سازمان خود رفاهیات دریافت می‌نمایید
+        </p>
+
+        <div className={`choice-group${benefitsError ? " choice-group--error" : ""}`}>
+          <button
+            type="button"
+            className={`choice-button${hasBenefits === true ? " choice-button--selected" : ""}`}
+            aria-pressed={hasBenefits === true}
+            onClick={() => chooseBenefits(true)}
+          >
+            بله
+            <span className="choice-button__check" aria-hidden="true">
+              ✓
+            </span>
+          </button>
+          <button
+            type="button"
+            className={`choice-button${hasBenefits === false ? " choice-button--selected" : ""}`}
+            aria-pressed={hasBenefits === false}
+            onClick={() => chooseBenefits(false)}
+          >
+            خیر
+            <span className="choice-button__check" aria-hidden="true">
+              ✓
+            </span>
+          </button>
+        </div>
+        {benefitsError && (
           <span className="field__error" role="alert">
-            {countError}
+            {benefitsError}
           </span>
         )}
       </div>
 
-      <p className="survey__question">
-        <span className="survey__question-number">۲.</span>
-        آیا در سازمان خود رفاهیات دریافت می‌نمایید
-      </p>
-
-      <div className={`choice-group${benefitsError ? " choice-group--error" : ""}`}>
-        <button
-          type="button"
-          className={`choice-button${hasBenefits === true ? " choice-button--selected" : ""}`}
-          aria-pressed={hasBenefits === true}
-          onClick={() => chooseBenefits(true)}
-        >
-          بله
-          <span className="choice-button__check" aria-hidden="true">
-            ✓
-          </span>
-        </button>
-        <button
-          type="button"
-          className={`choice-button${hasBenefits === false ? " choice-button--selected" : ""}`}
-          aria-pressed={hasBenefits === false}
-          onClick={() => chooseBenefits(false)}
-        >
-          خیر
-          <span className="choice-button__check" aria-hidden="true">
-            ✓
-          </span>
-        </button>
-      </div>
-      {benefitsError && (
-        <span className="field__error" role="alert">
-          {benefitsError}
+      <button
+        type="button"
+        className={`survey-checkbox${notEmployed ? " survey-checkbox--checked" : ""}`}
+        role="checkbox"
+        aria-checked={notEmployed}
+        onClick={toggleNotEmployed}
+      >
+        <span className="survey-checkbox__box" aria-hidden="true">
+          <span className="survey-checkbox__check">✓</span>
         </span>
-      )}
+        <span className="survey-checkbox__label">در سازمان یا شرکتی کار نمی‌کنم</span>
+      </button>
 
       <button type="button" className="btn btn--primary" onClick={handleSubmit}>
         ادامه
       </button>
 
-      {countFocused && (
+      {countFocused && !notEmployed && (
         <div className="keyboard-dock">
           <VirtualNumericKeyboard
             onDigit={appendDigit}

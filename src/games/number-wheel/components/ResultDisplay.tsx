@@ -9,10 +9,14 @@ interface ResultDisplayProps {
   final: Digits;
   result: WheelPrizeResult;
   reducedMotion: boolean;
+  /** Retries left after this attempt — decides which zero-match message to show. */
+  attemptsRemaining?: number;
 }
 
-/** Shown when no digit matches — fun instead of a prize line. */
-const ZERO_MATCH_MESSAGE = "خیلی کند بودی، دفعه ی بعدی بیشتر دقت کن";
+/** Shown when no digit matches but the player can still retry. */
+const ZERO_MATCH_RETRY_MESSAGE = "باختی، میتونی دوباره تلاش کنی";
+/** Shown when no digit matches and the retries are used up. */
+const ZERO_MATCH_NO_RETRY_MESSAGE = "باختی، دیگه تلاشی نمونده";
 
 function ResultRow({ label, value, big = false }: { label: string; value: string; big?: boolean }) {
   return (
@@ -29,7 +33,13 @@ function ResultRow({ label, value, big = false }: { label: string; value: string
  * game (the host renders its own continue button), so this screen carries
  * no buttons of its own.
  */
-export function ResultDisplay({ target, final, result, reducedMotion }: ResultDisplayProps) {
+export function ResultDisplay({
+  target,
+  final,
+  result,
+  reducedMotion,
+  attemptsRemaining = 0,
+}: ResultDisplayProps) {
   const perfect = result.perfect;
 
   return (
@@ -61,7 +71,9 @@ export function ResultDisplay({ target, final, result, reducedMotion }: ResultDi
               value={`${toPersianDigits(result.correctDigits)} از ۳`}
             />
             {result.correctDigits === 0 ? (
-              <p className="result__fun-message">{ZERO_MATCH_MESSAGE}</p>
+              <p className="result__fun-message">
+                {attemptsRemaining > 0 ? ZERO_MATCH_RETRY_MESSAGE : ZERO_MATCH_NO_RETRY_MESSAGE}
+              </p>
             ) : (
               <div className="result__row">
                 <span className="result__label">جایزه</span>

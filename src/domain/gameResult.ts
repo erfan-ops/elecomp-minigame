@@ -15,6 +15,9 @@ export interface GameSessionResult {
   employeeCount: number;
   hasBenefits: boolean;
 
+  /** 1-based attempt number — how many games this user has played (1..MAX_GAME_ATTEMPTS). */
+  attempt: number;
+
   sectorId: string;
   sectorName: string;
 

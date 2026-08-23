@@ -14,6 +14,12 @@ export interface GameContext {
   mobile: string;
   /** The sector/category the player is playing for (id + name, for billing). */
   sector: Category;
+  /**
+   * How many retries the player has left after this attempt
+   * (platform session info a game MAY use for result messaging).
+   * Absent when the platform does not track retries.
+   */
+  attemptsRemaining?: number;
 }
 
 export interface GameResult {

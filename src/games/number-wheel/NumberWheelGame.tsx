@@ -3,11 +3,14 @@ import type { GameProps } from "../../domain/game";
 import {
   GAME_TITLE,
   MIN_STOP_INTERVAL_MS,
+  PRIZE_EXACT_1,
+  PRIZE_EXACT_2,
+  PRIZE_EXACT_3,
   REDUCED_MOTION_SPEED_FACTOR,
   WHEEL_SPEEDS,
 } from "./config";
-import { digitsToNumber, rollingFlags } from "./gameEngine";
-import { calculatePrizeResult } from "./prizeCalculator";
+import { digitsToNumber, randomDigits, rollingFlags } from "./gameEngine";
+import { calculatePrizeResult, formatPrize } from "./prizeCalculator";
 import { useNumberGame } from "./useNumberGame";
 import { GameControls } from "./components/GameControls";
 import type { NumberWheelHandle } from "./components/NumberWheel";
@@ -31,8 +34,8 @@ import "./number-wheel.css";
  * act as the three STOP presses while RUNNING. There is no on-screen stop
  * button.
  */
-export function NumberWheelGame({ onComplete, onExit }: GameProps) {
-  const { state, stoppedCount, target, digits, start, stop } = useNumberGame();
+export function NumberWheelGame({ context, onComplete, onExit }: GameProps) {
+  const { state, stoppedCount, target, digits, start, stop, setTarget } = useNumberGame();
   const reducedMotion = usePrefersReducedMotion();
 
   const wheelRefs = [
@@ -76,6 +79,23 @@ export function NumberWheelGame({ onComplete, onExit }: GameProps) {
       },
     });
   }, [state, target, digits, onComplete]);
+
+  /** Tapping a target digit cycles it 0→9 — only before the game starts. */
+  const handleDigitTap = useCallback(
+    (index: number) => {
+      if (state !== "IDLE") return;
+      const next = [...target] as typeof target;
+      next[index] = (next[index] + 1) % 10;
+      setTarget(next);
+    },
+    [state, target, setTarget],
+  );
+
+  /** «عدد تصادفی» — fills the target with a random number. */
+  const handleRandomTarget = useCallback(() => {
+    if (state !== "IDLE") return;
+    setTarget(randomDigits());
+  }, [state, setTarget]);
 
   const handleStop = useCallback(() => {
     if (state !== "RUNNING") return;
@@ -131,7 +151,25 @@ export function NumberWheelGame({ onComplete, onExit }: GameProps) {
       </header>
 
       <div className="number-wheel-game__main">
-        <TargetDisplay digits={target} />
+        {state === "IDLE" && (
+          <div className="number-wheel-game__instructions">
+            <p>
+              شروع را بزنید تا سه چرخ بچرخند؛ مجری چرخ‌ها را یکی‌یکی متوقف می‌کند و هر بار چرخِ
+              برجسته از چپ به راست قفل می‌شود.
+            </p>
+            <p>
+              جایزه فقط برای رقم‌هایی است که دقیقاً با عدد هدف یکی باشند: ۳ رقم ={" "}
+              {formatPrize(PRIZE_EXACT_3)}، ۲ رقم = {formatPrize(PRIZE_EXACT_2)}، ۱ رقم ={" "}
+              {formatPrize(PRIZE_EXACT_1)}.
+            </p>
+          </div>
+        )}
+        <TargetDisplay
+          digits={target}
+          editable={state === "IDLE"}
+          onDigitTap={handleDigitTap}
+          onRandom={handleRandomTarget}
+        />
         <WheelGroup
           digits={digits}
           rolling={rolling}
@@ -153,6 +191,7 @@ export function NumberWheelGame({ onComplete, onExit }: GameProps) {
           final={digits}
           result={result}
           reducedMotion={reducedMotion}
+          attemptsRemaining={context.attemptsRemaining}
         />
       )}
     </div>

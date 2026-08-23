@@ -70,6 +70,8 @@ export interface NumberWheelProps {
   speed: number;
   /** Whether the wheel has been locked by a STOP press. */
   locked?: boolean;
+  /** Whether this wheel is the next one a STOP press will lock. */
+  active?: boolean;
   /** When true, the spin blur is skipped (respects prefers-reduced-motion). */
   reducedMotion?: boolean;
   /** Accessible name for the wheel. */
@@ -82,6 +84,7 @@ export function NumberWheel({
   rolling,
   speed,
   locked = false,
+  active = false,
   reducedMotion = false,
   ariaLabel,
 }: NumberWheelProps) {
@@ -177,6 +180,7 @@ export function NumberWheel({
   const classNames = [
     "number-wheel",
     rolling ? "number-wheel--rolling" : "",
+    active && rolling ? "number-wheel--active" : "",
     locked && !rolling ? "number-wheel--locked" : "",
     justLocked ? "number-wheel--just-locked" : "",
   ]
@@ -187,8 +191,13 @@ export function NumberWheel({
     <div
       className={classNames}
       role="img"
-      aria-label={`${ariaLabel ?? "چرخ عدد"}${rolling ? "، در حال چرخش" : `، عدد ${toPersianDigits(digit)}`}`}
+      aria-label={`${ariaLabel ?? "چرخ عدد"}${rolling ? "، در حال چرخش" : `، عدد ${toPersianDigits(digit)}`}${active && rolling ? "، چرخ بعدی" : ""}`}
     >
+      {active && rolling && (
+        <span className="number-wheel__next-badge" aria-hidden="true">
+          بعدی
+        </span>
+      )}
       <div className="number-wheel__window">
         <div className="number-wheel__center" aria-hidden="true" />
         <div

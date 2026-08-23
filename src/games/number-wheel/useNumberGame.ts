@@ -1,7 +1,7 @@
 import { useCallback, useReducer } from "react";
 import { usePrefersReducedMotion } from "../../hooks/usePrefersReducedMotion";
 import { createInitialSnapshot, createNewGame, gameReducer } from "./gameEngine";
-import type { GameSnapshot } from "./types";
+import type { Digits, GameSnapshot } from "./types";
 
 /**
  * Owns the number-wheel state machine and exposes the player actions.
@@ -27,6 +27,11 @@ export function useNumberGame() {
     dispatch({ type: "STOP", lockedDigit });
   }, []);
 
+  /** Sets a custom target — only honored while the game is IDLE. */
+  const setTarget = useCallback((target: Digits) => {
+    dispatch({ type: "SET_TARGET", digits: target });
+  }, []);
+
   return {
     state: snapshot.phase,
     stoppedCount: snapshot.stoppedCount,
@@ -34,6 +39,7 @@ export function useNumberGame() {
     digits: snapshot.digits,
     start,
     stop,
+    setTarget,
   };
 }
 

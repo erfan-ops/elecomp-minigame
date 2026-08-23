@@ -8,8 +8,10 @@ import {
   toCanonicalMobile,
 } from "../domain/user";
 import type { User } from "../domain/user";
+import { resultRepository } from "../services";
 
-const MOBILE_ERROR = "شماره موبایل باید ۱۰ رقم باشد.";
+const MOBILE_ERROR = "شماره موبایل اشتباه است.";
+const ALREADY_PLAYED_MESSAGE = "شما قبلاً در این مسابقه شرکت کرده‌اید.";
 
 /**
  * Registration: the player enters only their mobile number through the
@@ -21,6 +23,7 @@ export function RegistrationPage() {
   const { register } = useAppSession();
   const [mobileDigits, setMobileDigits] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [checking, setChecking] = useState(false);
 
   const appendDigit = (digit: string) => {
     if (mobileDigits.length >= 10) return; // exactly 10 digits, no more
@@ -33,16 +36,31 @@ export function RegistrationPage() {
     setError(null);
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!isValidMobileDigits(mobileDigits)) {
       setError(MOBILE_ERROR);
       return;
     }
-    const user: User = {
-      id: makeUserId(),
-      mobile: toCanonicalMobile(mobileDigits),
-    };
-    register(user);
+    const canonical = toCanonicalMobile(mobileDigits);
+    setChecking(true);
+    try {
+      // A mobile that already has a stored result means the player has
+      // already finished the game (won or used up their tries) — block a
+      // second participation.
+      const results = await resultRepository.getResults();
+      if (results.some((result) => result.mobile === canonical)) {
+        setError(ALREADY_PLAYED_MESSAGE);
+        return;
+      }
+      const user: User = { id: makeUserId(), mobile: canonical };
+      register(user);
+    } catch {
+      // The check must never lock the kiosk out — fail open.
+      const user: User = { id: makeUserId(), mobile: canonical };
+      register(user);
+    } finally {
+      setChecking(false);
+    }
   };
 
   return (
@@ -80,7 +98,12 @@ export function RegistrationPage() {
             </span>
           )}
         </div>
-        <button type="button" className="btn btn--primary" onClick={handleSubmit}>
+        <button
+          type="button"
+          className="btn btn--primary"
+          onClick={() => void handleSubmit()}
+          disabled={checking}
+        >
           ورود
         </button>
       </div>

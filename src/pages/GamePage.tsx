@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useRef } from "react";
 import { useAppSession } from "../app/AppSession";
+import { MAX_GAME_ATTEMPTS } from "../config/appConfig";
 import type { GameContext, GameResult } from "../domain/game";
 import type { GameSessionResult } from "../domain/gameResult";
 import { formatMaskedMobile } from "../domain/user";
@@ -12,7 +13,7 @@ import { getActiveGame } from "../games/registry";
  */
 export function GamePage() {
   const session = useAppSession();
-  const { user, category, survey } = session;
+  const { user, category, survey, attempt } = session;
   const activeGame = getActiveGame();
   const GameComponent = activeGame.Component;
   const submittedRef = useRef(false);
@@ -22,8 +23,9 @@ export function GamePage() {
       userId: user?.id ?? "",
       mobile: user?.mobile ?? "",
       sector: category ?? { id: "", name: "" },
+      attemptsRemaining: Math.max(0, MAX_GAME_ATTEMPTS - attempt),
     }),
-    [user, category],
+    [user, category, attempt],
   );
 
   /** Combine the game's result with the user, survey, sector, and game id, then persist. */
@@ -36,6 +38,7 @@ export function GamePage() {
         mobile: user.mobile,
         employeeCount: survey.employeeCount,
         hasBenefits: survey.hasBenefits,
+        attempt,
         sectorId: category.id,
         sectorName: category.name,
         gameId: activeGame.id,
@@ -46,8 +49,19 @@ export function GamePage() {
       };
       void session.submitResult(sessionResult);
     },
-    [user, category, survey, activeGame.id, session],
+    [user, category, survey, attempt, activeGame.id, session],
   );
+
+  /** Retry is only offered after a zero-win result, below the attempt cap. */
+  const canRetry =
+    session.saveStatus === "saved" &&
+    (session.savedResult?.winAmount ?? 0) === 0 &&
+    attempt < MAX_GAME_ATTEMPTS;
+
+  const handleRetry = () => {
+    submittedRef.current = false;
+    session.retry();
+  };
 
   // Defensive: GAME is only reachable with a registered user, survey, and sector.
   if (!user || !category || !survey) return null;
@@ -60,9 +74,9 @@ export function GamePage() {
       </div>
 
       <div className="game-page__stage">
-        {/* key: a new user always mounts a completely fresh game */}
+        {/* key: every attempt mounts a completely fresh game */}
         <GameComponent
-          key={user.id}
+          key={`${user.id}:${attempt}`}
           context={context}
           onComplete={handleComplete}
           onExit={session.startNewUser}
@@ -92,9 +106,25 @@ export function GamePage() {
             </>
           )}
           {session.saveStatus === "saved" && (
-            <button type="button" className="btn btn--primary" onClick={session.goToLeaderboard}>
-              ادامه
-            </button>
+            <>
+              {canRetry && (
+                <button
+                  type="button"
+                  className="btn btn--primary"
+                  onClick={handleRetry}
+                  aria-label={`تلاش دوباره، ${MAX_GAME_ATTEMPTS - attempt} تلاش باقی مانده`}
+                >
+                  تلاش دوباره
+                </button>
+              )}
+              <button
+                type="button"
+                className={canRetry ? "btn btn--ghost" : "btn btn--primary"}
+                onClick={session.goToLeaderboard}
+              >
+                ادامه
+              </button>
+            </>
           )}
         </div>
       )}

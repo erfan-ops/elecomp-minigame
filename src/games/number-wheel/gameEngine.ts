@@ -54,7 +54,8 @@ export function createNewGame(
 
 export type GameAction =
   | { type: "START" }
-  | { type: "STOP"; lockedDigit: number };
+  | { type: "STOP"; lockedDigit: number }
+  | { type: "SET_TARGET"; digits: Digits };
 
 export function createInitialSnapshot(target: Digits, digits: Digits): GameSnapshot {
   return { phase: "IDLE", stoppedCount: 0, target, digits };
@@ -71,6 +72,11 @@ export function gameReducer(state: GameSnapshot, action: GameAction): GameSnapsh
     case "START": {
       if (state.phase !== "IDLE") return state;
       return { ...state, phase: "RUNNING", stoppedCount: 0 };
+    }
+    case "SET_TARGET": {
+      // The target can only be changed before the game starts.
+      if (state.phase !== "IDLE") return state;
+      return { ...state, target: action.digits };
     }
     case "STOP": {
       if (state.phase !== "RUNNING" || state.stoppedCount === 3) return state;

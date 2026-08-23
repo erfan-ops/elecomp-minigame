@@ -61,7 +61,7 @@ into a `GameSessionResult` and hands it to the result repository.
 
 | id | name | description |
 | --- | --- | --- |
-| `number-wheel` | بازی اعداد | Stop three rolling digit wheels to match a target number |
+| `number-wheel` | بازی اعداد | Stop three rolling digit wheels to match a target number (settable digit-by-digit, or random) |
 | `ten-second` | ده ثانیه | Stop a blurring mental timer as close to 10.00 s as possible |
 
 ### Adding or swapping a game
@@ -79,7 +79,7 @@ Registration, category selection, the leaderboard, and persistence need
 
 | File | Content |
 | --- | --- |
-| `src/config/appConfig.ts` | Active game, sector categories |
+| `src/config/appConfig.ts` | Active game, sector categories, `MAX_GAME_ATTEMPTS` |
 | `src/games/number-wheel/config.ts` | Number-wheel prizes, wheel speeds, title |
 | `src/services/index.ts` | Active result-repository implementation (swap for a backend) |
 

@@ -15,6 +15,7 @@ function isGameSessionResult(value: unknown): value is GameSessionResult {
     typeof v.mobile === "string" &&
     typeof v.employeeCount === "number" &&
     typeof v.hasBenefits === "boolean" &&
+    typeof v.attempt === "number" &&
     typeof v.sectorId === "string" &&
     typeof v.sectorName === "string" &&
     typeof v.gameId === "string" &&
