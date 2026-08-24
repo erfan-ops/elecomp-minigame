@@ -62,12 +62,11 @@ into a `GameSessionResult` and hands it to the result repository.
 | id | name | description |
 | --- | --- | --- |
 | `number-wheel` | بازی اعداد | Stop three rolling digit wheels to match a target number (settable digit-by-digit, or random) |
-| `ten-second` | ده ثانیه | Stop a blurring mental timer as close to 10.00 s as possible |
 
 ### Adding or swapping a game
 
 1. Create `src/games/<id>/` implementing `GameProps` (see
-   `src/games/number-wheel/` and `src/games/ten-second/` as references —
+   `src/games/number-wheel/` as references —
    each ships its own stylesheet, config, engine, and components).
 2. Register it in `src/games/registry.ts`.
 3. Set `ACTIVE_GAME_ID` in `src/config/appConfig.ts`.

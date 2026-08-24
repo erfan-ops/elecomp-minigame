@@ -9,18 +9,12 @@
 import { ACTIVE_GAME_ID } from "../config/appConfig";
 import type { GameDefinition } from "./Game";
 import { NumberWheelGame } from "./number-wheel/NumberWheelGame";
-import { TenSecondGame } from "./ten-second/TenSecondGame";
 
 export const GAME_DEFINITIONS: readonly GameDefinition[] = [
   {
     id: "number-wheel",
     name: "بازی اعداد",
     Component: NumberWheelGame,
-  },
-  {
-    id: "ten-second",
-    name: "ده ثانیه",
-    Component: TenSecondGame,
   },
 ];
 

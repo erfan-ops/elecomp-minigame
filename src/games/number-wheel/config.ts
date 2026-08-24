@@ -25,7 +25,7 @@ export const PRIZE_EXACT_1 = 500_000; // one digit correct
 export const PRIZE_EXACT_0 = 0; // nothing correct
 
 /** Spin speed of each wheel (left to right) in digits per second. */
-export const WHEEL_SPEEDS: readonly [number, number, number] = [9, 10.5, 12];
+export const WHEEL_SPEEDS: readonly [number, number, number] = [8.5, 10, 11.5];
 
 /** Stop animation feel — spring constants for the physical settle. */
 export const SPRING_STIFFNESS = 170;
