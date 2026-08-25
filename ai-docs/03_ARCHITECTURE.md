@@ -140,7 +140,7 @@ The game never learns whether persistence succeeded.
 | `AppSessionProvider` (`src/app/AppSession.tsx`) | `phase`, `user`, `category`, `survey`, `attempt`, `saveStatus`, `savedResult` | whole app, one attendee session |
 | `AppSessionProvider` refs | `pendingResultRef`, `savingRef` | not rendered; retry payload + concurrency guard |
 | `RegistrationPage` | `mobileDigits`, `error`, `checking` | local, discarded on unmount |
-| `SurveyPage` | `countFocused`, `countDigits`, `hasBenefits`, `countError`, `benefitsError`, `notEmployed` | local, discarded on unmount |
+| `SurveyPage` | `step`, `countChoice`, `hasBenefits`, `notEmployed` | local, discarded on unmount |
 | `CategorySelectionPage` | `selectedId` | local |
 | `LeaderboardPage` | `loadState`, `entries` | local, loaded once on mount |
 | `GamePage` ref | `submittedRef` | duplicate-submit guard, reset by `handleRetry` |
@@ -158,7 +158,7 @@ Full detail: `06_STATE_AND_DATA_FLOW.md`.
 | Effect | Where it is allowed to happen | Notes |
 |---|---|---|
 | `localStorage` read/write | `src/services/localResultRepository.ts` only | The only storage access in the repository |
-| Repository calls | `src/app/AppSession.tsx` (`submitResult`, `retrySave`), `src/pages/RegistrationPage.tsx` (anti-replay `getResults`), `src/pages/LeaderboardPage.tsx` (`getResults`) | Games never call the repository |
+| Repository calls | `src/app/AppSession.tsx` (`submitResult`, `retrySave`), `src/pages/RegistrationPage.tsx` (anti-replay `getResults` + a top-5 `getResults` for the leaderboard panel), `src/pages/LeaderboardPage.tsx` (`getResults`) | Games never call the repository |
 | `requestAnimationFrame` loops | `src/games/number-wheel/components/NumberWheel.tsx` only | Two loops; both cancelled in cleanup |
 | Direct DOM mutation | `NumberWheel.writeTransform` writing `strip.style.transform` | The only direct DOM write in the app |
 | `window` event listener | `NumberWheelGame.tsx` (`keydown`) | Game-scoped: added on mount, removed on unmount |
@@ -174,18 +174,19 @@ There are **no** network requests anywhere in `src/`.
 ## Data Flow: User Input → UI/Game Response
 
 **Registration**
-`VirtualNumericKeyboard` key press → `appendDigit` (caps at 10 digits) → `mobileDigits` state →
-`formatMobileDigits` renders `912 123 4567` → «ورود» → `isValidMobileDigits` (`/^9\d{9}$/`) →
-`toCanonicalMobile` → `resultRepository.getResults()` → if any `result.mobile === canonical` show
-`ALREADY_PLAYED_MESSAGE` and stop; on repository throw, **fail open** and register anyway →
-`register({ id: makeUserId(), mobile: canonical })` → phase `SURVEY`.
+`Keypad` key press → `appendDigit` (caps at 10 digits) → `mobileDigits` state → «تایید» →
+`isValidMobileDigits` (`/^9\d{9}$/`) → `toCanonicalMobile` → `resultRepository.getResults()` → if
+any `result.mobile === canonical` show `ALREADY_PLAYED_MESSAGE` and stop; on repository throw,
+**fail open** and register anyway → `register({ id: makeUserId(), mobile: canonical })` → phase
+`SURVEY`.
 
-**Survey**
-Digits → `countDigits` (max 6 chars) → `count = parseInt(countDigits, 10)`.
-`بله`/`خیر` → `hasBenefits`, and also sets `countFocused = false` (hides the keyboard).
-Skip checkbox → `notEmployed`; submitting while checked stores `{ employeeCount: 0, hasBenefits: false }`.
-Otherwise validation requires a non-empty count, `count !== 0`, and a non-null `hasBenefits`.
-→ `completeSurvey(answers)` → phase `CATEGORY`.
+**Survey** (two local steps; the phase itself is unchanged)
+Step 1: a `ChoiceGrid` range card → `countChoice` (continued disabled until chosen); the skip
+checkbox → `notEmployed`, which dims the grid and enables ادامه.
+Step 2: `بله`/`خیر` card → `hasBenefits`.
+ادامه → `completeSurvey(notEmployed ? { employeeCount: 0, hasBenefits: false } : { employeeCount:
+COUNT_TO_EMPLOYEES[countChoice], hasBenefits })` → phase `CATEGORY`. بازگشت goes step 2 → step 1,
+or step 1 → `startNewUser()` (back to registration, full reset).
 
 **Category**
 Card tap → `selectedId` → «ادامه» enabled → `selectCategory(category)` → phase `GAME`.

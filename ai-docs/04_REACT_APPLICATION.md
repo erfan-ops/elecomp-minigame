@@ -53,8 +53,8 @@ There is no layout component. Layout is CSS-driven:
 - `.app` — `height: 100%`, `overflow: hidden`, radial-gradient background.
 - `.page` — every page's root class; `height: 100%`, column flex, centered, `overflow: hidden`,
   fluid `clamp()` padding and gap.
-- Each page adds a modifier: `.page--registration`, `.page--survey`, `.page--category`, `.page--game`,
-  `.page--leaderboard`.
+- The redesigned pages (registration, survey) render inside `PageShell` instead of `.page`. The
+  remaining legacy pages add a modifier: `.page--category`, `.page--game`, `.page--leaderboard`.
 - `.page__title`, `.page__actions` are shared page-level primitives.
 
 ## Context Provider
@@ -92,8 +92,8 @@ There is no layout component. Layout is CSS-driven:
 
 | Component | Path | Responsibility | Props | State Used | Side Effects | Notes |
 |---|---|---|---|---|---|---|
-| `RegistrationPage` | `src/pages/RegistrationPage.tsx` | Collect mobile; validate; anti-replay check; `register` | none | local `mobileDigits`, `error`, `checking`; session `register` | `resultRepository.getResults()` | Digit cap 10 hard-coded in `appendDigit`; validation via `isValidMobileDigits` |
-| `SurveyPage` | `src/pages/SurveyPage.tsx` | Collect `employeeCount` + `hasBenefits`, or skip | none | local `countFocused`, `countDigits`, `hasBenefits`, `countError`, `benefitsError`, `notEmployed`; session `completeSurvey` | none | Keyboard rendered only while `countFocused && !notEmployed` |
+| `RegistrationPage` | `src/pages/RegistrationPage.tsx` | Collect mobile; validate; anti-replay check; `register` | none | local `mobileDigits`, `error`, `checking`, `topEntries`; session `register` | `resultRepository.getResults()` twice: once on mount for the leaderboard panel's top 5, once per submit for anti-replay | Digit cap 10 hard-coded in `appendDigit`; validation via `isValidMobileDigits`. **Redesigned page 1**: container logic unchanged, presentation composed from `src/components/ui/` components inside `PageShell` |
+| `SurveyPage` | `src/pages/SurveyPage.tsx` | Collect `employeeCount` + `hasBenefits`, or skip | none | local `step` (1 \| 2), `countChoice`, `hasBenefits`, `notEmployed`; session `completeSurvey`, `startNewUser` | none | **Redesigned page 2**: two local steps inside the single SURVEY phase — step 1 = four count-range cards (`COUNT_OPTIONS` → `COUNT_TO_EMPLOYEES` {10,50,300,301}), step 2 = بله/خیر. Skip checkbox stores `{0, false}`. بازگشت: step 2 → step 1; step 1 → `startNewUser()`. ادامه disabled until the step is answerable |
 | `CategorySelectionPage` | `src/pages/CategorySelectionPage.tsx` | Pick one sector from `CATEGORIES` | none | local `selectedId`; session `selectCategory` | none | Continue disabled until a card is selected |
 | `GamePage` | `src/pages/GamePage.tsx` | Host the active game; adapt + persist; retry/continue chrome | none | session `user`, `category`, `survey`, `attempt`, `saveStatus`, `savedResult`, `submitResult`, `retrySave`, `retry`, `goToLeaderboard`, `startNewUser`; ref `submittedRef` | `new Date().toISOString()`; `session.submitResult` → repository | Returns `null` if `user`/`category`/`survey` is missing (defensive) |
 | `LeaderboardPage` | `src/pages/LeaderboardPage.tsx` | Load results, build + render ranked table | none | local `loadState`, `entries`; session `startNewUser` | `resultRepository.getResults()` in `useEffect` | Only scrollable region in the app |
@@ -104,8 +104,19 @@ All five pages take **no props** — they read everything from `useAppSession()`
 
 | Component | Path | Responsibility | Props | State Used | Side Effects | Notes |
 |---|---|---|---|---|---|---|
-| `VirtualNumericKeyboard` | `src/components/VirtualNumericKeyboard.tsx` | 3×4 on-screen numeric pad | `onDigit(digit: string)`, `onBackspace()`, `onConfirm()` | none (stateless) | none | Keys `1..9`, `⌫`, `0`, `✓`. `role="group"`, `aria-label="صفحه‌کلید عددی"`. Grid is `direction: ltr` |
+| `VirtualNumericKeyboard` | `src/components/VirtualNumericKeyboard.tsx` | 3×4 on-screen numeric pad | `onDigit(digit: string)`, `onBackspace()`, `onConfirm()` | none (stateless) | none | Keys `1..9`, `⌫`, `0`, `✓`. `role="group"`, `aria-label="صفحه‌کلید عددی"`. Grid is `direction: ltr`. **Retained but currently unused** — the redesigned registration uses `ui/Keypad` and the redesigned survey uses `ui/ChoiceGrid` (no typed input remains) |
 | `Confetti` | `src/components/Confetti.tsx` | CSS-only celebration overlay | `count?: number` (default `64`) | none | none | Randomized piece styles computed in `useMemo(…, [count])`; sets CSS vars `--drift`, `--spin`; `aria-hidden` |
+| `PageShell` | `src/components/ui/PageShell.tsx` | Redesigned page frame: dark canvas, glow blobs, logo, scaled content frame | `children` | none | none | See `design-system.md` |
+| `StepTracker` | `src/components/ui/StepTracker.tsx` | RTL journey tracker (circles + labels + connectors) | `steps: readonly string[]`, `currentIndex: number` | none | none | Steps `<= currentIndex` get the primary gradient treatment |
+| `GradientText` | `src/components/ui/GradientText.tsx` | Gradient-clipped text | `gradient?`, `className?`, `children` | none | none | Passes the gradient as a per-instance CSS var `--ds-text-gradient` |
+| `LiveBadge` | `src/components/ui/LiveBadge.tsx` | «زنده» pill | none | none | none | Static decoration |
+| `PhoneDisplay` | `src/components/ui/PhoneDisplay.tsx` | 468×96 glass mobile display, Persian digits | `value: string`, `placeholder?` | none | none | `role="textbox"`, no real `<input>` |
+| `Keypad` | `src/components/ui/Keypad.tsx` | Redesigned 3×4 keypad (LTR, Persian labels, gradient confirm) | `onDigit`, `onBackspace`, `onConfirm`, `confirmDisabled?` | none | none | Order ۱ ۲ ۳ / ۴ ۵ ۶ / ۷ ۸ ۹ / تایید ۰ ⌫ |
+| `LeaderboardPanel` | `src/components/ui/LeaderboardPanel.tsx` | «برترینهای امروز» panel (top 5, gold first row) | `entries: { mobile: string; amount: number }[]` | none | none | Binds to real data passed by the page (`amount` = stored `winAmount`); empty-state line when empty |
+| `GameHeader` | `src/components/ui/GameHeader.tsx` | Page-2 header: star badge + LUCKY REELS wordmark + tagline | none | none | none | Orbitron stack → Bahnschrift fallback |
+| `FloatingDecorations` | `src/components/ui/FloatingDecorations.tsx` | Page-2 atmospheric emoji layer | none | none | none | 8 emoji at design-px positions, `aria-hidden`, `pointer-events: none` |
+| `ChoiceGrid` | `src/components/ui/ChoiceGrid.tsx` | 2×2 glass answer cards | `options`, `selected`, `onSelect`, `disabled?` | none (controlled) | none | Generic over the option type; `aria-pressed` per card; `disabled` for the skip state |
+| `NavButtons` | `src/components/ui/NavButtons.tsx` | بازگشت / ادامه navigation pair | `onBack`, `onContinue`, `continueDisabled?`, `backLabel?`, `continueLabel?` | none | none | ادامه disabled at 35% opacity |
 
 ## Game Components
 
@@ -159,7 +170,7 @@ No custom hooks exist beyond these three.
 | `LeaderboardPage.load` | `try/catch` → `loadState: "error"` with a visible retry button. |
 | `localResultRepository.loadAll` | `try/catch` → returns `[]`; corrupt/unavailable storage degrades silently. Entries failing `isGameSessionResult` are filtered out. |
 | `localResultRepository.save` | **No try/catch** — a `QuotaExceededError` or blocked storage rejects the promise, which `submitResult` catches and surfaces as `saveStatus: "error"`. |
-| Validation errors | Rendered as `role="alert"` text (`.field__error`) next to the offending control. |
+| Validation errors | Rendered as `role="alert"` text next to the offending control (`.registration-error` on page 1; the redesigned survey validates via the disabled ادامه state instead of error text). |
 
 There is no logging framework, no `console.*` call, and no telemetry in `src/`.
 
@@ -185,10 +196,9 @@ Vite SPA, but this code cannot be server-rendered as-is.
 ## Accessibility Patterns Present
 
 - All interactive elements are real `<button type="button">`. There are no `div` click handlers on
-  controls (`onClick` on `div` appears once, on `SurveyPage`'s `field__control`, which also carries
-  `role="textbox"`).
-- `aria-pressed` on category cards and the survey بله/خیر buttons; `role="checkbox"` + `aria-checked`
-  on the skip checkbox.
+  controls.
+- `aria-pressed` on category cards, the survey choice cards, and the keypad; `role="checkbox"` +
+  `aria-checked` on the skip checkbox; `aria-disabled` on the `ChoiceGrid` while skipped.
 - `role="textbox"` + descriptive `aria-label` on the fake input surfaces.
 - `role="alert"` on error text.
 - `role="img"` + dynamic Persian `aria-label` on each reel (spinning / resting digit / "next").

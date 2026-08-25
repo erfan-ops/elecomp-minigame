@@ -66,13 +66,14 @@ start with `9` and be exactly 10 digits. `toCanonicalMobile(digits)` → `` `${M
 
 | Path | Responsibility | Main exports | Imports (significant) | Side effects | Safe in isolation | Importance |
 |---|---|---|---|---|---|---|
-| `src/pages/RegistrationPage.tsx` | Mobile entry, validation, anti-replay, `register` | `RegistrationPage` | `src/app/AppSession`, `src/components/VirtualNumericKeyboard`, `src/domain/user`, `src/services` | `await resultRepository.getResults()`; **fails open** on throw | YES | `IMPORTANT` |
-| `src/pages/SurveyPage.tsx` | Two survey questions + skip path | `SurveyPage` | `src/app/AppSession`, `src/components/VirtualNumericKeyboard`, `src/utils/persian` | none | YES | `IMPORTANT` |
+| `src/pages/RegistrationPage.tsx` | Mobile entry, validation, anti-replay, `register` | `RegistrationPage` | `src/app/AppSession`, `src/components/ui/*`, `src/domain/user`, `src/services` | `await resultRepository.getResults()`; **fails open** on throw | YES | `IMPORTANT` |
+| `src/pages/SurveyPage.tsx` | Two survey questions (two local steps) + skip path | `SurveyPage` | `src/app/AppSession`, `src/components/ui/*` | none | YES | `IMPORTANT` |
 | `src/pages/CategorySelectionPage.tsx` | Sector grid, single selection | `CategorySelectionPage` | `src/app/AppSession`, `src/config/appConfig` | none | YES | `IMPORTANT` |
 | `src/pages/GamePage.tsx` | **The game↔platform adapter**: builds `GameContext`, widens `GameResult` → `GameSessionResult`, persists, retry/continue chrome | `GamePage` | `src/app/AppSession`, `src/config/appConfig`, `src/games/registry` (`getActiveGame`), `src/domain/*`, `src/utils/persian` | `new Date().toISOString()`; `session.submitResult` → repository | NO — it is the contract adapter; changes here affect every game and every stored record | `CRITICAL` |
 | `src/pages/LeaderboardPage.tsx` | Load results, build + render ranked table | `LeaderboardPage` | `src/app/AppSession`, `src/services` (`resultRepository`, `buildLeaderboard`), `src/domain/*`, `src/utils/persian` | `resultRepository.getResults()` in `useEffect` | YES | `IMPORTANT` |
 
-All five pages take **no props**. Each renders `.page` + its own modifier class.
+All five pages take **no props**. The redesigned pages (registration, survey) render inside
+`PageShell`; the legacy pages render `.page` + their own modifier class.
 
 `LeaderboardPage` contains commented-out "highlight my row" logic (`isMe`) — see
 `12_KNOWN_GAPS_AND_RISKS.md`.
@@ -81,8 +82,27 @@ All five pages take **no props**. Each renders `.page` + its own modifier class.
 
 | Path | Responsibility | Main exports | Imports | Side effects | Safe in isolation | Importance |
 |---|---|---|---|---|---|---|
-| `src/components/VirtualNumericKeyboard.tsx` | On-screen 3×4 numeric pad (replaces every real `<input>`) | `VirtualNumericKeyboard` | `react` only | none (stateless, pure callbacks) | YES | `CRITICAL` (kiosk rule: no OS keyboard) |
+| `src/components/VirtualNumericKeyboard.tsx` | On-screen 3×4 numeric pad | `VirtualNumericKeyboard` | `react` only | none (stateless, pure callbacks) | YES | Retained but **unused** — redesigned pages use `ui/Keypad`/`ui/ChoiceGrid` (kiosk rule: no OS keyboard) |
 | `src/components/Confetti.tsx` | CSS-only celebration overlay | `Confetti` | `react` only | `Math.random` inside `useMemo` | YES | `OPTIONAL` (decorative) |
+
+## Shared Components — ui/ (the redesigned visual language)
+
+Full detail in `design-system.md`. All are stateless presentation components consuming
+`design-tokens.css` / `design-system.css` styles.
+
+| Path | Responsibility | Main exports | Imports | Side effects | Importance |
+|---|---|---|---|---|---|
+| `src/components/ui/PageShell.tsx` | Dark canvas, glow blobs, logo, scaled content frame | `PageShell` | `react` (type) | none | `IMPORTANT` |
+| `src/components/ui/StepTracker.tsx` | RTL journey tracker | `StepTracker` | `react`, `src/utils/persian` | none | `IMPORTANT` |
+| `src/components/ui/GradientText.tsx` | Gradient-clipped text | `GradientText` | `react` (types) | none | `SUPPORTING` |
+| `src/components/ui/LiveBadge.tsx` | «زنده» pill | `LiveBadge` | `react` only | none | `SUPPORTING` |
+| `src/components/ui/PhoneDisplay.tsx` | 468×96 glass mobile display | `PhoneDisplay` | `react`, `src/utils/persian` | none | `IMPORTANT` |
+| `src/components/ui/Keypad.tsx` | Redesigned LTR numeric keypad | `Keypad` | `react`, `src/utils/persian` | none | `IMPORTANT` |
+| `src/components/ui/LeaderboardPanel.tsx` | «برترینهای امروز» panel | `LeaderboardPanel`, type `LeaderboardPanelEntry` | `react`, `src/domain/user`, `src/utils/persian`, `./LiveBadge` | none | `IMPORTANT` |
+| `src/components/ui/GameHeader.tsx` | Page-2 header (star badge + LUCKY REELS wordmark + tagline) | `GameHeader` | `react`, `./GradientText` | none | `IMPORTANT` |
+| `src/components/ui/FloatingDecorations.tsx` | Page-2 atmospheric emoji layer | `FloatingDecorations` | `react` (types) | none | `SUPPORTING` |
+| `src/components/ui/ChoiceGrid.tsx` | 2×2 glass answer cards (generic over option type) | `ChoiceGrid` | `react` only | none | `IMPORTANT` |
+| `src/components/ui/NavButtons.tsx` | بازگشت / ادامه pair | `NavButtons` | `react` only | none | `IMPORTANT` |
 
 `VirtualNumericKeyboard` props: `onDigit(digit: string)`, `onBackspace()`, `onConfirm()`.
 Keys: `1`–`9`, `⌫` (aria `حذف رقم`), `0`, `✓` (aria `تأیید`). Wrapper `role="group"`,
@@ -153,7 +173,13 @@ default `attemptsRemaining = 0`. It renders **no navigation buttons** — naviga
 | Path | Responsibility | Notes | Importance |
 |---|---|---|---|
 | `src/styles/global.css` | `@font-face "B Yekan"`, all `:root` design tokens, reset, kiosk body rules, global reduced-motion override | Imported first in `src/main.tsx`. Everything else depends on its tokens | `CRITICAL` |
-| `src/styles/app.css` | Platform component styles: `.app`, `.page*`, `.btn*`, `.field*`, `.keyboard*`, survey, category, game host chrome, leaderboard, `.confetti*` | 778 lines. Shared primitives only — no game-specific rules | `CRITICAL` |
+| `src/styles/app.css` | Platform component styles: `.app`, `.page*`, `.btn*`, `.keyboard*`, category, game host chrome, leaderboard, `.confetti*` | Shared primitives only — no game-specific rules. The legacy survey/field styles were removed with the page-2 redesign | `CRITICAL` |
+| `src/styles/design-tokens.css` | The redesigned visual language's token set (`--ds-*`) + the scaled root font-size | Imported after `global.css`. The single source of truth for the redesign | `IMPORTANT` |
+| `src/styles/design-system.css` | Component styles for `src/components/ui/` (page shell, tracker, keypad, panels) | Consumes only `--ds-*` tokens; all fixed dimensions in rem | `IMPORTANT` |
+
+`src/app/designScale.ts` exports `DESIGN_WIDTH` / `DESIGN_HEIGHT` and `applyDesignScale()`
+(called in `src/main.tsx`), which sets `--s` on `<html>`; the redesign's rem-based sizing scales
+off it. Full detail in `design-system.md`.
 
 Details in `08_STYLING_AND_UI_CONVENTIONS.md`.
 

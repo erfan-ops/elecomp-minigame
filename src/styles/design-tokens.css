@@ -1,0 +1,208 @@
+/* ---------------------------------------------------------------------------
+   Design-system tokens — the SINGLE source of truth for the redesigned UI
+   (page 1 and every future page). Colors, gradients, shadows, radii,
+   spacing, and typography all live here; component styles in
+   design-system.css consume these tokens exclusively.
+--------------------------------------------------------------------------- */
+
+/* Farsi-numeral face used by the phone display placeholder. Its Latin
+   digit glyphs are drawn in the Persian style. */
+@font-face {
+  font-family: "IRANYekanXFaNum";
+  src: url("/fonts/IranYekanXVF/Farsi%20numerals/IRANYekanXFaNum-Regular.ttf")
+    format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "IRANYekanXFaNum";
+  src: url("/fonts/IranYekanXVF/Farsi%20numerals/IRANYekanXFaNum-Bold.ttf")
+    format("truetype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "IRANYekanXFaNum";
+  src: url("/fonts/IranYekanXVF/Farsi%20numerals/IRANYekanXFaNum-Medium.ttf")
+    format("truetype");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "IRANYekanXFaNum";
+  src: url("/fonts/IranYekanXVF/Farsi%20numerals/IRANYekanXFaNum-SemiBold.ttf")
+    format("truetype");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "IRANYekanXFaNum";
+  src: url("/fonts/IranYekanXVF/Farsi%20numerals/IRANYekanXFaNum-ExtraBold.ttf")
+    format("truetype");
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "IRANYekanXFaNum";
+  src: url("/fonts/IranYekanXVF/Farsi%20numerals/IRANYekanXFaNum-Black.ttf")
+    format("truetype");
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* The Farsi-numeral VARIABLE face (same Persian-style digit glyphs, full
+   weight axis) — used for the page-1 Persian texts. */
+@font-face {
+  font-family: "IRANYekanXVFaNum";
+  src: url("/fonts/IranYekanXVF/Farsi%20numerals/Variable%20Font/IRANYekanXVFaNumVF.ttf")
+    format("truetype");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  /* Design scale — set by src/app/designScale.ts.
+     Fixed dimensions are expressed in rem against the scaled root size. */
+  --s: 1;
+
+  /* Canvas */
+  --ds-bg: rgb(7, 7, 20);
+  --ds-glow-deep: rgb(15, 35, 50);
+  --ds-glow-plum: rgb(23, 20, 23);
+  --ds-glow-teal: rgba(54, 174, 191, 0.42);
+  --ds-card: rgba(9, 11, 20, 0.62);
+
+  /* Glass surface (display input + keypad keys) */
+  --ds-glass-bg: linear-gradient(
+    180deg,
+    rgba(120, 210, 225, 0.08) 0%,
+    rgba(147, 219, 231, 0.05) 50%,
+    rgba(255, 255, 255, 0.02) 100%
+  );
+  --ds-glass-border-top: rgba(120, 210, 225, 0.14);
+  --ds-glass-blur: blur(24px);
+
+  /* Gradients */
+  --ds-gradient-primary: linear-gradient(
+    135deg,
+    #6fe4f2 0%,
+    #36aebf 45%,
+    #1f7d8c 100%
+  );
+  --ds-gradient-heading: linear-gradient(
+    120deg,
+    #d6fbff 7.74%,
+    #36aebf 45.77%,
+    #2fd6c4 92.26%
+  );
+  --ds-gradient-gold: linear-gradient(
+    180deg,
+    #ffe790 0%,
+    #ffcf3a 45%,
+    #c39972 100%
+  );
+
+  /* Shadows */
+  --ds-shadow-primary: inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    0 20px 55px -14px rgba(54, 174, 191, 0.8);
+
+  /* Colors */
+  --ds-live: #34d17a;
+  --ds-live-pill: rgba(52, 209, 122, 0.15);
+  --ds-eyebrow: #6fe4f2;
+  --ds-amount-2to5: #6fe4f2;
+  --ds-danger: #ff7b8a;
+  --ds-text-100: rgba(255, 255, 255, 1);
+  --ds-text-55: rgba(255, 255, 255, 0.55);
+  --ds-text-45: rgba(255, 255, 255, 0.45);
+  --ds-text-40: rgba(255, 255, 255, 0.4);
+  --ds-placeholder: rgb(70, 70, 70);
+
+  /* Radii — 24px panels/keys/input, 16px leaderboard rows */
+  --ds-radius: 1.5rem;
+  --ds-radius-sm: 1rem;
+
+  /* Surfaces */
+  --ds-row-surface: rgba(255, 255, 255, 0.05);
+  --ds-row-surface-gold: rgba(255, 207, 58, 0.1);
+  --ds-row-gold-border: rgba(255, 207, 58, 0.5);
+  --ds-step-surface: rgba(255, 255, 255, 0.08);
+  --ds-avatar-surface: rgba(255, 255, 255, 0.08);
+  --ds-connector: rgba(255, 255, 255, 0.12);
+
+  /* Fonts — the placeholder face renders Latin digits with Persian glyphs.
+     Vazirmatn and Orbitron are not present in the repository; their names
+     sit first in the stacks so they activate automatically if added. */
+  --ds-font-fanum: "IRANYekanXFaNum", "B Yekan", "Segoe UI", sans-serif;
+  /* Variable FaNum face — the page-1 Persian texts use this. */
+  --ds-font-fanum-vf: "IRANYekanXVFaNum", "IRANYekanXFaNum", "B Yekan",
+    "Segoe UI", sans-serif;
+  --ds-font-body: "Vazirmatn", "IRANYekanX", "IRANYekanXFaNum", "B Yekan",
+    "Segoe UI", sans-serif;
+  --ds-font-logo: "Orbitron", "Bahnschrift", "Segoe UI", sans-serif;
+
+  /* Page-2 atmospheric glows (survey shell variant) */
+  --ds-glow-tl: rgba(54, 174, 191, 0.32);
+  --ds-glow-tr: rgba(47, 214, 196, 0.18);
+  --ds-glow-bl: rgba(54, 174, 191, 0.22);
+  --ds-glow-br: rgba(255, 207, 58, 0.08);
+  --ds-glow-edge: rgba(120, 210, 225, 0.06);
+  --ds-glow-deco: 0 8px 24px rgba(54, 174, 191, 0.4);
+
+  /* Strong primary glow (header badge, continue button) */
+  --ds-shadow-strong: inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    0 20px 27.5px rgba(54, 174, 191, 0.8);
+  --ds-glass-blur-soft: blur(12px);
+
+  /* Typography — design px ÷ 16 so they scale with the root font-size */
+  --ds-fs-step: 0.875rem; /* 14 */
+  --ds-lh-step: 1.375rem; /* 22 */
+  --ds-fs-small: 0.75rem; /* 12 */
+  --ds-lh-small: 1.125rem; /* 18 */
+  --ds-fs-section: 1.1875rem; /* 19 */
+  --ds-lh-section: 1.5rem; /* 24 */
+  --ds-fs-heading: 3.75rem; /* 60 */
+  --ds-lh-heading: 4.125rem; /* 66 */
+  --ds-fs-input: 2.25rem; /* 36 */
+  --ds-lh-input: 2.5rem; /* 40 */
+  --ds-fs-key: 3rem; /* 48 */
+  --ds-lh-key: 3rem; /* 48 */
+  --ds-fs-key-confirm: 2.10rem;
+  --ds-fs-rank: 1.5rem; /* 24 */
+  --ds-lh-rank: 2rem; /* 32 */
+  --ds-fs-currency: 0.75rem; /* 12 */
+  --ds-lh-currency: 1rem; /* 16 */
+  --ds-ls-input: 0.3375rem; /* 5.4px digit spacing */
+
+  /* Page 2 — question, choices, navigation, logo */
+  --ds-fs-question: 3rem; /* 48 */
+  --ds-lh-question: 3.75rem; /* 60 */
+  --ds-fs-choice: 2.25rem; /* 36 */
+  --ds-lh-choice: 2rem; /* 32 */
+  --ds-fs-nav: 1.125rem; /* 18 */
+  --ds-lh-nav: 1.75rem; /* 28 */
+  --ds-fs-logo: 1.875rem; /* 30 */
+  --ds-lh-logo: 2.25rem; /* 36 */
+  --ds-fs-logo-sub: 0.875rem; /* 14 */
+  --ds-lh-logo-sub: 1.25rem; /* 20 */
+  --ds-fs-star: 1.875rem; /* 30 */
+  --ds-lh-star: 2.25rem; /* 36 */
+  --ds-ls-logo: 0.046875rem; /* 0.75px */
+}
+
+/* The design system scales by rem: one rem = 16 design pixels × --s. */
+html {
+  font-size: calc(var(--s) * 16px);
+}

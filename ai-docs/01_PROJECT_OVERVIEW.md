@@ -23,7 +23,7 @@ Journey (`AppPhase` values, in order — `src/app/routes.tsx`):
 | Phase | Page component | Collects / does |
 |---|---|---|
 | `REGISTRATION` | `RegistrationPage` | Mobile number (the player's only identity). Rejects a mobile that already has a stored result. |
-| `SURVEY` | `SurveyPage` | `employeeCount` (integer) + `hasBenefits` (yes/no), or a "not employed" skip |
+| `SURVEY` | `SurveyPage` | `employeeCount` (4 range cards → 10/50/300/301) + `hasBenefits` (yes/no), or a "not employed" skip |
 | `CATEGORY` | `CategorySelectionPage` | One sector from `CATEGORIES` |
 | `GAME` | `GamePage` | Hosts the active game, builds + persists `GameSessionResult`, offers retry |
 | `LEADERBOARD` | `LeaderboardPage` | Ranked table built from stored results; "new user" reset |
@@ -86,6 +86,10 @@ npm. Evidence: `package-lock.json` present at root; no `yarn.lock`, no `pnpm-loc
 - Leaderboard computed purely from stored results, with gold/silver/bronze styling for ranks 1–3.
 - Masked mobile display on public screens (`912 *** 4567`); canonical `+98…` value stored unmasked.
 - Persian numeral rendering at the display layer only.
+- A redesigned visual language for page 1 (mobile entry): design-scale mechanism
+  (`src/app/designScale.ts`, canvas 1080×1800), a `--ds-*` token set, and shared `src/components/ui/`
+  components (PageShell, StepTracker, Keypad, PhoneDisplay, LeaderboardPanel, …). Documented in
+  `ai-docs/design-system.md`; pages 2–5 will be restyled with the same system.
 - `prefers-reduced-motion` support (see the caveat in `12_KNOWN_GAPS_AND_RISKS.md`).
 - Presenter keyboard control of the game (PageUp / PageDown / `b` / F5 / Ctrl+R / Cmd+R).
 - Dependency-free CSS confetti on a perfect result.

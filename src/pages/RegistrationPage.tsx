@@ -1,29 +1,49 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAppSession } from "../app/AppSession";
-import { VirtualNumericKeyboard } from "../components/VirtualNumericKeyboard";
-import {
-  formatMobileDigits,
-  isValidMobileDigits,
-  makeUserId,
-  toCanonicalMobile,
-} from "../domain/user";
+import { GradientText } from "../components/ui/GradientText";
+import { Keypad } from "../components/ui/Keypad";
+import { LeaderboardPanel } from "../components/ui/LeaderboardPanel";
+import type { LeaderboardPanelEntry } from "../components/ui/LeaderboardPanel";
+import { PageShell } from "../components/ui/PageShell";
+import { PhoneDisplay } from "../components/ui/PhoneDisplay";
+import { JOURNEY_STEPS, StepTracker } from "../components/ui/StepTracker";
+import { isValidMobileDigits, makeUserId, toCanonicalMobile } from "../domain/user";
 import type { User } from "../domain/user";
-import { resultRepository } from "../services";
+import { buildLeaderboard, resultRepository } from "../services";
 
-const MOBILE_ERROR = "لطفا یک شماره معتبر وارد کنید";
+const MOBILE_ERROR = "شماره موبایل اشتباه است.";
 const ALREADY_PLAYED_MESSAGE = "شما قبلاً در این مسابقه شرکت کرده‌اید.";
 
 /**
- * Registration: the player enters only their mobile number through the
- * on-screen numeric keyboard (the field is not a real <input>, so the
- * browser/OS keyboard never appears). The mobile number is the identity
- * for the whole session — category, game, and leaderboard.
+ * Page 1 — mobile number entry (redesigned).
+ *
+ * Container/presentation split: all interaction logic (digit cap,
+ * validation, the anti-replay check with fail-open, session registration)
+ * is unchanged; the redesigned presentation lives in the shared ui/
+ * components and the design-system stylesheets.
  */
 export function RegistrationPage() {
   const { register } = useAppSession();
   const [mobileDigits, setMobileDigits] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [checking, setChecking] = useState(false);
+  const [topEntries, setTopEntries] = useState<LeaderboardPanelEntry[]>([]);
+
+  // Leaderboard panel data: top 5 by score, for social proof. Failures
+  // degrade to an empty list — the panel then shows its mock rows.
+  useEffect(() => {
+    void (async () => {
+      try {
+        const results = await resultRepository.getResults();
+        const entries = buildLeaderboard(results)
+          .slice(0, 5)
+          .map((entry) => ({ mobile: entry.mobile, amount: entry.winAmount }));
+        setTopEntries(entries);
+      } catch {
+        setTopEntries([]);
+      }
+    })();
+  }, []);
 
   const appendDigit = (digit: string) => {
     if (mobileDigits.length >= 10) return; // exactly 10 digits, no more
@@ -64,57 +84,37 @@ export function RegistrationPage() {
   };
 
   return (
-    <div className="page page--registration">
-      <header className="registration__header">
-        <h1 className="page__title">خوش آمدید</h1>
-        <p className="registration__subtitle">
-          شماره موبایل خود را وارد کنید
-        </p>
-      </header>
+    <PageShell>
+      <StepTracker steps={JOURNEY_STEPS} currentIndex={0} />
 
-      <div className="registration__form">
-        <div className={`field field--ltr field--active${error ? " field--error" : ""}`}>
-          <span className="field__label">شماره موبایل</span>
-          <div
-            className="field__control"
-            role="textbox"
-            aria-label={`شماره موبایل${mobileDigits ? `: ${formatMobileDigits(mobileDigits)}` : ""}`}
-          >
-            <span className="field__prefix" aria-hidden="true">
-              +98
-            </span>
-            {mobileDigits ? (
-              <span className="field__value">{formatMobileDigits(mobileDigits)}</span>
-            ) : (
-              <span className="field__placeholder">912 123 4567</span>
-            )}
-            {mobileDigits.length < 10 && (
-              <span className="field__caret" aria-hidden="true" />
-            )}
-          </div>
+      <div className="welcome">
+        <span className="welcome__eyebrow">خوش آمدید !</span>
+        <h1 className="welcome__heading">
+          شماره موبایل خود را{" "}
+          <GradientText className="welcome__heading-strong">وارد کنید</GradientText>
+        </h1>
+        <p className="welcome__subtitle">
+          برای شرکت در بازی و برنده شدن جوایز نقدی، شماره تماس خود را ثبت کنید.
+        </p>
+      </div>
+
+      <div className="registration-content">
+        <section className="registration-phone" aria-label="ورود با شماره موبایل">
+          <PhoneDisplay value={mobileDigits} />
           {error && (
-            <span className="field__error" role="alert">
+            <span className="registration-error" role="alert">
               {error}
             </span>
           )}
-        </div>
-        <button
-          type="button"
-          className="btn btn--primary"
-          onClick={() => void handleSubmit()}
-          disabled={checking}
-        >
-          ورود
-        </button>
+          <Keypad
+            onDigit={appendDigit}
+            onBackspace={backspace}
+            onConfirm={() => void handleSubmit()}
+            confirmDisabled={checking}
+          />
+        </section>
+        <LeaderboardPanel entries={topEntries} />
       </div>
-
-      <div className="keyboard-dock">
-        <VirtualNumericKeyboard
-          onDigit={appendDigit}
-          onBackspace={backspace}
-          onConfirm={handleSubmit}
-        />
-      </div>
-    </div>
+    </PageShell>
   );
 }

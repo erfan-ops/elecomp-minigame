@@ -49,7 +49,7 @@ labeled `INFERRED`, `UNVERIFIED`, or `UNKNOWN`.
 | # | Item | Question |
 |---|---|---|
 | Q1 | `score` === `winAmount` in the number-wheel game | `GameResult.score` is documented as a "generic ranking score" separate from the prize, yet the game sets both to the prize amount. The leaderboard therefore ranks by prize. Intentional or a shortcut? `UNKNOWN` |
-| Q2 | Leaderboard header text | `LeaderboardPage` labels the score column «جایزه» ("prize") while rendering `entry.score`. Correct only because of Q1 — if a future game separates the two, the column becomes wrong |
+| Q2 | Leaderboard header text | **RESOLVED** — `LeaderboardPage` and the page-1 `LeaderboardPanel` now render `entry.winAmount` (the stored prize), so the «جایزه» column no longer depends on Q1. `Q1` remains open: ranking still sorts by `score` |
 | Q3 | Anti-replay fails open | `RegistrationPage.handleSubmit` registers the user when the repository throws. Documented as intentional in a code comment, but it means a storage failure disables the one-play-per-mobile rule entirely |
 | Q4 | Retry only after a zero-win result | `canRetry` requires `winAmount === 0`. A 1-match win (500,000) ends the chain. Whether "any win ends the chain" is the intended business rule is stated in `CLAUDE.md` but not justified |
 | Q5 | Best-score-per-user tie handling | `buildLeaderboard` keeps the FIRST record on an exact score tie (`>` not `>=`), so the earliest attempt wins. Deliberate? `INFERRED` yes (deterministic ordering is an explicit goal) |
@@ -122,15 +122,16 @@ Note: `randomTargetNumber`, `randomDigits`, and `createNewGame` all accept an in
 
 | # | Item | Location | Status |
 |---|---|---|---|
-| X1 | `.btn--stop` and `@keyframes stop-attention` | `app.css:98`, `app.css:105` | Unused — there is deliberately no on-screen stop button |
-| X2 | `export { usePrefersReducedMotion }` | `useNumberGame.ts:46` | Dead re-export; no importer uses it from this path |
-| X3 | `createNewGame().targetNumber` | `gameEngine.ts:46-50` | Returned but never read (`useNumberGame` uses only `target` and `startDigits`) |
-| X4 | `randomTargetNumber(exclude?)` | `gameEngine.ts:8-17` | The `exclude` parameter is never passed a value — the only call site (`gameEngine.ts:47`) passes `undefined`. The retry `while` loop is unreachable |
-| X5 | Commented-out `isMe` highlight | `LeaderboardPage.tsx:73`, `86-90` | Dead code kept in place |
-| X6 | `.leaderboard-row--me td`, `.leaderboard__me` | `app.css:762`, `app.css:768` | Orphaned CSS for X5 |
-| X7 | `.result__percent` | `number-wheel.css:450` | No element uses this class |
-| X8 | `countExactMatches` export | `prizeCalculator.ts:16` | Exported but only consumed internally by `calculatePrizeResult` |
-| X9 | `.cdp-retry.cjs` | repository root | Untracked, git-ignored verification driver. Its own header says it is temporary and should be deleted. Not application code; MUST NOT be imported |
+| X1 | `.btn--stop` and `@keyframes stop-attention` | `app.css` | Unused — there is deliberately no on-screen stop button |
+| X2 | `export { usePrefersReducedMotion }` | `useNumberGame.ts` | Dead re-export; no importer uses it from this path |
+| X3 | `createNewGame().targetNumber` | `gameEngine.ts` | Returned but never read (`useNumberGame` uses only `target` and `startDigits`) |
+| X4 | `randomTargetNumber(exclude?)` | `gameEngine.ts` | The `exclude` parameter is never passed a value — the only call site passes `undefined`. The retry `while` loop is unreachable |
+| X5 | Commented-out `isMe` highlight | `LeaderboardPage.tsx` | Dead code kept in place |
+| X6 | `.leaderboard-row--me td`, `.leaderboard__me` | `app.css` | Orphaned CSS for X5 |
+| X7 | `.result__percent` | `number-wheel.css` | No element uses this class |
+| X8 | `countExactMatches` export | `prizeCalculator.ts` | Exported but only consumed internally by `calculatePrizeResult` |
+| X9 | `VirtualNumericKeyboard` is fully unused | — | Page 1 uses the redesigned `ui/Keypad` and page 2's count question became range cards (`ui/ChoiceGrid`) — no typed input remains. The component and its `.keyboard*` styles are retained as a reusable primitive |
+| X11 | `public/App.png` | `public/` | The 560KB design reference image is copied verbatim into `dist/` although the app never references it |
 
 `noUnusedLocals` / `noUnusedParameters` do not catch any of these — unused *exports* and unused *CSS*
 are invisible to the compiler.
@@ -163,6 +164,8 @@ are invisible to the compiler.
 | C4 | Two reduced-motion mechanisms coexist — a global CSS override in `global.css` and the `usePrefersReducedMotion` hook — and only the CSS one has a visible effect on reel speed (which is to say: none, per D2) |
 | C5 | `direction: rtl` on `.result__value` / `.result__prize` versus `direction: ltr` everywhere else digits appear (D6) |
 | C6 | `data-reduced-motion` is the only state expressed as a data attribute; every other state uses a modifier class. It is set to `"true"` or omitted, never `"false"`, so `[data-reduced-motion="false"]` would never match |
+| C7 | Mobile digit rendering differs by surface: the redesigned page 1 writes **English digits** rendered with Persian glyphs by the bundled fonts (keypad, display, panel phones/amounts — per user directive), while the legacy game chip and leaderboard page still render Latin digits too. `UNKNOWN` whether the legacy surfaces should adopt the same treatment |
+| C8 | Two masking formats coexist: `formatMaskedMobile` (3-3-4, three stars — game chip, leaderboard page) and `formatPanelMobile` (09-form, four stars — page-1 panel). Both derive from the same canonical value |
 
 ## Areas Needing Human Clarification
 

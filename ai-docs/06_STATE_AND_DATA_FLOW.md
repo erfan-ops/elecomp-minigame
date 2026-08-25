@@ -44,14 +44,14 @@
 | `savedResult` | `AppSessionProvider` | same | `GameSessionResult \| null` | Set on successful `submitResult` / `retrySave`; cleared by `retry` / `register` / `startNewUser` | none (the record itself is persisted separately) | `GamePage` reads `savedResult.winAmount` to decide retry eligibility |
 | `pendingResultRef` | `AppSessionProvider` | same (`useRef`) | `GameSessionResult \| null` | Written by `submitResult`; read by `retrySave` | none | Retry-save payload; never rendered |
 | `savingRef` | `AppSessionProvider` | same (`useRef`) | `boolean` | Set true at the start of a save, false in `finally` | none | Re-entrancy guard: a second concurrent save is dropped |
-| `mobileDigits` | `RegistrationPage` | `src/pages/RegistrationPage.tsx` | `string` (Latin digits, max length 10) | `appendDigit`, `handleBackspace` (`slice(0, -1)`) | none | Displayed via `formatMobileDigits` as `912 123 4567` |
-| `error` | `RegistrationPage` | same | `string \| null` | Cleared on any digit edit; set to `MOBILE_ERROR` or `ALREADY_PLAYED_MESSAGE` | none | Rendered in `.field__error` with `role="alert"` |
-| `checking` | `RegistrationPage` | same | `boolean` | `true` before the anti-replay lookup, `false` in `finally` | none | Disables «ورود» while true |
-| `countFocused` | `SurveyPage` | `src/pages/SurveyPage.tsx` | `boolean`, initial `true` | Set true by tapping the count field; set false by `chooseBenefits` and by confirming the keyboard | none | Gates keyboard rendering: `countFocused && !notEmployed` |
-| `countDigits` | `SurveyPage` | same | `string`, max `MAX_COUNT_DIGITS` (6) | Keyboard digit/backspace handlers | none | Parsed with `parseInt(countDigits, 10)` on submit |
-| `hasBenefits` | `SurveyPage` | same | `boolean \| null` | `chooseBenefits(value)` | none | `null` until answered; validated on submit |
-| `countError` / `benefitsError` | `SurveyPage` | same | `string \| null` | Set on failed validation, cleared on edit | none | `COUNT_EMPTY_ERROR`, `COUNT_ZERO_ERROR`, `BENEFITS_ERROR` |
-| `notEmployed` | `SurveyPage` | same | `boolean` | Skip checkbox toggle | none | When true, adds `.survey__questions--skipped` and bypasses both validations |
+| `mobileDigits` | `RegistrationPage` | `src/pages/RegistrationPage.tsx` | `string` (Latin digits, max length 10) | `appendDigit`, `handleBackspace` (`slice(0, -1)`) | none | Displayed as Persian numerals by `PhoneDisplay` (page-1 redesign) |
+| `error` | `RegistrationPage` | same | `string \| null` | Cleared on any digit edit; set to `MOBILE_ERROR` or `ALREADY_PLAYED_MESSAGE` | none | Rendered in `.registration-error` with `role="alert"` |
+| `checking` | `RegistrationPage` | same | `boolean` | `true` before the anti-replay lookup, `false` in `finally` | none | Disables the keypad's «تایید» key while true |
+| `topEntries` | `RegistrationPage` | same | `LeaderboardPanelEntry[]` = `{ mobile: string; amount: number }[]` | Set from `buildLeaderboard(getResults()).slice(0, 5)` (amount = `entry.winAmount`) in a mount effect; `[]` on failure | none | Fed to `LeaderboardPanel`; the panel shows an empty-state line when empty |
+| `step` | `SurveyPage` | `src/pages/SurveyPage.tsx` | `1 \| 2` | ادامه advances 1→2; بازگشت returns 2→1 (step 1 بازگشت calls `startNewUser`) | none | The two local survey steps inside the single SURVEY phase (page-2 redesign) |
+| `countChoice` | `SurveyPage` | same | `(typeof COUNT_OPTIONS)[number] \| null` | `chooseCount(option)`; cleared by the skip toggle | none | Mapped via `COUNT_TO_EMPLOYEES` → stored `employeeCount` (10/50/300/301) |
+| `hasBenefits` | `SurveyPage` | same | `boolean \| null` | بله/خیر card tap on step 2 | none | `null` until answered; gates ادامه on step 2 |
+| `notEmployed` | `SurveyPage` | same | `boolean` | Skip checkbox toggle | none | When true, dims the `ChoiceGrid` (`--disabled`), clears `countChoice`, and enables ادامه; continue stores `{ employeeCount: 0, hasBenefits: false }` |
 | `selectedId` | `CategorySelectionPage` | `src/pages/CategorySelectionPage.tsx` | `string \| null` | Card tap | none | «ادامه» disabled while `null` |
 | `submittedRef` | `GamePage` | `src/pages/GamePage.tsx` | `boolean` | Set true in `handleComplete`; reset to false in `handleRetry` | none | Second guard against double persistence |
 | `context` (derived) | `GamePage` | same | `GameContext` | `useMemo(..., [user, category, attempt])` | none | `attemptsRemaining = Math.max(0, MAX_GAME_ATTEMPTS - attempt)` |
@@ -108,7 +108,7 @@ interface GameSessionResult {
   playedAt: string;          // ISO 8601
   metadata?: Record<string, unknown>;
 }
-interface LeaderboardEntry { rank: number; userId: string; mobile: string; score: number }
+interface LeaderboardEntry { rank: number; userId: string; mobile: string; score: number; winAmount: number }
 ```
 
 `src/app/AppSession.tsx`
@@ -195,7 +195,7 @@ session sends the kiosk back to `REGISTRATION` with all in-progress data lost.
 | `GameContext` | `user`, `category`, `attempt` | `useMemo` in `GamePage` |
 | `canRetry` | `saveStatus`, `savedResult.winAmount`, `attempt` | Inline expression in `GamePage` |
 | Leaderboard entries | stored results | `buildLeaderboard()` |
-| Displayed mobile (input) | `mobileDigits` | `formatMobileDigits()` → `912 123 4567` |
+| Displayed mobile (input) | `mobileDigits` | `PhoneDisplay` → Persian numerals (page-1 redesign) |
 | Displayed mobile (public) | canonical mobile | `formatMaskedMobile()` → `912 *** 4567` |
 | Persian numerals | any number/string | `toPersianDigits()`, `formatPersianNumber()` |
 | Route component | `phase` | `APP_ROUTES.find(e => e.id === phase) ?? APP_ROUTES[0]` |
@@ -209,9 +209,9 @@ session sends the kiosk back to `REGISTRATION` with all in-progress data lost.
 ## Flow: Registration → Persisted Result
 
 ```
-VirtualNumericKeyboard.onDigit
+Keypad.onDigit
   └─► RegistrationPage.appendDigit → mobileDigits (≤10)
-        └─► «ورود» → isValidMobileDigits(/^9\d{9}$/)?
+        └─► «تایید» → isValidMobileDigits(/^9\d{9}$/)?
               ├─ no  → error = MOBILE_ERROR                          [stop]
               └─ yes → canonical = toCanonicalMobile(digits)
                        await resultRepository.getResults()
@@ -221,7 +221,15 @@ VirtualNumericKeyboard.onDigit
                        session.register({ id: makeUserId(), mobile: canonical })
                          └─► phase SURVEY   (user set; category/survey/attempt/saveStatus/savedResult reset)
 
-SurveyPage → completeSurvey({ employeeCount, hasBenefits })  ─► phase CATEGORY
+SurveyPage (two local steps inside SURVEY):
+  step 1: ChoiceGrid range card → countChoice ──┤
+         skip checkbox → notEmployed            │ ادامه enabled when countChoice or notEmployed
+  step 2: بله/خیر card → hasBenefits ───────────┤
+  ادامه → completeSurvey(
+    notEmployed ? { employeeCount: 0, hasBenefits: false }
+                : { employeeCount: COUNT_TO_EMPLOYEES[countChoice], hasBenefits }
+  )  ─► phase CATEGORY
+  بازگشت → step 2: back to step 1 | step 1: startNewUser()  ─► phase REGISTRATION (full reset)
 CategorySelectionPage → selectCategory(category)             ─► phase GAME
 
 GamePage mounts <NumberWheelGame key={user.id}:{attempt} context onComplete onExit>

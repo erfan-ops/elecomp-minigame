@@ -218,7 +218,8 @@ surrounding file.
 ## Repeated Patterns Worth Following
 
 1. **Fake input surface**: a `<div role="textbox" aria-label=…>` styled as a field plus
-   `VirtualNumericKeyboard`. Never add a real `<input>`.
+   `VirtualNumericKeyboard` — or the redesigned `ui/Keypad`/`ui/ChoiceGrid` equivalents.
+   Never add a real `<input>`.
 2. **Persian display conversion at the edge**: call `toPersianDigits` / `formatPersianNumber` in JSX only.
    State and storage stay Latin.
 3. **Guard-clause reducers/actions**: validate, `return prev` (or the same state object) when the

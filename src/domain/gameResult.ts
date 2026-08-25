@@ -40,4 +40,6 @@ export interface LeaderboardEntry {
   /** Canonical mobile number, displayed as the player's identity. */
   mobile: string;
   score: number;
+  /** The stored win amount of the user's best result (displayed as جایزه). */
+  winAmount: number;
 }

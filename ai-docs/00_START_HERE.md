@@ -50,6 +50,7 @@ It is a **platform** that runs exactly one *pluggable game* at a time. The curre
 11. `10_CODE_STANDARDS_AND_PATTERNS.md`
 12. `11_AI_MAINTENANCE_RULES.md`
 13. `12_KNOWN_GAPS_AND_RISKS.md`
+14. `design-system.md` (redesigned visual language: canvas, scaling, tokens, ui/ components)
 
 For a task touching only the minigame, the minimum set is `05_MINIGAME.md` + `06_STATE_AND_DATA_FLOW.md` + `10_CODE_STANDARDS_AND_PATTERNS.md`.
 
@@ -80,7 +81,7 @@ Full rules and the change-type → doc mapping live in `11_AI_MAINTENANCE_RULES.
 | Constraint | Enforced by |
 |---|---|
 | No page scrolling except the leaderboard list | `src/styles/global.css` (`body { overflow: hidden }`), `src/styles/app.css` (`.leaderboard { overflow-y: auto }`) |
-| No real `<input>`; digits via `VirtualNumericKeyboard` | `src/pages/RegistrationPage.tsx`, `src/pages/SurveyPage.tsx` |
+| No real `<input>`; digits via `VirtualNumericKeyboard` | `src/pages/RegistrationPage.tsx` (redesigned `ui/Keypad`), `src/components/VirtualNumericKeyboard.tsx` (retained, unused) |
 | All user-facing text Persian; document is `lang="fa" dir="rtl"` | `index.html` |
 | Numeric sequences render LTR | `direction: ltr` on `.wheel-group`, `.target__digits`, `.stop-dots`, `.field--ltr`, `.chip--user`, `.leaderboard__mobile`, `.keyboard` |
 | Mobile masked on public screens, stored unmasked | `formatMaskedMobile` in `src/domain/user.ts` |

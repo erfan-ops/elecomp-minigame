@@ -47,6 +47,15 @@ export function formatMaskedMobile(canonical: string): string {
     .join(" ");
 }
 
+/**
+ * "+989121234567" → "0912****567" — the 09-form used by the page-1
+ * leaderboard panel (4 middle digits masked). Display helper only.
+ */
+export function formatPanelMobile(canonical: string): string {
+  const digits = canonical.slice(MOBILE_PREFIX.length);
+  return `0${digits.slice(0, 3)}****${digits.slice(7)}`;
+}
+
 /** Unique id for a kiosk session user. */
 export function makeUserId(): string {
   return typeof crypto !== "undefined" && "randomUUID" in crypto

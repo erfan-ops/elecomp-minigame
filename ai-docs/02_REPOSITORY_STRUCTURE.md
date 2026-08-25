@@ -15,16 +15,33 @@
 │   └── settings.local.json
 ├── ai-docs/                  (this documentation package)
 ├── public/
+│   ├── App.png               (design reference image — not used by the app)
 │   ├── BYekan+.ttf
-│   └── favicon.svg
+│   ├── Container.svg         (logo, shown on every redesigned page)
+│   ├── favicon.svg
+│   └── fonts/
+│       └── IranYekanXVF/     (empty — the intended primary font is not present)
 ├── src/
 │   ├── app/
 │   │   ├── App.tsx
 │   │   ├── AppSession.tsx
+│   │   ├── designScale.ts
 │   │   └── routes.tsx
 │   ├── components/
 │   │   ├── Confetti.tsx
-│   │   └── VirtualNumericKeyboard.tsx
+│   │   ├── VirtualNumericKeyboard.tsx
+│   │   └── ui/
+│   │       ├── ChoiceGrid.tsx
+│   │       ├── FloatingDecorations.tsx
+│   │       ├── GameHeader.tsx
+│   │       ├── GradientText.tsx
+│   │       ├── Keypad.tsx
+│   │       ├── LeaderboardPanel.tsx
+│   │       ├── LiveBadge.tsx
+│   │       ├── NavButtons.tsx
+│   │       ├── PageShell.tsx
+│   │       ├── PhoneDisplay.tsx
+│   │       └── StepTracker.tsx
 │   ├── config/
 │   │   └── appConfig.ts
 │   ├── domain/
@@ -65,6 +82,8 @@
 │   │   └── resultRepository.ts
 │   ├── styles/
 │   │   ├── app.css
+│   │   ├── design-system.css
+│   │   ├── design-tokens.css
 │   │   └── global.css
 │   ├── utils/
 │   │   └── persian.ts
@@ -96,7 +115,8 @@ There are NO directories named `tests`, `scripts`, `types`, `store`, `state`, `c
 |---|---|---|---|
 | `src/app/` | app code | Root component, session store, phase→page table | `AppSession.tsx` is the only Context provider in the repo |
 | `src/pages/` | app code | One component per `AppPhase`; the only layer allowed to touch both the session and services | Pages are not routed by URL |
-| `src/components/` | app code | Shared platform UI primitives usable by pages and games | Currently `Confetti`, `VirtualNumericKeyboard` |
+| `src/components/` | app code | Shared platform UI primitives usable by pages and games | Currently `Confetti`, `VirtualNumericKeyboard` (retained, unused) |
+| `src/components/ui/` | app code | The redesigned visual language's shared components (page shell, tracker, keypad, panels, page-2 header/choices/nav) | Used by the redesigned pages (registration + survey); documented in `design-system.md` |
 | `src/domain/` | app code | Pure types + pure helpers. No React, no DOM, no side effects | The contract layer everything else agrees on |
 | `src/services/` | app code | Persistence boundary + pure leaderboard builder | `index.ts` is the implementation selector |
 | `src/games/` | game code | Registry types + registry + one subdirectory per pluggable game | `Game.ts` holds `GameDefinition` (platform side of the contract) |
@@ -105,8 +125,8 @@ There are NO directories named `tests`, `scripts`, `types`, `store`, `state`, `c
 | `src/hooks/` | app code | Shared platform hooks | Currently only `usePrefersReducedMotion` |
 | `src/config/` | config (source) | Organizer-tunable platform settings | Editable, but it is source code — treat edits as code changes |
 | `src/utils/` | app code | Pure display helpers | Currently only Persian numeral formatting |
-| `src/styles/` | styles | `global.css` (font, tokens, reset) + `app.css` (platform components) | Imported once, in `src/main.tsx` |
-| `public/` | assets | Files copied verbatim to the build root | Font + favicon only |
+| `src/styles/` | styles | `global.css` (font, tokens, reset) + `app.css` (platform components) + `design-tokens.css`/`design-system.css` (the redesign) | Imported once, in `src/main.tsx` |
+| `public/` | assets | Files copied verbatim to the build root | Fonts + `favicon.svg` + `Container.svg` |
 | `ai-docs/` | docs | AI-owned documentation (this package) | AI agents MUST keep it current |
 | `.claude/` | tooling | Claude Code local permission settings | Not application code |
 | `dist/` | generated | Vite build output | Git-ignored. Do not read or edit. |

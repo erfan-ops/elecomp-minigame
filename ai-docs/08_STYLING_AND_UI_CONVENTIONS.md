@@ -32,11 +32,13 @@ Stylesheets and their import sites:
 | File | Imported by | Contains |
 |---|---|---|
 | `src/styles/global.css` | `src/main.tsx` (first) | `@font-face`, all `:root` design tokens, reset, kiosk `body` rules, the single global `@media (prefers-reduced-motion)` block |
-| `src/styles/app.css` | `src/main.tsx` (second) | Platform-level component classes (778 lines) |
-| `src/games/number-wheel/number-wheel.css` | `src/games/number-wheel/NumberWheelGame.tsx` | All game-specific classes + three game-scoped `:root` tokens (494 lines) |
+| `src/styles/design-tokens.css` | `src/main.tsx` (second) | The redesigned visual language's `--ds-*` token set and `html { font-size: calc(var(--s) * 16px) }` |
+| `src/styles/app.css` | `src/main.tsx` (third) | Platform-level component classes |
+| `src/styles/design-system.css` | `src/main.tsx` (fourth) | Component styles for `src/components/ui/` (rem-based, `--ds-*` tokens only) |
+| `src/games/number-wheel/number-wheel.css` | `src/games/number-wheel/NumberWheelGame.tsx` | All game-specific classes + three game-scoped `:root` tokens |
 
-Import order is load-bearing: `global.css` must come first because `app.css` and `number-wheel.css`
-consume its `:root` tokens.
+Import order is load-bearing: `global.css` must come first because the other sheets consume its
+`:root` tokens; `design-tokens.css` must precede `design-system.css`.
 
 ## Global Styles
 
@@ -109,7 +111,8 @@ BEM-ish: `block`, `block__element`, `block--modifier`. Lowercase, hyphen-separat
 hashing, no utility classes, no `is-`/`has-` state prefixes.
 
 Examples: `.number-wheel`, `.number-wheel__strip`, `.number-wheel--rolling`,
-`.leaderboard-row--gold`, `.survey__questions--skipped`, `.choice-button--selected`.
+`.leaderboard-row--gold`, `.choice-card--selected`, `.choice-grid--disabled`,
+`.nav-button--primary`.
 
 Two class families are stand-alone blocks rather than page elements: `.btn*` and `.chip*`.
 
@@ -132,7 +135,7 @@ None in the Tailwind sense. The closest things to reusable primitives, all in `s
 | `.btn` | Base touch button: `min-height: var(--btn-min-h)`, `min-width: clamp(240px, 32vmin, 340px)`, `touch-action: manipulation`, `:active { transform: scale(0.96) }`, `:focus-visible` 3px `--accent` outline, `:disabled { opacity: .35 }` |
 | `.btn--primary`, `.btn--ghost`, `.btn--start`, `.btn--stop` | Button variants (`--stop` is currently unused) |
 | `.chip`, `.chip--sector`, `.chip--user` | Small status pills in the game top bar |
-| `.field`, `.field__*`, `.field--ltr`, `.field--active`, `.field--error` | The fake input surface family |
+| `.phone-display`, `.choice-card`, `.nav-button`, `.survey-checkbox` | The redesigned fake-input/tappable surfaces (design-system.css) |
 | `.confetti`, `.confetti__piece` | Celebration overlay |
 
 ## Component Styling Patterns
@@ -152,11 +155,19 @@ None in the Tailwind sense. The closest things to reusable primitives, all in `s
 ## Responsive Behavior
 
 **There are no width/height breakpoints.** The only media query in the entire project is
-`prefers-reduced-motion` (`src/styles/global.css:88`).
+`prefers-reduced-motion` (`src/styles/global.css`).
 
-Responsiveness is achieved entirely with fluid sizing — **118 `clamp()` calls** across the three
-stylesheets (`global.css` 1, `app.css` 74, `number-wheel.css` 43), predominantly using `vmin` so type and
-controls scale with the smaller viewport dimension on a portrait kiosk screen.
+Two sizing mechanisms coexist:
+
+1. **Legacy pages (category, game, leaderboard)** use fluid `clamp()` with `vmin` (~118
+   calls across `global.css`, `app.css`, `number-wheel.css`).
+2. **The redesigned visual language (pages 1–2)** uses the design-scale variable:
+   `src/app/designScale.ts` sets `--s = min(viewportWidth/DESIGN_WIDTH, viewportHeight/DESIGN_HEIGHT)`
+   (design canvas 1080×1800) on `<html>`, `design-tokens.css` sets
+   `html { font-size: calc(var(--s) * 16px) }`, and every fixed dimension in `design-system.css`
+   is expressed in **rem** (1 rem = 16 design pixels × `--s`). Content-dependent sizes use
+   intrinsic sizing. Verified at 800×1280, 1080×1800, and 1440×2560. Full detail in
+   `design-system.md`.
 
 | Aspect | Approach |
 |---|---|
@@ -181,11 +192,11 @@ Design orientation: **portrait / vertical touchscreen**. Nothing adapts to lands
 | Rule | Implementation |
 |---|---|
 | Document direction | `<html lang="fa" dir="rtl">` — everything inherits RTL |
-| Numeric sequences stay LTR | `direction: ltr` explicitly set on `.field--ltr`, `.keyboard`, `.chip--user`, `.leaderboard__mobile`, `.wheel-group`, `.target__digits`, `.stop-dots` |
-| Never add `letter-spacing` to Persian text | It breaks the joined script. `letter-spacing` appears only on Latin-digit runs: `.field--ltr .field__value` and `.leaderboard__mobile` (`1px` each) |
+| Numeric sequences stay LTR | `direction: ltr` explicitly set on `.keyboard`, `.chip--user`, `.leaderboard__mobile`, `.wheel-group`, `.target__digits`, `.stop-dots`, `.phone-display__value`, `.game-header__logo` |
+| Never add `letter-spacing` to Persian text | It breaks the joined script. `letter-spacing` appears only on numeric/Latin runs: `.leaderboard__mobile` (1px), the redesigned `.phone-display__value` / `.phone-display__placeholder` (5.4px on isolated digits), and the Latin `.game-header__logo` wordmark (0.75px) |
 | Emphasis | Font weight, size, and color only |
 | Persian numerals | Applied in JSX via `toPersianDigits` / `formatPersianNumber`, never via CSS |
-| Mobile numbers | Rendered in **Latin** digits (the bundled font gives them Persian glyph shapes); masked on public screens |
+| Mobile numbers | Written as **English digits** everywhere (the bundled fonts draw Persian glyph shapes); the redesigned page 1 shows keypad labels, the entered display (centered), and the panel's masked `09`-form (`formatPanelMobile`). Page 1's digit runs (keypad, phone display) use the static `IRANYekanXFaNum` face; the page-1 Persian texts (welcome, stepper, panel) use the variable `IRANYekanXVFaNum` face — both `@font-face` in `design-tokens.css`. Masked on public screens |
 | Thousands separator | `٬` (U+066C) substituted in `formatPersianNumber` |
 
 Note: `.result__value` and `.result__prize` in `number-wheel.css` set `direction: rtl`. This contradicts
@@ -193,13 +204,12 @@ the stated "numeric sequences stay LTR" rule — recorded in `12_KNOWN_GAPS_AND_
 
 ## Animation Conventions
 
-8 `@keyframes` total:
+7 `@keyframes` total:
 
 | Keyframes | File | Used by |
 |---|---|---|
 | `stop-attention` | `app.css:105` | `.btn--stop` — **unused** (no stop button exists) |
 | `confetti-fall` | `app.css:134` | `.confetti__piece` |
-| `caret-blink` | `app.css:252` | `.field__caret` |
 | `wheel-active-pulse` | `number-wheel.css:192` | `.number-wheel--active` |
 | `wheel-lock-pulse` | `number-wheel.css:252` | `.number-wheel--just-locked` |
 | `result-fade-in` | `number-wheel.css:379` | `.result` overlay |
@@ -221,10 +231,10 @@ Conventions:
 | Pattern | Where |
 |---|---|
 | Full-height column flex, centered | `.page` (every page) |
-| Bottom-docked actions | `.page__actions`, `.keyboard-dock` |
-| Fixed-column CSS grid | `.category-grid` (2 cols), `.keyboard` (3 cols) |
+| Bottom-docked actions | `.page__actions` |
+| Fixed-column CSS grid | `.category-grid` (2 cols), `.keyboard` (3 cols), `.choice-grid` (2×2 answer cards) |
 | Positioned overlay | `.result` — `position: absolute; inset: 0; z-index: 40`, backdrop blur, inside `.game-page__stage` (`position: relative`) so it covers the game but not the host status bar |
-| Row flex with gaps | `.wheel-group`, `.stop-dots`, `.choice-group`, `.game-page__topbar` |
+| Row flex with gaps | `.wheel-group`, `.stop-dots`, `.nav-buttons`, `.game-header`, `.game-page__topbar` |
 | Layered stack for the reel | `.number-wheel__window` with absolutely positioned `__center` band and `__fade--top` / `__fade--bottom` gradient masks over the transformed `__strip` |
 
 Only one `z-index` value of consequence: `40` on `.result`.
@@ -256,7 +266,8 @@ No icon library and no icon components. All glyphs are literal Unicode character
 | Glyph | Where |
 |---|---|
 | `⌫` | Keyboard backspace key |
-| `✓` | Keyboard confirm key, category card check, survey choice check, skip checkbox check |
+| `✓` | Keypad confirm key, category card check, skip checkbox check |
+| `★` | `GameHeader` star badge (page 2) |
 | `▲` | `.target__digit::after` — the "tap to change" affordance, shown only when the digit button is enabled |
 
 `public/favicon.svg` is the only vector asset.

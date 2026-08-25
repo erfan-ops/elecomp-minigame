@@ -89,7 +89,7 @@ export function LeaderboardPage() {
                         </span>
                       )} */}
                     </td>
-                    <td className="leaderboard__score">{formatPersianNumber(entry.score)}</td>
+                    <td className="leaderboard__score">{formatPersianNumber(entry.winAmount)}</td>
                   </tr>
                 );
               })}

@@ -1,0 +1,787 @@
+/* ---------------------------------------------------------------------------
+   Design-system component styles. Consumes ONLY tokens from
+   design-tokens.css; every fixed dimension is expressed in rem so it scales
+   with --s. Class names are BEM-ish and prefixed by component.
+--------------------------------------------------------------------------- */
+
+/* --- PageShell ------------------------------------------------------------- */
+
+.page-shell {
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+  background: var(--ds-bg);
+}
+
+.page-shell__glows {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.page-shell__glow {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(180px);
+}
+
+.page-shell__glow--deep {
+  width: 45rem;
+  height: 45rem;
+  background: var(--ds-glow-deep);
+  top: -18rem;
+  inset-inline-start: -12rem;
+}
+
+.page-shell__glow--plum {
+  width: 42rem;
+  height: 42rem;
+  background: var(--ds-glow-plum);
+  bottom: -16rem;
+  inset-inline-end: -12rem;
+}
+
+/* Teal glow near the primary CTA (the confirm key). */
+.page-shell__glow--teal {
+  width: 34rem;
+  height: 34rem;
+  background: var(--ds-glow-teal);
+  top: 46%;
+  inset-inline-end: -10rem;
+}
+
+.page-shell__frame {
+  position: relative;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  /* Frame padding: top 138, inline 56, bottom 56; 84 between major sections. */
+  padding: 8.625rem 3.5rem 3.5rem;
+  gap: 5.25rem;
+}
+
+.page-shell__logo {
+  display: block;
+  width: 23.6875rem; /* 379 design px */
+  height: auto;
+}
+
+/* --- StepTracker ----------------------------------------------------------- */
+
+.step-tracker {
+  display: flex;
+  align-items: center;
+  /* Step labels + circle numbers use the variable FaNum face. */
+  font-family: var(--ds-font-fanum-vf);
+}
+
+.step-tracker__step {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem; /* 8 */
+}
+
+.step-tracker__circle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem; /* 36 */
+  height: 2.25rem; /* 36 */
+  border-radius: 50%;
+  background: var(--ds-step-surface);
+  color: var(--ds-text-40);
+  font-size: var(--ds-fs-step);
+  line-height: var(--ds-lh-step);
+  font-weight: 500;
+}
+
+.step-tracker__label {
+  font-size: var(--ds-fs-step);
+  line-height: var(--ds-lh-step);
+  font-weight: 500;
+  color: var(--ds-text-40);
+}
+
+.step-tracker__step--active .step-tracker__circle {
+  background: var(--ds-gradient-primary);
+  box-shadow: var(--ds-shadow-primary);
+  color: var(--ds-text-100);
+}
+
+.step-tracker__step--active .step-tracker__label {
+  color: var(--ds-text-100);
+}
+
+.step-tracker__connector {
+  width: 2rem; /* 32 */
+  height: 0.0625rem; /* 1 */
+  background: var(--ds-connector);
+  margin: 0 0.75rem; /* 12 gap on both sides */
+}
+
+/* --- GradientText ---------------------------------------------------------- */
+
+.gradient-text {
+  background-image: var(--ds-text-gradient, var(--ds-gradient-heading));
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+}
+
+/* --- LiveBadge ------------------------------------------------------------- */
+
+.live-badge {
+  display: inline-flex;
+  direction: ltr;
+  align-items: center;
+  gap: 0.375rem; /* 6 */
+  padding: 0.25rem 0.75rem; /* 4 × 12 */
+  border-radius: 999px;
+  background: var(--ds-live-pill);
+}
+
+.live-badge__label {
+  font-size: var(--ds-fs-small);
+  line-height: var(--ds-lh-small);
+  font-weight: 550;
+  color: var(--ds-live);
+}
+
+.live-badge__dot {
+  width: 0.425rem; /* 6.8 */
+  height: 0.425rem;
+  border-radius: 50%;
+  background: var(--ds-live);
+  opacity: 0.36;
+}
+
+/* --- PhoneDisplay ---------------------------------------------------------- */
+
+.phone-display {
+  display: flex;
+  align-items: center;
+  justify-content: center; /* placeholder and entered digits are centered */
+  width: 29.25rem; /* 468 */
+  height: 6rem; /* 96 */
+  padding-inline: 1.5rem; /* 24 */
+  background: var(--ds-glass-bg);
+  border: 1px solid transparent;
+  border-top-color: var(--ds-glass-border-top);
+  border-radius: var(--ds-radius);
+  backdrop-filter: var(--ds-glass-blur);
+  -webkit-backdrop-filter: var(--ds-glass-blur);
+}
+
+/* Entered digits: English digits (the font renders Persian glyphs), spaced
+   (digits only — no joined script). text-indent re-balances the trailing
+   letter-spacing so the run sits optically centered. */
+.phone-display__value {
+  direction: ltr;
+  font-family: var(--ds-font-fanum);
+  font-size: var(--ds-fs-input);
+  line-height: var(--ds-lh-input);
+  font-weight: 700;
+  letter-spacing: var(--ds-ls-input);
+  text-indent: var(--ds-ls-input);
+  font-variant-numeric: tabular-nums;
+  color: var(--ds-text-100);
+}
+
+.phone-display__placeholder {
+  direction: ltr;
+  font-family: var(--ds-font-fanum);
+  font-size: var(--ds-fs-input);
+  line-height: var(--ds-lh-input);
+  font-weight: 700;
+  letter-spacing: var(--ds-ls-input);
+  text-indent: var(--ds-ls-input);
+  font-variant-numeric: tabular-nums;
+  color: var(--ds-placeholder);
+}
+
+/* --- Keypad ---------------------------------------------------------------- */
+
+/* Visual order is left→right as written — forced LTR inside the RTL page. */
+.keypad {
+  direction: ltr;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem; /* 16 */
+  width: 29.25rem; /* 468 */
+}
+
+.keypad__key {
+  height: 6rem; /* 96 */
+  border: 1px solid transparent;
+  border-top-color: var(--ds-glass-border-top);
+  border-radius: var(--ds-radius);
+  background: var(--ds-glass-bg);
+  backdrop-filter: var(--ds-glass-blur);
+  -webkit-backdrop-filter: var(--ds-glass-blur);
+  color: var(--ds-text-100);
+  /* Digit labels + «تایید» use the static FaNum face. */
+  font-family: var(--ds-font-fanum);
+  font-size: var(--ds-fs-key);
+  line-height: var(--ds-lh-key);
+  font-weight: 700;
+  cursor: pointer;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.1s ease, filter 0.15s ease;
+}
+
+.keypad__key:hover {
+  color: var(--ds-eyebrow);
+}
+
+.keypad__key:active {
+  transform: scale(0.94);
+  filter: brightness(1.3);
+}
+
+.keypad__key--confirm {
+  background: var(--ds-gradient-primary);
+  box-shadow: var(--ds-shadow-primary);
+  border-top-color: transparent;
+  font-size: var(--ds-fs-key-confirm);
+}
+
+.keypad__key--confirm:hover {
+  color: var(--ds-text-100);
+}
+
+.keypad__key:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* --- LeaderboardPanel ------------------------------------------------------ */
+
+.leaderboard-panel {
+  width: 29.25rem; /* 468 */
+  padding: 1.5rem; /* 24 internal */
+  border-radius: var(--ds-radius);
+  background: linear-gradient(180deg, rgba(120, 210, 225, 0.08) 0%, rgba(147, 219, 231, 0.05) 50%, rgba(255, 255, 255, 0.02) 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem; /* 24 */
+  /* Panel texts (title, subtitle, «زنده», mobiles, win values) use the
+     variable FaNum face (Latin digits drawn Persian). */
+  font-family: var(--ds-font-fanum-vf);
+}
+
+.leaderboard-panel__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.leaderboard-panel__titles {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem; /* 12 */
+}
+
+.leaderboard-panel__trophy {
+  font-size: 2.25rem; /* ~41×36 emoji */
+  line-height: 1;
+  transform: rotate(-2.76deg);
+}
+
+.leaderboard-panel__title-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem; /* 4 */
+}
+
+.leaderboard-panel__title {
+  font-size: var(--ds-fs-section);
+  line-height: var(--ds-lh-section);
+  font-weight: 581;
+  color: var(--ds-text-100);
+}
+
+.leaderboard-panel__subtitle {
+  font-size: var(--ds-fs-small);
+  line-height: var(--ds-lh-small);
+  font-weight: 500;
+  color: var(--ds-text-45);
+}
+
+.leaderboard-panel__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem; /* 10 */
+  padding-top: 1.25rem; /* 20 */
+}
+
+/* Empty state — no stored results yet (never placeholder rows). */
+.leaderboard-panel__empty {
+  margin: auto;
+  text-align: center;
+  font-size: var(--ds-fs-section);
+  line-height: var(--ds-lh-section);
+  color: var(--ds-text-45);
+}
+
+.leaderboard-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem; /* 16 */
+  padding: 0.75rem 1rem; /* 12 × 16 */
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-row-surface);
+}
+
+.leaderboard-row--first {
+  height: 4.375rem; /* 70 */
+  background: var(--ds-row-surface-gold);
+  border-top: 1px solid var(--ds-row-gold-border);
+}
+
+.leaderboard-row:not(.leaderboard-row--first) {
+  height: 4.25rem; /* 68 */
+}
+
+.leaderboard-row__rank {
+  width: 1.75rem;
+  text-align: center;
+  font-size: var(--ds-fs-rank);
+  line-height: var(--ds-lh-rank);
+  font-weight: 400;
+  color: var(--ds-text-40);
+}
+
+.leaderboard-row__avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem; /* 44 */
+  height: 2.75rem; /* 44 */
+  border-radius: 50%;
+  background: var(--ds-avatar-surface);
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.leaderboard-row--first .leaderboard-row__avatar {
+  transform: rotate(-6deg);
+}
+
+.leaderboard-row__phone {
+  direction: ltr;
+  font-size: var(--ds-fs-section);
+  line-height: var(--ds-lh-section);
+  font-weight: 581;
+  color: var(--ds-text-100);
+  font-variant-numeric: tabular-nums;
+}
+
+.leaderboard-row__amount {
+  margin-inline-start: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  direction: ltr;
+}
+
+.leaderboard-row__amount-value {
+  font-size: var(--ds-fs-section);
+  line-height: var(--ds-lh-section);
+  font-weight: 581;
+  color: var(--ds-amount-2to5);
+  font-variant-numeric: tabular-nums;
+}
+
+.leaderboard-row__currency {
+  font-size: var(--ds-fs-currency);
+  line-height: var(--ds-lh-currency);
+  font-weight: 600;
+  font-family: "Orbitron", "B Yekan", "Segoe UI", sans-serif;
+  color: var(--ds-amount-2to5);
+}
+
+/* 1st place: gold gradient amount + currency. */
+.leaderboard-row--first .leaderboard-row__amount-value,
+.leaderboard-row--first .leaderboard-row__currency {
+  background-image: var(--ds-gradient-gold);
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+}
+
+/* --- Welcome block (page 1) ------------------------------------------------ */
+
+.welcome {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  text-align: center;
+  /* «خوش آمدید !», the heading, and the subtitle use the variable FaNum face. */
+  font-family: var(--ds-font-fanum-vf);
+}
+
+.welcome__eyebrow {
+  font-size: var(--ds-fs-step);
+  line-height: var(--ds-lh-step);
+  font-weight: 600;
+  color: var(--ds-eyebrow);
+}
+
+.welcome__heading {
+  margin: 0;
+  max-width: 46rem;
+  font-size: var(--ds-fs-heading);
+  line-height: var(--ds-lh-heading);
+  font-weight: 581;
+  color: var(--ds-text-100);
+}
+
+.welcome__heading-strong {
+  /* «وارد کنید» — the static FaNum face. */
+  font-family: var(--ds-font-fanum);
+  font-weight: 800;
+}
+
+.welcome__subtitle {
+  margin: 0;
+  max-width: 38rem;
+  font-size: var(--ds-fs-section);
+  line-height: var(--ds-lh-section);
+  color: var(--ds-text-55);
+}
+
+/* --- Page-1 content grid --------------------------------------------------- */
+
+.registration-content {
+  display: grid;
+  grid-template-columns: repeat(2, 29.25rem);
+  column-gap: 2rem; /* 32 */
+  row-gap: 2rem; /* 32 */
+  margin-top: 2.5rem; /* 40 below the welcome block */
+}
+
+.registration-phone {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem; /* 20 */
+}
+
+.registration-error {
+  font-size: var(--ds-fs-small);
+  line-height: var(--ds-lh-small);
+  color: var(--ds-danger);
+}
+
+/* --- Survey shell variant (page 2+) ----------------------------------------- */
+
+.page-shell--survey .page-shell__glow {
+  filter: blur(140px);
+}
+
+.page-shell__glow--cyan-tl {
+  width: 42rem;
+  height: 42rem;
+  background: var(--ds-glow-tl);
+  top: -14rem;
+  inset-inline-start: -14rem;
+}
+
+.page-shell__glow--teal-tr {
+  width: 36rem;
+  height: 36rem;
+  background: var(--ds-glow-tr);
+  top: -12rem;
+  inset-inline-end: -12rem;
+}
+
+.page-shell__glow--cyan-bl {
+  width: 38rem;
+  height: 38rem;
+  background: var(--ds-glow-bl);
+  bottom: -14rem;
+  inset-inline-start: -10rem;
+}
+
+.page-shell__glow--yellow-br {
+  width: 30rem;
+  height: 30rem;
+  background: var(--ds-glow-br);
+  bottom: -10rem;
+  inset-inline-end: -8rem;
+}
+
+/* Top-edge cyan wash — a soft gradient strip, not a blob. */
+.page-shell--survey .page-shell__glow--edge {
+  inset-inline: 0;
+  top: 0;
+  height: 30rem;
+  border-radius: 0;
+  filter: none;
+  background: linear-gradient(180deg, var(--ds-glow-edge), rgba(120, 210, 225, 0));
+}
+
+/* Tighter header→stepper rhythm than page 1 (whose logo is much taller). */
+.page-shell--survey .page-shell__frame {
+  gap: 2rem; /* 32 */
+}
+
+/* --- GameHeader (page 2+) ---------------------------------------------------- */
+
+.game-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem; /* 16 */
+}
+
+.game-header__badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 4rem; /* 64 */
+  height: 4rem; /* 64 */
+  border-radius: 1.25rem; /* 20 */
+  background: var(--ds-gradient-primary);
+  box-shadow: var(--ds-shadow-strong);
+  color: #fff;
+  font-size: var(--ds-fs-star);
+  line-height: var(--ds-lh-star);
+  font-weight: 900;
+}
+
+.game-header__text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.25rem; /* 4 */
+}
+
+/* LTR wordmark — Latin script, so letter-spacing is safe here. */
+.game-header__logo {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem; /* 8 */
+  font-family: var(--ds-font-logo);
+  font-size: var(--ds-fs-logo);
+  line-height: var(--ds-lh-logo);
+  font-weight: 800;
+  letter-spacing: var(--ds-ls-logo);
+  color: var(--ds-text-100);
+}
+
+.game-header__subtitle {
+  font-size: var(--ds-fs-logo-sub);
+  line-height: var(--ds-lh-logo-sub);
+  font-weight: 500;
+  color: var(--ds-text-45);
+}
+
+/* --- FloatingDecorations (page 2+) -------------------------------------------- */
+
+.floating-deco {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  user-select: none;
+}
+
+.floating-deco span {
+  position: absolute;
+  line-height: 1;
+  filter: drop-shadow(var(--ds-glow-deco));
+}
+
+/* --- Survey step (page 2) ----------------------------------------------------- */
+
+.survey-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2rem; /* 32 */
+  /* Atmospheric area between the stepper and the question. */
+  margin-top: 22.75rem; /* 364 */
+  text-align: center;
+}
+
+.survey-step__kicker {
+  font-size: var(--ds-fs-step);
+  line-height: var(--ds-lh-step);
+  font-weight: 600;
+  color: var(--ds-eyebrow);
+}
+
+.survey-step__question {
+  margin: 0;
+  max-width: 48rem; /* 768 — wraps to two lines */
+  font-family: var(--ds-font-fanum);
+  font-size: var(--ds-fs-question);
+  line-height: var(--ds-lh-question);
+  font-weight: 800;
+  color: var(--ds-text-100);
+}
+
+/* --- ChoiceGrid --------------------------------------------------------------- */
+
+/* 2×2 cards; RTL row flow puts the first option top-right. */
+.choice-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 24.875rem); /* 398 */
+  gap: 1.5rem; /* 24 */
+}
+
+/* Skip-checkbox state: dimmed and inert. */
+.choice-grid--disabled {
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+.choice-card {
+  height: 10rem; /* 160 */
+  border: 1px solid var(--ds-glass-border-top);
+  border-radius: var(--ds-radius); /* 24 */
+  background: var(--ds-glass-bg);
+  backdrop-filter: var(--ds-glass-blur-soft);
+  -webkit-backdrop-filter: var(--ds-glass-blur-soft);
+  color: var(--ds-text-100);
+  font-family: inherit;
+  font-size: var(--ds-fs-choice);
+  line-height: var(--ds-lh-choice);
+  font-weight: 600;
+  cursor: pointer;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.12s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.choice-card:active {
+  transform: scale(0.96);
+}
+
+.choice-card--selected {
+  border-color: rgba(111, 228, 242, 0.65);
+  box-shadow: var(--ds-shadow-primary);
+  color: #d6fbff;
+  font-weight: 700;
+  background: linear-gradient(180deg, rgba(54, 174, 191, 0.32) 0%, rgba(54, 174, 191, 0.08) 100%);
+}
+
+/* --- Survey skip checkbox ------------------------------------------------------ */
+
+.survey-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem; /* 12 */
+  padding: 0.75rem 1.25rem; /* 12 × 20 */
+  border: 1px solid var(--ds-glass-border-top);
+  border-radius: 999px;
+  background: var(--ds-glass-bg);
+  backdrop-filter: var(--ds-glass-blur-soft);
+  -webkit-backdrop-filter: var(--ds-glass-blur-soft);
+  cursor: pointer;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.12s ease, border-color 0.2s ease;
+}
+
+.survey-checkbox:active {
+  transform: scale(0.97);
+}
+
+.survey-checkbox--checked {
+  border-color: rgba(111, 228, 242, 0.65);
+}
+
+.survey-checkbox__box {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem; /* 28 */
+  height: 1.75rem; /* 28 */
+  border-radius: 0.5rem; /* 8 */
+  border: 1px solid var(--ds-glass-border-top);
+  background: rgba(255, 255, 255, 0.06);
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.survey-checkbox--checked .survey-checkbox__box {
+  background: var(--ds-gradient-primary);
+  border-color: transparent;
+  box-shadow: var(--ds-shadow-primary);
+}
+
+.survey-checkbox__check {
+  font-size: 1rem; /* 16 */
+  font-weight: 800;
+  color: #fff;
+  opacity: 0;
+  transform: scale(0.5);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.survey-checkbox--checked .survey-checkbox__check {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.survey-checkbox__label {
+  font-size: 1.125rem; /* 18 */
+  line-height: 1.75rem; /* 28 */
+  font-weight: 500;
+  color: var(--ds-text-100);
+  text-align: start;
+}
+
+/* --- NavButtons ----------------------------------------------------------------- */
+
+.nav-buttons {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem; /* 24 */
+  margin-top: 2rem; /* 32 — extra air above the navigation row */
+}
+
+.nav-button {
+  width: 8.8125rem; /* 141 */
+  height: 4rem; /* 64 */
+  border: 1px solid var(--ds-glass-border-top);
+  border-radius: var(--ds-radius-sm); /* 16 */
+  background: var(--ds-glass-bg);
+  backdrop-filter: var(--ds-glass-blur-soft);
+  -webkit-backdrop-filter: var(--ds-glass-blur-soft);
+  color: var(--ds-text-100);
+  font-family: inherit;
+  font-size: var(--ds-fs-nav);
+  line-height: var(--ds-lh-nav);
+  font-weight: 600;
+  cursor: pointer;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.12s ease, filter 0.15s ease;
+}
+
+.nav-button:active {
+  transform: scale(0.95);
+}
+
+.nav-button--primary {
+  width: 9.625rem; /* 154 */
+  border: none;
+  background: var(--ds-gradient-primary);
+  box-shadow: var(--ds-shadow-strong);
+  font-weight: 700;
+}
+
+/* Spec §13: ادامه sits at 35% opacity until the step is answerable. */
+.nav-button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}

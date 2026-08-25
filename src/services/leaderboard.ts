@@ -30,5 +30,6 @@ export function buildLeaderboard(results: GameSessionResult[]): LeaderboardEntry
     userId: result.userId,
     mobile: result.mobile,
     score: result.score,
+    winAmount: result.winAmount,
   }));
 }
