@@ -10,7 +10,7 @@ import {
 import type { User } from "../domain/user";
 import { resultRepository } from "../services";
 
-const MOBILE_ERROR = "شماره موبایل اشتباه است.";
+const MOBILE_ERROR = "لطفا یک شماره معتبر وارد کنید";
 const ALREADY_PLAYED_MESSAGE = "شما قبلاً در این مسابقه شرکت کرده‌اید.";
 
 /**
@@ -68,7 +68,7 @@ export function RegistrationPage() {
       <header className="registration__header">
         <h1 className="page__title">خوش آمدید</h1>
         <p className="registration__subtitle">
-          برای شرکت در مسابقه شماره موبایل خود را وارد کنید
+          شماره موبایل خود را وارد کنید
         </p>
       </header>
 

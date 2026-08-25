@@ -13,7 +13,8 @@ export function CategorySelectionPage() {
 
   return (
     <div className="page page--category">
-      <h1 className="page__title">دسته‌بندی مورد نظر خود را انتخاب کنید</h1>
+      <h1 className="page__title">تمایل دارید جایزه خود را از کدام دسته‌بندی دریافت کنید؟</h1>
+      <p>فقط یک گزینه قابل انتخاب است</p>
 
       <div className="category-grid">
         {CATEGORIES.map((category) => (
@@ -42,7 +43,7 @@ export function CategorySelectionPage() {
             if (selected) selectCategory(selected);
           }}
         >
-          ادامه
+          شروع
         </button>
       </div>
     </div>

@@ -109,7 +109,7 @@ export function SurveyPage() {
 
         <p className="survey__question">
           <span className="survey__question-number">۲.</span>
-          آیا در سازمان خود رفاهیات دریافت می‌نمایید
+          آیا سازمان شما خدمات رفاهی به کارکنان ارائه می‌دهد؟
         </p>
 
         <div className={`choice-group${benefitsError ? " choice-group--error" : ""}`}>
