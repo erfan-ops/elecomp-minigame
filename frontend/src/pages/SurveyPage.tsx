@@ -29,7 +29,7 @@ const COUNT_TO_EMPLOYEES: Record<(typeof COUNT_OPTIONS)[number], number> = {
 
 const BENEFITS_OPTIONS = ["بله", "خیر"] as const;
 
-const COUNT_QUESTION = "تعداد تقریبی افرادی که در سازمان شما مشغول به کار هستند؟";
+const COUNT_QUESTION = "1.	تعداد تقریبی کارکنان سازمان شما چقدر است؟";
 const BENEFITS_QUESTION = "آیا سازمان شما خدمات رفاهی به کارکنان ارائه می‌دهد؟";
 const NOT_EMPLOYED_LABEL = "در سازمان یا شرکتی کار نمی‌کنم";
 

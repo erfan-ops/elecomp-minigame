@@ -11,7 +11,7 @@ import { isValidMobileDigits, makeUserId, toCanonicalMobile } from "../domain/us
 import type { User } from "../domain/user";
 import { buildLeaderboard, resultRepository } from "../services";
 
-const MOBILE_ERROR = "شماره موبایل اشتباه است.";
+const MOBILE_ERROR = "لطفا یک شماره معتبر وارد کنید";
 const ALREADY_PLAYED_MESSAGE = "شما قبلاً در این مسابقه شرکت کرده‌اید.";
 
 /**

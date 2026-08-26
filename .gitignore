@@ -1,6 +1,6 @@
-node_modules
-dist
-*.local
-*.tsbuildinfo
-.*.cjs
-flow
+frontend/node_modules
+frontend/dist
+frontend/*.local
+frontend/*.tsbuildinfo
+frontend/.*.cjs
+frontend/flow

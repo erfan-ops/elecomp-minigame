@@ -533,6 +533,7 @@
 
 .game-header {
   display: flex;
+  direction: ltr;
   align-items: center;
   gap: 1rem; /* 16 */
 }

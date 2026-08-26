@@ -161,9 +161,6 @@ export function NumberWheelGame({ context, onComplete, onExit }: GameProps) {
 
   return (
     <div className="slot-game">
-      <button type="button" className="slot-game__exit" onClick={onExit}>
-        خروج
-      </button>
 
       <span className="slot-game__kicker">ماشین شانس</span>
 
