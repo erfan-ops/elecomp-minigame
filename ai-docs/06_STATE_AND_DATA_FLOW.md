@@ -52,9 +52,9 @@
 | `countChoice` | `SurveyPage` | same | `(typeof COUNT_OPTIONS)[number] \| null` | `chooseCount(option)`; cleared by the skip toggle | none | Mapped via `COUNT_TO_EMPLOYEES` → stored `employeeCount` (10/50/300/301) |
 | `hasBenefits` | `SurveyPage` | same | `boolean \| null` | بله/خیر card tap on step 2 | none | `null` until answered; gates ادامه on step 2 |
 | `notEmployed` | `SurveyPage` | same | `boolean` | Skip checkbox toggle | none | When true, dims the `ChoiceGrid` (`--disabled`), clears `countChoice`, and enables ادامه; continue stores `{ employeeCount: 0, hasBenefits: false }` |
-| `selectedId` | `CategorySelectionPage` | `src/pages/CategorySelectionPage.tsx` | `string \| null` | Card tap | none | «ادامه» disabled while `null` |
+| `selectedId` | `CategorySelectionPage` | `src/pages/CategorySelectionPage.tsx` | `string \| null` | Card tap | none | «شروع بازی» disabled while `null` |
 | `submittedRef` | `GamePage` | `src/pages/GamePage.tsx` | `boolean` | Set true in `handleComplete`; reset to false in `handleRetry` | none | Second guard against double persistence |
-| `context` (derived) | `GamePage` | same | `GameContext` | `useMemo(..., [user, category, attempt])` | none | `attemptsRemaining = Math.max(0, MAX_GAME_ATTEMPTS - attempt)` |
+| `context` (derived) | `GamePage` | same | `GameContext` | `useMemo(..., [user, category, attempt])` | none | `attemptsRemaining = Math.max(0, MAX_GAME_ATTEMPTS - attempt)`; also `attemptsTotal = MAX_GAME_ATTEMPTS` (added in the redesign for the game's status dots/rules) |
 | `canRetry` (derived) | `GamePage` | same | `boolean` | Recomputed each render | none | `saveStatus === "saved" && (savedResult?.winAmount ?? 0) === 0 && attempt < MAX_GAME_ATTEMPTS` |
 | `loadState` | `LeaderboardPage` | `src/pages/LeaderboardPage.tsx` | `LoadState = "loading" \| "loaded" \| "error"` | `load()` (in `useCallback`, invoked by `useEffect` and the retry button) | none | |
 | `entries` | `LeaderboardPage` | same | `LeaderboardEntry[]` | Set from `buildLeaderboard(results)` | none (derived from persisted data) | Loaded once per mount |
@@ -192,7 +192,7 @@ session sends the kiosk back to `REGISTRATION` with all in-progress data lost.
 | Reel `locked` prop | `state`, `rolling[i]` | `state !== "IDLE" && !rolling[index]` |
 | Prize result | `target`, `digits` | `calculatePrizeResult()` → `{ correctDigits, prize, perfect }`, `useMemo` on `RESULT` |
 | Reel speeds | `WHEEL_SPEEDS`, `reducedMotion` | `useMemo(..., [reducedMotion])` |
-| `GameContext` | `user`, `category`, `attempt` | `useMemo` in `GamePage` |
+| `GameContext` | `user`, `category`, `attempt` (+ `attemptsTotal`) | `useMemo` in `GamePage` |
 | `canRetry` | `saveStatus`, `savedResult.winAmount`, `attempt` | Inline expression in `GamePage` |
 | Leaderboard entries | stored results | `buildLeaderboard()` |
 | Displayed mobile (input) | `mobileDigits` | `PhoneDisplay` → Persian numerals (page-1 redesign) |
@@ -232,9 +232,10 @@ SurveyPage (two local steps inside SURVEY):
   بازگشت → step 2: back to step 1 | step 1: startNewUser()  ─► phase REGISTRATION (full reset)
 CategorySelectionPage → selectCategory(category)             ─► phase GAME
 
-GamePage mounts <NumberWheelGame key={user.id}:{attempt} context onComplete onExit>
+GamePage renders (result ? <GameResultScreen …/> : <NumberWheelGame key={user.id}:{attempt} …/>)
   └─► game plays (see 05_MINIGAME.md) → onComplete(GameResult)
         └─► GamePage.handleComplete  (submittedRef guard)
+              setResult(gameResult)         → GameResultScreen replaces the game (frames 6–8)
               GameSessionResult = {
                 userId: user.id, mobile: user.mobile,
                 employeeCount: survey.employeeCount, hasBenefits: survey.hasBenefits,
@@ -254,12 +255,15 @@ GamePage mounts <NumberWheelGame key={user.id}:{attempt} context onComplete onEx
 
 ```
 saveStatus "error"  → «تلاش مجدد» → session.retrySave() → re-save pendingResultRef
+                    («ادامه» also offered on error → goToLeaderboard)
 saveStatus "saved"
   ├─ canRetry (winAmount === 0 && attempt < MAX_GAME_ATTEMPTS)
-  │     → «تلاش دوباره» → GamePage.handleRetry(): submittedRef = false; session.retry()
+  │     → «تلاش دوباره» → GamePage.handleRetry(): submittedRef = false; setResult(null); session.retry()
   │        → attempt+1, saveStatus "idle", savedResult null
   │        → new key ⇒ game unmounts + remounts with a fresh target
-  └─ «ادامه» → session.goToLeaderboard() → phase LEADERBOARD
+  ├─ won (winAmount > 0): «خروج از بازی» → startNewUser()
+  │                      «ادامه» → session.goToLeaderboard() → phase LEADERBOARD
+  └─ game over (loss, no retries left): «خروج از بازی» only → startNewUser()
 
 LeaderboardPage mount → resultRepository.getResults() → buildLeaderboard → entries
   └─ «کاربر جدید» → session.startNewUser() → phase REGISTRATION, full reset

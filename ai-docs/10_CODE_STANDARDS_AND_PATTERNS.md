@@ -105,7 +105,7 @@ is `.ts` because it only holds types.
 | Destructuring | Props destructured in the parameter list, with defaults inline (`count = 64`, `attemptsRemaining = 0`) |
 | Refs on components | **React 19 ref-as-prop**: `ref?: Ref<NumberWheelHandle>` declared inside `NumberWheelProps`. `forwardRef` is NOT used anywhere |
 | Imperative handles | `useImperativeHandle(ref, () => ({ getCurrentDigit }), [])` — one narrow method, empty deps |
-| Conditional rendering | Early `return null` (`GamePage` when session data is missing, `GameControls` on `RESULT`), and `&&` / ternaries in JSX |
+| Conditional rendering | Early `return null` (`GamePage` when session data is missing), ternary page swap (`result ? <GameResultScreen/> : <GameComponent/>`), and `&&` / ternaries in JSX |
 | Class composition | Template literals plus arrays joined with `" "`; no `clsx`/`classnames` |
 | Lists | `.map()` with a stable `key` (`piece.key`, index for the fixed 3-reel and dot arrays) |
 | Memoization | `useMemo` only where identity matters (context value, `GameContext`, `speeds`, `result`, confetti pieces) and `useCallback` for every action exposed through context or passed into effects. `React.memo` is NOT used |

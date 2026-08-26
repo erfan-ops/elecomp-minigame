@@ -5,6 +5,8 @@ interface NavButtonsProps {
   continueDisabled?: boolean;
   backLabel?: string;
   continueLabel?: string;
+  /** Extra class on the row (e.g. page-specific button widths). */
+  className?: string;
 }
 
 /** بازگشت / ادامه — the page-2 navigation pair. */
@@ -14,9 +16,10 @@ export function NavButtons({
   continueDisabled = false,
   backLabel = "بازگشت",
   continueLabel = "ادامه",
+  className,
 }: NavButtonsProps) {
   return (
-    <div className="nav-buttons">
+    <div className={["nav-buttons", className].filter(Boolean).join(" ")}>
       <button type="button" className="nav-button" onClick={onBack}>
         {backLabel}
       </button>

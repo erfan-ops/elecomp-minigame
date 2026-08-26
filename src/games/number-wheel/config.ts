@@ -12,9 +12,6 @@
 /** Currency unit shown after prize amounts. */
 export const CURRENCY_SYMBOL = "تومان";
 
-/** Title shown at the top of the game screen. */
-export const GAME_TITLE = "عددو پیدا کن";
-
 /**
  * Prizes are awarded ONLY for exact digit matches — the same digit in the
  * same position as the target. Getting close earns nothing.

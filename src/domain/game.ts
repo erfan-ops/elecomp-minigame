@@ -20,6 +20,12 @@ export interface GameContext {
    * Absent when the platform does not track retries.
    */
   attemptsRemaining?: number;
+  /**
+   * Total attempts the player gets for the whole game, including this one
+   * (platform session info a game MAY use for rules/status UI).
+   * Absent when the platform does not track attempts.
+   */
+  attemptsTotal?: number;
 }
 
 export interface GameResult {

@@ -17,12 +17,12 @@ labeled `INFERRED`, `UNVERIFIED`, or `UNKNOWN`.
 
 | # | Inconsistency | Documented claim | Actual code | Severity |
 |---|---|---|---|---|
-| D1 | `GameContext` shape | `README.md:36-40` shows `{ userId; firstName; lastName; mobile; sector }` | `src/domain/game.ts` declares `{ userId; mobile; sector; attemptsRemaining? }`. **No first/last name is collected anywhere** (`src/domain/user.ts` `User` is `{ id, mobile }`); `attemptsRemaining` is missing from the README | HIGH — an agent following `README.md` would write a game against a non-existent contract |
-| D2 | Reduced motion "slows the wheels" | `README.md:106-108` and `CLAUDE.md` state `prefers-reduced-motion` slows the wheels | `REDUCED_MOTION_SPEED_FACTOR = 1` in `src/games/number-wheel/config.ts:41`, and `NumberWheelGame.tsx:53` multiplies by it — **reel speed is unchanged**. Blur suppression and confetti suppression DO work | MEDIUM — accessibility claim is not met |
-| D3 | `index.html` `<title>` | — | `<title>بازی 10 ثانیه — Smartis</title>` names a game that does not exist in this working tree. The active game's title is `عددو پیدا کن` (`config.ts:16`) and the registry name is `بازی اعداد` | MEDIUM — user-visible in the browser tab / kiosk window title |
+| D1 | `GameContext` shape | `README.md:36-40` and `CLAUDE.md`'s contract block show `{ userId; firstName; lastName; mobile; sector }` | `src/domain/game.ts` declares `{ userId; mobile; sector; attemptsRemaining?; attemptsTotal? }` (the latter added in the page redesign). **No first/last name is collected anywhere** (`src/domain/user.ts` `User` is `{ id, mobile }`); both attempt fields are missing from the README (left untouched — human-owned files, user-approved scope excluded this pre-redesign gap) | HIGH — an agent following `README.md` would write a game against a non-existent contract |
+| D2 | Reduced motion "slows the wheels" | `README.md:106-108` and `CLAUDE.md` state `prefers-reduced-motion` slows the wheels | `REDUCED_MOTION_SPEED_FACTOR = 1` in `src/games/number-wheel/config.ts`, and `NumberWheelGame.tsx` multiplies the (memoized) speeds by it — **reel speed is unchanged**. Blur suppression and confetti suppression DO work | MEDIUM — accessibility claim is not met |
+| D3 | `index.html` `<title>` | — | `<title>بازی 10 ثانیه — Smartis</title>` names a game that does not exist in this working tree. The registry name is `بازی اعداد` (`GAME_TITLE` was removed from the game config in the page redesign) | MEDIUM — user-visible in the browser tab / kiosk window title |
 | D4 | `global.css:87` comment | Comment says "runs at a gentler speed (see `REDUCED_MOTION_SPEED_FACTOR` in **gameConfig**)" | There is no `gameConfig` module. The constant lives in `src/games/number-wheel/config.ts`, and per D2 it does not slow anything | LOW |
 | D5 | `app.css:213` comment | "…digit grouping); **name fields** stay RTL so Persian text reads naturally" | There are no name fields — registration collects only a mobile number | LOW |
-| D6 | Numeric sequences must be LTR | `CLAUDE.md` states target/result values set `direction: ltr` | `number-wheel.css:429` (`.result__value`) and `:441` (`.result__prize`) set `direction: rtl`. Both contain digit strings | LOW — visually acceptable for these specific strings, but it contradicts the stated rule |
+| D6 | Numeric sequences must be LTR | `CLAUDE.md` states target/result values set `direction: ltr` | **RESOLVED** — the old `.result__value`/`.result__prize` (rtl) were deleted with the result overlay; the new result screens (`.game-result__digits`, `.game-result__target-value`, `.game-result__prize-amount`, `.prize-card__value`) set `direction: ltr` | — |
 | D7 | `README.md` architecture tree | `README.md:113-124` lists `app/ pages/ components/ domain/ services/ games/ config/ utils/ styles/` | `src/hooks/` exists and is omitted from the tree | LOW |
 
 `README.md` and `CLAUDE.md` both describe exactly one game (`number-wheel`), matching
@@ -62,7 +62,7 @@ labeled `INFERRED`, `UNVERIFIED`, or `UNKNOWN`.
 | # | Item |
 |---|---|
 | A1 | **`src/config/appConfig.ts` is source code but named/treated as config.** Editing it requires a rebuild. Organizers cannot tune it at runtime, which conflicts with the "organizer-tunable" framing in `README.md` |
-| A2 | **`ResultDisplay` vs `GamePage` own the post-round UI.** The game renders the result overlay; the host renders retry/continue in a status bar underneath. The boundary works but means result messaging (`attemptsRemaining` text) and retry availability (`canRetry`) are computed in two different places from two different sources — they can disagree (see R7) |
+| A2 | **Result messaging is computed in two places.** The game derives its status UI from `context.attemptsTotal`/`attemptsRemaining` (attempts dots, rules line «در مجموع N فرصت»); the host (`GamePage` → `GameResultScreen`) separately computes `attemptsRemaining`/`canRetry` for the retry message. Both derive from `MAX_GAME_ATTEMPTS` and `attempt`, so they agree today, but they are independent expressions (see R7) |
 | A3 | **`useNumberGame.ts:46` re-exports `usePrefersReducedMotion`.** The hook's owner is `src/hooks/`; the re-export is dead (no importer uses it from here) and blurs where the hook comes from |
 | A4 | **Reel geometry constants are split** between `config.ts` (`STRIP_REPEATS`, spring, speeds) and `NumberWheel.tsx` (`STRIP_LENGTH`, `BASE_OFFSET`, `SETTLE_EPSILON`, `SETTLE_MIN_VELOCITY`) even though they are mutually dependent |
 | A5 | **Haptic durations (`45` / `15` ms) are inline literals** in `NumberWheelGame.handleStop`, not in `config.ts`, unlike every other tuning value |
@@ -77,10 +77,10 @@ visually — nothing here is covered by an automated check.
 | R1 | `wasRollingRef` is read **and cleared** inside the settle effect body | Momentum inheritance and the lock pulse apply only to the FIRST run of that effect after a rolling→stopped transition. Adding any dependency that changes on lock silently removes the deceleration feel and the pulse |
 | R2 | Spin effect deps `[rolling, speed]` | A `speed` identity change mid-spin tears down and rebuilds the loop. Safe today only because `speeds` is `useMemo`'d on `[reducedMotion]` |
 | R3 | Settle loop has no iteration or time cap | Retuning `SPRING_STIFFNESS` / `SPRING_DAMPING` can produce oscillation that never satisfies both `SETTLE_EPSILON` and `SETTLE_MIN_VELOCITY`, leaving a rAF loop running indefinitely |
-| R4 | `BASE_OFFSET = 9` is coupled to `STRIP_REPEATS = 3` and `.number-wheel__digit { height: calc(var(--wheel-h) / 3) }` | Changing any one of the three without re-deriving the others misaligns the centered digit against `.number-wheel__center` |
+| R4 | `BASE_OFFSET = 380/360 + 9` is coupled to `STRIP_REPEATS = 3` and the rem token pair `--wheel-h` (23.75rem) / `--digit-font` (11.25rem) | Changing any one without re-deriving the others misaligns the centered digit in the reel window. Any CSS resizing of the reels must keep the 380/360 ratio or update the constant |
 | R5 | `getCurrentDigit() ?? 0` in `NumberWheelGame.handleStop` | A null reel ref silently locks digit `0` instead of failing |
 | R6 | `window`-scoped `keydown` listener in `NumberWheelGame.tsx` | Active for the whole game lifetime; `PageUp`/`PageDown`/`b` are NOT `preventDefault`-ed. Any future focusable text surface inside the game would receive `b` as text AND trigger a STOP |
-| R7 | `attemptsRemaining` is computed by `GamePage` as `MAX_GAME_ATTEMPTS - attempt` and defaults to `0` in `ResultDisplay` | If a future host forgets to pass it, every zero-match round says «دیگه تلاشی نمونده» even when retries remain |
+| R7 | `attemptsRemaining` is computed by `GamePage` as `MAX_GAME_ATTEMPTS - attempt` and passed to `GameResultScreen` | If a future host forgets to pass it, a zero-win round would claim «هنوز ۰ فرصت دیگر دارید!» (game-over layout) even when retries remain |
 | R8 | `dt` clamp of `0.05 s` in both loops | Reel position is not a function of elapsed wall-clock time after a tab stall. Acceptable visually; do not rely on position for timing |
 | R9 | No `document.visibilitychange` handling | Backgrounding the kiosk browser freezes a spinning reel mid-round. On return it resumes from where it stopped. There is no pause UI and no recovery path |
 
@@ -122,15 +122,16 @@ Note: `randomTargetNumber`, `randomDigits`, and `createNewGame` all accept an in
 
 | # | Item | Location | Status |
 |---|---|---|---|
-| X1 | `.btn--stop` and `@keyframes stop-attention` | `app.css` | Unused — there is deliberately no on-screen stop button |
+| X1 | `.btn--stop` and `@keyframes stop-attention` | `app.css` | **Deleted with the redesign** — the on-screen stop control is now `.slot-game__stop` (number-wheel.css) |
 | X2 | `export { usePrefersReducedMotion }` | `useNumberGame.ts` | Dead re-export; no importer uses it from this path |
 | X3 | `createNewGame().targetNumber` | `gameEngine.ts` | Returned but never read (`useNumberGame` uses only `target` and `startDigits`) |
 | X4 | `randomTargetNumber(exclude?)` | `gameEngine.ts` | The `exclude` parameter is never passed a value — the only call site passes `undefined`. The retry `while` loop is unreachable |
 | X5 | Commented-out `isMe` highlight | `LeaderboardPage.tsx` | Dead code kept in place |
 | X6 | `.leaderboard-row--me td`, `.leaderboard__me` | `app.css` | Orphaned CSS for X5 |
-| X7 | `.result__percent` | `number-wheel.css` | No element uses this class |
+| X7 | `.result__percent` | `number-wheel.css` | **Deleted with the result overlay in the redesign** — result UI now uses `.game-result__*` |
 | X8 | `countExactMatches` export | `prizeCalculator.ts` | Exported but only consumed internally by `calculatePrizeResult` |
 | X9 | `VirtualNumericKeyboard` is fully unused | — | Page 1 uses the redesigned `ui/Keypad` and page 2's count question became range cards (`ui/ChoiceGrid`) — no typed input remains. The component and its `.keyboard*` styles are retained as a reusable primitive |
+| X10 | `formatPrize` | `prizeCalculator.ts` | Exported but unused since the redesign — the result screens format the prize via `formatPersianNumber` (`.game-result__prize-amount`, `.prize-card__value`) |
 | X11 | `public/App.png` | `public/` | The 560KB design reference image is copied verbatim into `dist/` although the app never references it |
 
 `noUnusedLocals` / `noUnusedParameters` do not catch any of these — unused *exports* and unused *CSS*
@@ -143,13 +144,13 @@ are invisible to the compiler.
 | B1 | **No tests at all** | See T1–T10. Every refactor of pure logic is unverified |
 | B2 | **No linter, no formatter** | Style is maintained by imitation only; nothing prevents drift |
 | B3 | **No error boundary** | Any render-time throw in a page or the game blanks the kiosk with no recovery path and no operator-visible message |
-| B4 | **Bare `catch { }` blocks discard errors** | `AppSession.submitResult` / `retrySave` and `localResultRepository.loadAll` swallow the error object entirely. There is no `console.*` call, no logging, and no telemetry anywhere in `src/`, so a persistence failure at an event is diagnosable only from the on-screen status bar |
+| B4 | **Bare `catch { }` blocks discard errors** | `AppSession.submitResult` / `retrySave` and `localResultRepository.loadAll` swallow the error object entirely. There is no `console.*` call, no logging, and no telemetry anywhere in `src/`, so a persistence failure at an event is diagnosable only from the result screen's save-status line (the error variant with «تلاش مجدد» / «ادامه») |
 | B5 | **`localResultRepository.save` has no `try/catch`** | Deliberate (the rejection becomes `saveStatus: "error"`), but a `QuotaExceededError` is indistinguishable from any other failure and the record is lost unless the operator taps «تلاش مجدد» |
 | B6 | **Session state is not persisted** | A reload or crash mid-session loses the user, survey, category, and attempt, and returns to `REGISTRATION` |
 | B7 | **`localStorage` is the system of record** | No backup, no sync, no server. Clearing browser data destroys the event's entire dataset. The kiosk browser MUST NOT clear storage between sessions |
 | B8 | **No storage pruning or schema migration** | The `.v1` key suffix is the only versioning affordance; there is no migration code |
-| B9 | **`aria-modal="true"` on `.result` without focus management** | Focus is not trapped or moved into the overlay, so the ARIA claim is inaccurate for keyboard/AT users |
-| B10 | **Font has a single weight** | `BYekan+.ttf` is Regular (400) only; every 600–800 weight in the stylesheets is browser-synthesized. Rendering quality is `UNVERIFIED` on the target device |
+| B9 | **`aria-modal="true"` on `.result` without focus management** | **RESOLVED** — the `.result` dialog overlay was deleted with the redesign; `GameResultScreen` is a plain `<section>` with no dialog semantics |
+| B10 | **Legacy font has a single weight** | `BYekan+.ttf` is Regular (400) only; 600–800 weights in the legacy styles are browser-synthesized. The redesigned faces are covered by real weights (Vazirmatn 400–700 bundled, IRANYekanXFaNum statics 400–900 + a variable face) — the concern now applies only to the legacy leaderboard page. Rendering quality is `UNVERIFIED` on the target device |
 | B11 | **No `base` configured in `vite.config.ts`** | Assets, including `/BYekan+.ttf`, are referenced from the root. Serving `dist/` from a sub-path silently 404s the font |
 | B12 | **Registration validates Iranian mobiles only** (`^9\d{9}$`) | Correct for the intended audience; there is no path for any other number format |
 | B13 | **`LeaderboardPage.load` sets state without an unmount guard** | Would warn/no-op if the page unmounted mid-load. Not reachable in the current flow (`INFERRED` acceptable) |
@@ -162,10 +163,10 @@ are invisible to the compiler.
 | C2 | `GameResult.score` is documented as independent of the prize, yet the only game sets them equal, and the leaderboard column is labelled «جایزه» (Q1, Q2) |
 | C3 | Tuning constants are split between a `config.ts` and module-local literals (A4, A5) |
 | C4 | Two reduced-motion mechanisms coexist — a global CSS override in `global.css` and the `usePrefersReducedMotion` hook — and only the CSS one has a visible effect on reel speed (which is to say: none, per D2) |
-| C5 | `direction: rtl` on `.result__value` / `.result__prize` versus `direction: ltr` everywhere else digits appear (D6) |
+| C5 | `direction: rtl` on `.result__value` / `.result__prize` versus `direction: ltr` everywhere else digits appear (D6) | **RESOLVED** — both classes were deleted with the redesign; every remaining digit surface sets `direction: ltr` |
 | C6 | `data-reduced-motion` is the only state expressed as a data attribute; every other state uses a modifier class. It is set to `"true"` or omitted, never `"false"`, so `[data-reduced-motion="false"]` would never match |
-| C7 | Mobile digit rendering differs by surface: the redesigned page 1 writes **English digits** rendered with Persian glyphs by the bundled fonts (keypad, display, panel phones/amounts — per user directive), while the legacy game chip and leaderboard page still render Latin digits too. `UNKNOWN` whether the legacy surfaces should adopt the same treatment |
-| C8 | Two masking formats coexist: `formatMaskedMobile` (3-3-4, three stars — game chip, leaderboard page) and `formatPanelMobile` (09-form, four stars — page-1 panel). Both derive from the same canonical value |
+| C7 | Mobile digit rendering differs by surface: the redesigned pages 1–4, the game page, and the result screens write **English digits** rendered with Persian glyphs by the bundled fonts (keypad, display, reels, target, prizes — per user directive), while the legacy leaderboard page still renders Latin digits too. `UNKNOWN` whether the leaderboard should adopt the same treatment |
+| C8 | Two masking formats coexist: `formatMaskedMobile` (3-3-4, three stars — leaderboard page) and `formatPanelMobile` (09-form, four stars — page-1 panel). Both derive from the same canonical value |
 
 ## Areas Needing Human Clarification
 

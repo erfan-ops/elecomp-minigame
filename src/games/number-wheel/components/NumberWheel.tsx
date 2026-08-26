@@ -29,8 +29,13 @@ import {
  */
 
 const STRIP_LENGTH = 10 * STRIP_REPEATS;
-/** Vertical offset (in item heights) that centers item 10 (digit 0) at position 0. */
-const BASE_OFFSET = 9;
+/**
+ * Vertical offset (in item heights) that centers item 10 (digit 0) at
+ * position 0. Each digit item is 180px tall and the window is 380px, so
+ * position 0 sits at 180px inside the window: offset = 10.5 − 380/360 =
+ * 9.4444… — item 10 (digit 0) lands dead-center.
+ */
+const BASE_OFFSET = 380 / 360 + 9;
 /** How close (in item heights) a spring may be to its target before we snap. */
 const SETTLE_EPSILON = 0.004;
 /** How slow (in item heights/second) a settle may be before we consider it done. */
@@ -191,15 +196,9 @@ export function NumberWheel({
     <div
       className={classNames}
       role="img"
-      aria-label={`${ariaLabel ?? "چرخ عدد"}${rolling ? "، در حال چرخش" : `، عدد ${toPersianDigits(digit)}`}${active && rolling ? "، چرخ بعدی" : ""}`}
+      aria-label={`${ariaLabel ?? "چرخ عدد"}${rolling ? "، در حال چرخش" : `، عدد ${toPersianDigits(digit)}`}`}
     >
-      {active && rolling && (
-        <span className="number-wheel__next-badge" aria-hidden="true">
-          بعدی
-        </span>
-      )}
       <div className="number-wheel__window">
-        <div className="number-wheel__center" aria-hidden="true" />
         <div
           className="number-wheel__strip"
           ref={stripRef}

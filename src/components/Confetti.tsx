@@ -1,7 +1,15 @@
 import { useMemo } from "react";
 import type { CSSProperties } from "react";
 
-const COLORS = ["#ffc857", "#3ec6ff", "#26b06e", "#f4f6fb", "#8b96ac"] as const;
+/** The platform's game palette (cyan/teal/green/gold) + white. */
+const COLORS = [
+  "#36AEBF",
+  "#2FD6C4",
+  "#6FE4F2",
+  "#34D17A",
+  "#FFCF3A",
+  "#ffffff",
+] as const;
 
 interface ConfettiProps {
   count?: number;
@@ -17,13 +25,14 @@ export function Confetti({ count = 64 }: ConfettiProps) {
   const pieces = useMemo(
     () =>
       Array.from({ length: count }, (_, index) => {
-        const size = 6 + Math.random() * 6;
+        // Pieces ≈ 8–14 × 9–18 px (the Figma's ~12×18 confetti).
+        const size = 8 + Math.random() * 6;
         return {
           key: index,
           style: {
             left: `${Math.random() * 100}%`,
             width: size,
-            height: size * (0.5 + Math.random() * 0.8),
+            height: size * (1.1 + Math.random() * 0.5),
             backgroundColor: COLORS[Math.floor(Math.random() * COLORS.length)],
             animationDelay: `${Math.random() * 0.6}s`,
             animationDuration: `${2.2 + Math.random() * 1.8}s`,

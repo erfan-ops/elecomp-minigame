@@ -14,7 +14,7 @@ export interface User {
 export const MOBILE_PREFIX = "+98";
 
 /** How many digits a valid mobile number has after the prefix. */
-export const MOBILE_DIGIT_COUNT = 10;
+export const MOBILE_DIGIT_COUNT = 11;
 
 /** "9121234567" → "+989121234567" */
 export function toCanonicalMobile(digits: string): string {
@@ -23,26 +23,26 @@ export function toCanonicalMobile(digits: string): string {
 
 /** True when exactly the right number of digits is present. */
 export function isValidMobileDigits(digits: string): boolean {
-  return new RegExp(`^9\\d{${MOBILE_DIGIT_COUNT-1}}$`).test(digits);
+  return new RegExp(`^09\\d{${MOBILE_DIGIT_COUNT-2}}$`).test(digits);
 }
 
-/** "9121234567" → "912 123 4567" (display-only grouping, 3-3-4). */
+/** "09121234567" → "0912 123 4567" (display-only grouping, 4-3-4). */
 export function formatMobileDigits(digits: string): string {
-  return [digits.slice(0, 3), digits.slice(3, 6), digits.slice(6)]
+  return [digits.slice(0, 4), digits.slice(4, 7), digits.slice(7)]
     .filter(Boolean)
     .join(" ");
 }
 
 /**
- * "+989121234567" → "912 *** 4567" for public screens (game chip,
+ * "+989121234567" → "0912****567" for public screens (game chip,
  * leaderboard). Display-only masking — the canonical value is stored and
  * reported unchanged, and the digits stay Latin: the bundled font renders
  * them with Persian glyph shapes already.
  */
 export function formatMaskedMobile(canonical: string): string {
   const digits = canonical.slice(MOBILE_PREFIX.length);
-  const masked = digits.slice(0, 3) + "***" + digits.slice(6);
-  return [masked.slice(0, 3), masked.slice(3, 6), masked.slice(6)]
+  const masked = digits.slice(0, 4) + "****" + digits.slice(8);
+  return [masked.slice(0, 4), masked.slice(4, 7), masked.slice(7)]
     .filter(Boolean)
     .join(" ");
 }

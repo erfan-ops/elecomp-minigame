@@ -62,10 +62,7 @@
 │   │       ├── types.ts
 │   │       ├── useNumberGame.ts
 │   │       └── components/
-│   │           ├── GameControls.tsx
 │   │           ├── NumberWheel.tsx
-│   │           ├── ResultDisplay.tsx
-│   │           ├── TargetDisplay.tsx
 │   │           └── WheelGroup.tsx
 │   ├── hooks/
 │   │   └── usePrefersReducedMotion.ts

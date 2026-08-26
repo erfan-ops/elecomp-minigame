@@ -68,12 +68,14 @@ start with `9` and be exactly 10 digits. `toCanonicalMobile(digits)` → `` `${M
 |---|---|---|---|---|---|---|
 | `src/pages/RegistrationPage.tsx` | Mobile entry, validation, anti-replay, `register` | `RegistrationPage` | `src/app/AppSession`, `src/components/ui/*`, `src/domain/user`, `src/services` | `await resultRepository.getResults()`; **fails open** on throw | YES | `IMPORTANT` |
 | `src/pages/SurveyPage.tsx` | Two survey questions (two local steps) + skip path | `SurveyPage` | `src/app/AppSession`, `src/components/ui/*` | none | YES | `IMPORTANT` |
-| `src/pages/CategorySelectionPage.tsx` | Sector grid, single selection | `CategorySelectionPage` | `src/app/AppSession`, `src/config/appConfig` | none | YES | `IMPORTANT` |
-| `src/pages/GamePage.tsx` | **The game↔platform adapter**: builds `GameContext`, widens `GameResult` → `GameSessionResult`, persists, retry/continue chrome | `GamePage` | `src/app/AppSession`, `src/config/appConfig`, `src/games/registry` (`getActiveGame`), `src/domain/*`, `src/utils/persian` | `new Date().toISOString()`; `session.submitResult` → repository | NO — it is the contract adapter; changes here affect every game and every stored record | `CRITICAL` |
+| `src/pages/CategorySelectionPage.tsx` | Sector grid, single selection (redesigned page 4) | `CategorySelectionPage` | `src/app/AppSession`, `src/config/appConfig`, `src/components/ui/*` (PageShell, StepTracker, GameHeader, FloatingDecorations, NavButtons) | none | YES | `IMPORTANT` |
+| `src/pages/GamePage.tsx` | **The game↔platform adapter**: builds `GameContext`, widens `GameResult` → `GameSessionResult`, persists, retry/continue chrome; renders the game or `GameResultScreen` | `GamePage` | `src/app/AppSession`, `src/config/appConfig`, `src/games/registry` (`getActiveGame`), `src/domain/*`, `src/components/ui/*` (PageShell, GameHeader, FloatingDecorations, StepTracker), `./GameResult` | `new Date().toISOString()`; `session.submitResult` → repository | NO — it is the contract adapter; changes here affect every game and every stored record | `CRITICAL` |
+| `src/pages/GameResult.tsx` | Host-side result screens (Figma frames 6–8): win (prize card + Confetti), loss with retries, game over | `GameResultScreen` | `react`, `src/app/AppSession` (type), `src/components/Confetti`, `src/domain/game` (type), `src/hooks/usePrefersReducedMotion`, `src/utils/persian` | none | YES — pure presentation of a `GameResult` + save status | `IMPORTANT` |
 | `src/pages/LeaderboardPage.tsx` | Load results, build + render ranked table | `LeaderboardPage` | `src/app/AppSession`, `src/services` (`resultRepository`, `buildLeaderboard`), `src/domain/*`, `src/utils/persian` | `resultRepository.getResults()` in `useEffect` | YES | `IMPORTANT` |
 
-All five pages take **no props**. The redesigned pages (registration, survey) render inside
-`PageShell`; the legacy pages render `.page` + their own modifier class.
+All six pages take **no props**. Registration, survey, category, and the game page render inside
+`PageShell` (the game page with `variant="survey"`); only the leaderboard still renders
+`.page` + its own modifier class.
 
 `LeaderboardPage` contains commented-out "highlight my row" logic (`isMe`) — see
 `12_KNOWN_GAPS_AND_RISKS.md`.
@@ -146,36 +148,34 @@ Games are statically imported ⇒ every registered game ships in the main bundle
 
 | Path | Responsibility | Main exports | Imports (significant) | Side effects | Safe in isolation | Importance |
 |---|---|---|---|---|---|---|
-| `src/games/number-wheel/NumberWheelGame.tsx` | Game shell: implements `GameProps`, input model, once-only `onComplete`, layout | `NumberWheelGame` | `./config`, `./gameEngine`, `./prizeCalculator`, `./useNumberGame`, `./components/*`, `src/domain/game` (type), `src/hooks/usePrefersReducedMotion`, `./number-wheel.css` | `window` `keydown` listener (added/removed with the component); `performance.now()`; `navigator.vibrate?.()`; calls `onComplete` | NO — owns the contract and the input model | `CRITICAL` |
+| `src/games/number-wheel/NumberWheelGame.tsx` | Game shell: implements `GameProps`, input model, once-only `onComplete`, play-screen layout (`slot-game`: heading with tappable target, status pills, stop button, rules panel) | `NumberWheelGame` | `./config`, `./gameEngine`, `./prizeCalculator`, `./useNumberGame`, `./components/*`, `src/domain/game` (type), `src/hooks/usePrefersReducedMotion`, `src/utils/persian`, `./number-wheel.css` | `window` `keydown` listener (added/removed with the component); `performance.now()`; `navigator.vibrate?.()`; calls `onComplete` | NO — owns the contract and the input model | `CRITICAL` |
 | `src/games/number-wheel/gameEngine.ts` | **Pure** state machine + digit/target helpers | `randomTargetNumber`, `numberToDigits`, `digitsToNumber`, `formatDigits`, `randomDigits`, `createNewGame`, `GameAction`, `createInitialSnapshot`, `gameReducer`, `rollingFlags` | `./types` (types), `./config` (none at runtime) | `Math.random` only as a **default parameter** (`rng`) | YES | `CRITICAL` |
 | `src/games/number-wheel/useNumberGame.ts` | Reducer wiring + stable action creators | `useNumberGame`; re-exports `usePrefersReducedMotion` | `react`, `./gameEngine`, `./types`, `src/hooks/usePrefersReducedMotion` | none | YES | `IMPORTANT` |
-| `src/games/number-wheel/prizeCalculator.ts` | **Pure** scoring + prize string | `countExactMatches`, `calculatePrizeResult`, `formatPrize` | `./config`, `./types`, `src/utils/persian` | none | YES | `CRITICAL` |
+| `src/games/number-wheel/prizeCalculator.ts` | **Pure** scoring + prize string | `countExactMatches`, `calculatePrizeResult`, `formatPrize` (currently unused — the redesigned UI formats amounts via `formatPersianNumber` in the host) | `./config`, `./types`, `src/utils/persian` | none | YES | `CRITICAL` |
 | `src/games/number-wheel/config.ts` | All game tuning constants | 13 named constants (see `05_MINIGAME.md`) | — | none | YES | `CRITICAL` |
 | `src/games/number-wheel/types.ts` | Internal type vocabulary | `Digit`, `Digits`, `GameState`, `StoppedCount`, `GameSnapshot`, `WheelPrizeResult` | — | none | YES | `IMPORTANT` |
 | `src/games/number-wheel/number-wheel.css` | All game-specific styles + game-scoped `:root` tokens | — | consumes tokens from `src/styles/global.css` | none | YES (class names are game-local) | `IMPORTANT` |
 | `src/games/number-wheel/components/WheelGroup.tsx` | Lay out three reels; compute active index and locked flags | `WheelGroup` | `./NumberWheel`, `../types` | none | YES | `IMPORTANT` |
 | `src/games/number-wheel/components/NumberWheel.tsx` | **One reel**: rAF spin loop, damped-spring settle, direct DOM transform writes, imperative digit read | `NumberWheel`, `NumberWheelHandle`, `NumberWheelProps` | `react`, `../config`, `src/utils/persian` | `requestAnimationFrame` (2 loops), `performance.now()`, `window.setTimeout`, **direct `style.transform` write** | NO — the most performance- and correctness-sensitive file in the repo | `CRITICAL` |
-| `src/games/number-wheel/components/TargetDisplay.tsx` | Target readout + IDLE-only digit editor | `TargetDisplay` | `../types`, `src/utils/persian` | none | YES | `IMPORTANT` |
-| `src/games/number-wheel/components/GameControls.tsx` | START button (IDLE) / progress dots (RUNNING) / nothing (RESULT) | `GameControls` | `../types` | none | YES | `SUPPORTING` |
-| `src/games/number-wheel/components/ResultDisplay.tsx` | RESULT overlay: matches, prize, perfect celebration, zero-match messaging | `ResultDisplay` | `../config`, `../prizeCalculator`, `../types`, `src/components/Confetti`, `src/utils/persian` | none | YES | `IMPORTANT` |
+(The `TargetDisplay`, `GameControls`, and `ResultDisplay` components were **deleted** in the page
+redesign — the target editor + stop button moved into `NumberWheelGame.tsx`, and the result screens
+live in the host at `src/pages/GameResult.tsx`.)
 
 `NumberWheel` props: `ref?: Ref<NumberWheelHandle>` (React 19 ref-as-prop, no `forwardRef`), `digit`,
 `rolling`, `speed`, `locked?`, `active?`, `reducedMotion?`, `ariaLabel?`.
 Handle: `{ getCurrentDigit(): number }`.
 
-`WheelGroup` constants: `WHEEL_LABELS = ["چرخ عدد اول", "چرخ عدد دوم", "چرخ عدد سوم"]`.
-`GameControls` constant: `TOTAL_WHEELS = 3`.
-`ResultDisplay` constants: `ZERO_MATCH_RETRY_MESSAGE`, `ZERO_MATCH_NO_RETRY_MESSAGE`;
-default `attemptsRemaining = 0`. It renders **no navigation buttons** — navigation is the host's job.
+`WheelGroup` renders the three reels; the «رقم ۱/۲/۳» labels are hard-coded in `NumberWheelGame`
+(`reel-labels` row, LTR).
 
 ## Styles
 
 | Path | Responsibility | Notes | Importance |
 |---|---|---|---|
 | `src/styles/global.css` | `@font-face "B Yekan"`, all `:root` design tokens, reset, kiosk body rules, global reduced-motion override | Imported first in `src/main.tsx`. Everything else depends on its tokens | `CRITICAL` |
-| `src/styles/app.css` | Platform component styles: `.app`, `.page*`, `.btn*`, `.keyboard*`, category, game host chrome, leaderboard, `.confetti*` | Shared primitives only — no game-specific rules. The legacy survey/field styles were removed with the page-2 redesign | `CRITICAL` |
-| `src/styles/design-tokens.css` | The redesigned visual language's token set (`--ds-*`) + the scaled root font-size | Imported after `global.css`. The single source of truth for the redesign | `IMPORTANT` |
-| `src/styles/design-system.css` | Component styles for `src/components/ui/` (page shell, tracker, keypad, panels) | Consumes only `--ds-*` tokens; all fixed dimensions in rem | `IMPORTANT` |
+| `src/styles/app.css` | Platform component styles: `.app`, `.page*`, `.btn*`, `.keyboard*`, leaderboard, `.confetti*` | Shared primitives only — no game-specific rules. The legacy survey/category styles and the old game-page chrome (`.btn--start`/`.btn--stop`, `.chip*`, statusbar) were removed with the redesigns; the game page's styles live in `number-wheel.css` + `design-system.css` | `CRITICAL` |
+| `src/styles/design-tokens.css` | The redesigned visual language's token set (`--ds-*`), `@font-face` for IRANYekanXFaNum/Vazirmatn, + the scaled root font-size | Imported after `global.css`. The single source of truth for the redesign | `IMPORTANT` |
+| `src/styles/design-system.css` | Component styles for `src/components/ui/` (page shell, tracker, keypad, panels) **and the host-side result screens** (`.game-result*`, `.result-digit*`, `.result-action*`) | Consumes only `--ds-*` tokens; all fixed dimensions in rem | `IMPORTANT` |
 
 `src/app/designScale.ts` exports `DESIGN_WIDTH` / `DESIGN_HEIGHT` and `applyDesignScale()`
 (called in `src/main.tsx`), which sets `--s` on `<html>`; the redesign's rem-based sizing scales
@@ -187,8 +187,12 @@ Details in `08_STYLING_AND_UI_CONVENTIONS.md`.
 
 | Path | Purpose | Notes |
 |---|---|---|
-| `public/BYekan+.ttf` | The Persian UI font | Registered as `"B Yekan"`, weight 400, `font-display: swap`. Only face available; heavier weights are synthesized |
+| `public/BYekan+.ttf` | Legacy Persian UI font | Registered as `"B Yekan"` in `global.css`, weight 400; heavier weights synthesized. The redesigned pages use the fonts below instead |
+| `public/fonts/Vazirmatn/` | Bundled body font (Regular/Medium/SemiBold/Bold TTFs) | Registered in `design-tokens.css` as `--ds-font-body` "Vazirmatn" |
 | `public/favicon.svg` | Browser/tab icon | 64×64, dark rounded rect, three cyan reels, gold bar. Decorative |
+
+(Orbitron — `--ds-font-logo` — is **not present on disk**; the stack falls back to Bahnschrift.
+`public/fonts/Orbitron/` and `public/stores/` are untracked additions.)
 
 ## Trivial / Non-Application Files
 
@@ -208,7 +212,7 @@ main.tsx → app/ → pages/ → { components/, hooks/, utils/, services/, games
                               │                              │
                               └──────────► domain/ ◄─────────┘
 games/number-wheel/ → { react, domain/game (types), utils/persian,
-                        hooks/usePrefersReducedMotion, components/Confetti, own files }
+                        hooks/usePrefersReducedMotion, own files }
 ```
 
 Verified: nothing under `src/games/` imports `src/app/`, `src/pages/`, or `src/services/`.

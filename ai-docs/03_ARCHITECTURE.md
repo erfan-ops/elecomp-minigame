@@ -125,11 +125,13 @@ Wiring:
    producing a fresh reducer state, fresh target, fresh refs. There is no in-game "play again".
 
 `GamePage` is the **only** adapter. It:
-- narrows platform state into `GameContext` (`useMemo` over `[user, category, attempt]`),
+- narrows platform state into `GameContext` (`useMemo` over `[user, category, attempt]`; also carries
+  `attemptsTotal`),
 - widens `GameResult` into `GameSessionResult` (adds `userId`, `mobile`, survey answers, `attempt`,
   `sectorId`, `sectorName`, `gameId`, `playedAt`),
 - hands the record to `session.submitResult`,
-- renders its own status bar / retry / continue controls **outside** the game subtree.
+- after `onComplete` swaps the game for `GameResultScreen` (frames 6–8: win / loss / game over) —
+  all retry/continue chrome lives there, **outside** the game subtree.
 
 The game never learns whether persistence succeeded.
 
@@ -189,7 +191,9 @@ COUNT_TO_EMPLOYEES[countChoice], hasBenefits })` → phase `CATEGORY`. بازگ�
 or step 1 → `startNewUser()` (back to registration, full reset).
 
 **Category**
-Card tap → `selectedId` → «ادامه» enabled → `selectCategory(category)` → phase `GAME`.
+Card tap → `selectedId` → «شروع بازی» enabled → `selectCategory(category)` → phase `GAME`.
+بازگشت → `startNewUser()` (back to registration, full reset — the same transition the survey's
+first step uses; the session model has no phase-back).
 
 **Game**
 `GamePage` builds `context` and mounts the game keyed by `user.id:attempt`.
@@ -201,8 +205,10 @@ read the live digit from `wheelRefs[stoppedCount].current.getCurrentDigit()` →
 STOP sets `phase: "RESULT"`.
 `RESULT` → ref-guarded effect → `calculatePrizeResult(target, digits)` →
 `onComplete({ score: prize, winAmount: prize, metadata: { target, finalNumber, correctDigits, perfect } })`
-→ `GamePage.handleComplete` builds `GameSessionResult` → `session.submitResult` → `saveStatus`
-`saving` → `saved` | `error` → host status bar renders retry-save / retry-game / continue.
+→ `GamePage.handleComplete` stores the result (swapping the game for `GameResultScreen`) and builds
+`GameSessionResult` → `session.submitResult` → `saveStatus` `saving` → `saved` | `error` → the
+result screen renders save-status variants (saving line / retry-save + continue) and the view's
+actions (خروج / تلاش دوباره / ادامه).
 
 **Leaderboard**
 Mount → `resultRepository.getResults()` → `buildLeaderboard(results)` → table rows.
@@ -237,7 +243,7 @@ Mount → `resultRepository.getResults()` → `buildLeaderboard(results)` → ta
 | No real `<input>` so the OS keyboard never appears | `EXPLICIT` | `src/components/VirtualNumericKeyboard.tsx`, `src/pages/RegistrationPage.tsx` comments; `src/styles/app.css` comment |
 | Persian numerals converted at display layer only | `EXPLICIT` | `src/utils/persian.ts` doc comment; `CLAUDE.md` |
 | Mobile number as the sole identity (no names collected) | `EXPLICIT` | `src/domain/user.ts` doc comment |
-| STOP is presenter-keyboard-only; no on-screen stop button | `EXPLICIT` | `src/games/number-wheel/components/GameControls.tsx` and `NumberWheelGame.tsx` comments |
+| The stop button and the presenter keyboard both drive STOP (the 288×128 touchscreen button reads «توقف» while running; PageUp/PageDown/b/F5/Ctrl+R mirror it) | `EXPLICIT` | `NumberWheelGame.tsx` comments; `CLAUDE.md` input model |
 | Retry offered only after a zero-win result, capped by `MAX_GAME_ATTEMPTS` | `EXPLICIT` | `src/config/appConfig.ts` comment; `GamePage.canRetry` |
 | Anti-replay check fails open | `EXPLICIT` | `src/pages/RegistrationPage.tsx` comment |
 | One Context provider rather than a state library | `INFERRED` | Only `AppSessionContext` exists; zero external state deps |

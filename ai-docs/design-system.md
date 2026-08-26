@@ -18,8 +18,12 @@
 # - src/components/ui/NavButtons.tsx
 # - src/pages/RegistrationPage.tsx
 # - src/pages/SurveyPage.tsx
+# - src/pages/CategorySelectionPage.tsx
 # - src/domain/user.ts
+# - src/domain/category.ts
+# - src/config/appConfig.ts
 # - public/Container.svg
+# - public/stores/ (sponsor logos, page 4)
 # - public/fonts/IranYekanXVF/Farsi numerals/ (IRANYekanXFaNum weights 400–900)
 
 ## Design Canvas And Scaling Mechanism
@@ -40,9 +44,10 @@ resolution is unknown, so nothing in the new system hardcodes the canvas:
 `src/app/designScale.ts`; the whole redesigned UI refits. Verified at 1080×1800 (scale 1.0),
 800×1280 (scale 0.711), and 1440×2560 (scale 1.333) — measured sizes track the scale exactly.
 
-The pre-existing pages (category, game, leaderboard) do not use rem, so the scaled root font-size
-does not affect them; they keep their existing `clamp()/vmin` sizing until restyled. Page 2
-(survey) was redesigned into this language — see the page-2 composition below.
+The leaderboard is the only remaining legacy page: it does not use rem, so the scaled root
+font-size does not affect it and it keeps its existing `clamp()/vmin` sizing. Registration (page 1),
+survey (page 2), category (page 4), and the game page (frames 5–8) were redesigned into this
+language — see the compositions below.
 
 ## Design Tokens (single source of truth: `src/styles/design-tokens.css`)
 
@@ -60,11 +65,16 @@ tokens.
 | Radii | `--ds-radius` (24px), `--ds-radius-sm` (16px) |
 | Surfaces | `--ds-row-surface`, `--ds-row-surface-gold`, `--ds-row-gold-border`, `--ds-step-surface`, `--ds-avatar-surface`, `--ds-connector` |
 | Typography | `--ds-fs-*` / `--ds-lh-*` pairs (step 14/22, small 12/18, section 19/24, heading 60/66, input 36/40, key 48/48, rank 24/32, currency 12/16) plus `--ds-ls-input` (5.4px digit spacing) |
+| Game gold | `--ds-gold` (#FFCF3A), `--ds-gradient-gold-strong` (180deg #FFE790→#FFCF3A 45%→#E0A400 text gradient), `--ds-shadow-prize` (gold ring + glow) |
+| Game gradients | `--ds-gradient-win-heading` (161deg #D6FBFF 7.7%→#36AEBF 45.8%→#2FD6C4 92.3%, the win heading), `--ds-gradient-reel` (180deg #141330→#0A0A1C, the reel window) |
+| Game glows/shadows | `--ds-glow-active-reel` (cyan ring + 80px glow for the active reel), `--ds-shadow-stop` (cyan under-glow + halo for the stop button), `--ds-shadow-result-wrong` (red glow), `--ds-shadow-result-correct` (green glow) |
+| Game typography | `--ds-fs-result-heading` 72px / `--ds-lh-result-heading` 84px, `--ds-fs-result-digit` 60px, `--ds-fs-prize-amount` 96px / `--ds-lh-prize-amount` 120px |
 | Page-2 glows | `--ds-glow-tl` (rgba(54,174,191,0.32)), `--ds-glow-tr` (rgba(47,214,196,0.18)), `--ds-glow-bl` (rgba(54,174,191,0.22)), `--ds-glow-br` (rgba(255,207,58,0.08)), `--ds-glow-edge` (rgba(120,210,225,0.06) top strip), `--ds-glow-deco` (emoji drop-shadow 0 8px 24px cyan) |
 | Page-2 shadow/glass | `--ds-shadow-strong` (inner white highlight + 0 20px 27.5px teal glow), `--ds-glass-blur-soft` (blur(12px)) |
 | Page-2 fonts | `--ds-font-body` (Vazirmatn → IRANYekanX → IRANYekanXFaNum → B Yekan → Segoe UI), `--ds-font-logo` (Orbitron → Bahnschrift → Segoe UI) |
-| Page-1 FaNum faces | `--ds-font-fanum` (static `IRANYekanXFaNum`, weights 400–900) for digit runs (keypad, phone display, «وارد کنید»); `--ds-font-fanum-vf` (variable `IRANYekanXVFaNum`, weight axis 100–900) for the page-1 Persian texts (welcome block, step tracker, leaderboard panel) |
+| Page-1 FaNum faces | `--ds-font-fanum` (static `IRANYekanXFaNum`, weights 400–900) for digit runs (keypad, phone display, «وارد کنید») and the page-4 card names/heading; `--ds-font-fanum-vf` (variable `IRANYekanXVFaNum`, weight axis 100–900) for the Persian texts (welcome block, step tracker, leaderboard panel, page-4 kicker/subtitle) |
 | Page-2 typography | question 48/60, choice 36/32, nav 18/28, logo 30/36, logo-sub 14/20, star 30/36, `--ds-ls-logo` (0.75px Latin wordmark spacing) |
+| Page-4 category | `--ds-fs-category-emoji` (60px), `--ds-fs-category-name` (24px) / `--ds-lh-category-name` (32px) |
 
 ## Shared Components (`src/components/ui/`)
 
@@ -80,7 +90,7 @@ tokens.
 | `GameHeader` | — | Page-2 header: 64×64 primary-gradient star badge (radius 20, ★ 30/36 w900 white, strong glow) + LTR `LUCKY REELS` wordmark (Orbitron stack → Bahnschrift fallback, 30/36 w800, 0.75px letter-spacing, LUCKY white + REELS heading-gradient via `GradientText`) + «تجربه هیجان در غرفه» (14/20 w500 white 45%) underneath. |
 | `FloatingDecorations` | — | The 8 page-2 emoji (⭐🎉🎲💎✨🎮🎁🎯) at the spec's design-px positions/sizes with slight rotations, `drop-shadow` cyan glow, `pointer-events: none`; positions are rem-based so they scale with `--s`. |
 | `ChoiceGrid` | `options: readonly O[]`, `selected: O \| null`, `onSelect: (o: O) => void`, `disabled?` | 2×2 grid of 398×160 glass cards (radius 24, glass gradient, 1px cyan border, blur 12, 36/32 w600 white text). RTL flow: first option top-right, second top-left. Selected card: cyan border `rgba(111,228,242,0.65)` + primary glow + `#d6fbff` w700. `disabled` dims the grid to 35% and blocks taps (skip-checkbox state). |
-| `NavButtons` | `onBack`, `onContinue`, `continueDisabled?`, `backLabel?`, `continueLabel?` | بازگشت (141×64 glass, radius 16) + ادامه (154×64 primary gradient + strong glow), 18/28 text, 24 gap, RTL row (بازگشت right). Disabled ادامه sits at 35% opacity (spec §13). |
+| `NavButtons` | `onBack`, `onContinue`, `continueDisabled?`, `backLabel?`, `continueLabel?`, `className?` | بازگشت (141×64 glass, radius 16) + ادامه (154×64 primary gradient + strong glow), 18/28 text, 24 gap, RTL row (بازگشت right). Disabled ادامه sits at 35% opacity (spec §13). The optional `className` lands on the row for page-specific widths — the category page passes `nav-buttons--category` (138 + 16 + 189 = 343, Figma frame-4 spec). |
 | (page composition) | — | `welcome` (eyebrow 14/22 w600 `#6FE4F2`, heading 60/66 — white w581 part + gradient w800 part, subtitle white 55%; all in the variable FaNum face except the gradient «وارد کنید» which uses the static face) and `registration-content` (2-column grid, 32 gaps, phone panel on the RIGHT in RTL, leaderboard on the LEFT, 40 design px below the welcome block). |
 
 `LeaderboardPanel` binds to real data: `RegistrationPage` loads `buildLeaderboard(getResults())`,
@@ -118,6 +128,68 @@ step 1 = four count-range cards, step 2 = بله/خیر. The ranges map to store
 `{ employeeCount: 0, hasBenefits: false }`; بازگشت on step 1 calls `startNewUser()` (back to
 registration) and on step 2 returns to step 1; ادامه is disabled until the step is answerable.
 
+## Page 4 Composition (category, top → bottom)
+
+`PageShell variant="survey"` (corner glows + edge strip) + `FloatingDecorations` → `GameHeader` →
+`StepTracker` (`JOURNEY_STEPS`, `currentIndex = 3` — «سوال ۳» active, «بازی» inactive) → the
+`.category-screen` block (~30px below the stepper): kicker «سوال سوم» (14/22 w600 `#6FE4F2`,
+variable FaNum) → heading (48/60 w800 static FaNum, max-width 672, wraps to two lines) →
+subtitle «فقط یک گزینه قابل انتخاب است» (19/24 w500 white 55%, variable FaNum) → `.category-grid`
+→ `NavButtons` (`nav-buttons--category`: بازگشت 138 + شروع بازی 189, 16 gap; شروع بازی disabled
+at 35% while no category is selected) → `selectCategory` on start, `startNewUser` on back.
+
+The grid is **2 columns of 408px glass cards with 24px gaps, forced `direction: ltr`** so the
+`CATEGORIES` config order reads left→right (پوشاک top-left, per the Figma); the last card
+(کالای دیجیتال) spans both columns via `category-card--wide`. Each card stacks emoji (60px) →
+name (24/32 DemiBold, static FaNum) → sponsor logo row (40px circles, `#F8F8F8`, 8px gaps, LTR,
+file order = left→right) with ~16px gaps. The selected card uses the question-page treatment:
+cyan border `rgba(111,228,242,0.65)` + primary glow + the cyan glass gradient (`.choice-card--selected`
+language). Logos come from `public/stores/` keyed by category id (`CATEGORY_LOGOS` in the page
+file); `src` URLs are `encodeURIComponent`-encoded (spaces / Persian filenames).
+
+## Game Page Composition (Figma frames 5–8)
+
+`PageShell variant="survey"` (corner glows + edge strip) + `FloatingDecorations` → `GameHeader` →
+`StepTracker` (`JOURNEY_STEPS`, `currentIndex = 4` — «بازی» active) → either the play screen
+(`NumberWheelGame`, frame 5) or, after `onComplete`, one of three result views
+(`GameResultScreen`, frames 6–8). All game-page styles are rem-based; the play-screen classes live
+in `src/games/number-wheel/number-wheel.css` (game-scoped `:root` tokens `--wheel-w/h/digit-font`),
+the result-screen classes in `design-system.css` (`.game-result*`, `.result-digit*`, `.result-action*`).
+
+**Frame 5 (play screen)** — `.slot-game` column: exit pill (`slot-game__exit`, «خروج», top
+inset-inline-end) → kicker «ماشین شانس» (14/22 w600 `#6FE4F2`) → heading «عدد NNN را پیدا کنید»
+(48/60 w800 static FaNum; the target digits are `slot-game__target-digit` — gold
+`--ds-gradient-gold-strong` text-clip, 64×72, LTR — rendered as **buttons** at IDLE (tap cycles the
+digit 0→9, `▲` affordance) and **spans** once running) → «عدد تصادفی» ghost pill (IDLE only) →
+`.slot-game__status` with two glass pills: «فرصتهای بازی» (cyan `--ds-eyebrow` dots, one per
+attempt, live = spent) and «شلیک برای رقم N» (green `--ds-live` dots, one per shot) → `.reel-machine`
+(864×518 design px glass box; `reel-labels` رقم ۱/۲/۳ LTR over `WheelGroup` of three 250×380 reels
+with 180px digits, active reel cyan `--ds-glow-active-reel` + pulse) → `.slot-game__stop`
+(288×128, radius 999, `--ds-gradient-primary` + `--ds-shadow-stop`; «شروع» at IDLE / «توقف» while
+running, hidden at RESULT) → remote hint «دکمه ریموت را فشار دهید…» + `kbd` Space badge (decorative)
+→ `.rules-panel` (glass, 📜 header, 3 rules — the last «در مجموع N فرصت» uses
+`context.attemptsTotal` — and 3 `prize-card`s with **config** amounts, last card gold).
+
+**Frame 6 (loss, retries left)** — kicker «این بار نشد» → heading «متأسفانه برنده نشدید» (72/84
+w900 white) → subtitle «شما N رقم را درست حدس زدید» → three `.result-digit` cards (128×128, red
+`#FF4D6D` border + `--ds-shadow-result-wrong`, digits `#FF8B96` for wrong, green for correct) →
+«عدد هدف: NNN» (cyan, `--ds-eyebrow`, zero-padded 3 digits, LTR) → message «هنوز N فرصت دیگر
+دارید!» (`attemptsRemaining`, dynamic) → actions: «خروج از بازی» (glass) + «تلاش دوباره»
+(`result-action--primary`).
+
+**Frame 7 (win)** — same skeleton with kicker «نتیجه بازی», heading «برنده شدید!»
+(`game-result__heading--gradient` = `--ds-gradient-win-heading` text-clip), all three digit cards
+green, and the gold `.game-result__prize` card (453×258 design px, `--ds-shadow-prize`, amount
+96px gold-strong clip + «تومان») with the actual `winAmount`; `Confetti` when
+`!reducedMotion`. Actions: «خروج از بازی» + «ادامه» (→ leaderboard).
+
+**Frame 8 (game over)** — same skeleton, message «فرصتهای بازی شما به پایان رسید و در این بازی
+موفق به دریافت جایزه نشدید.», **only** «خروج از بازی» (primary).
+
+Save-status variants: `"saving"` shows «در حال ثبت نتیجه…»; `"error"` shows the error line +
+«تلاش مجدد»/«ادامه» under the view. All values (digits, target, amount, attempts) derive from the
+actual `GameResult` + session — never hard-coded design values.
+
 ## Deviations From The Reference Spec (logged)
 
 | # | Deviation | Reason |
@@ -138,11 +210,22 @@ registration) and on step 2 returns to step 1; ادامه is disabled until the 
 | 14 | Page 2: `Orbitron` is absent, so the LUCKY REELS wordmark renders in Bahnschrift (fallback). Same as deviation 1. | Asset availability |
 | 15 | Page 2: option labels use English digits (`1 تا 10 نفر` … `بیش از 300 نفر`) — the spec mixed Persian and English digits; the fonts render the Persian glyphs. Same as deviation 6. | User directive |
 | 16 | Page 2: بازگشت did not exist before; it now appears on both survey steps. On step 1 it performs `startNewUser()` — the documented session reset — which returns to registration with a clean slate (a mid-survey back can never restore a previous user; none is stored). | New control vs existing session model |
+| 17 | Page 4: بازگشت did not exist on the category page before; it now performs `startNewUser()` — the same back transition the survey's first step uses (the session model has no phase-back). A mid-category back therefore returns to registration, not to the survey. | New control vs existing session model |
+| 18 | Page 4: `CATEGORIES` in `src/config/appConfig.ts` was replaced with the Figma frame-4 set (پوشاک، خرید روزانه، طلا و زیورآلات، سفر و گردشگری، زیبایی و سلامت، ورزشی، کالای دیجیتال) — the config previously held 8 generic categories that matched no frame. Array order = visual order (the grid renders LTR). Stored `GameSessionResult.sector` ids change accordingly (no other code referenced the old ids). | User decision (asked and confirmed) |
+| 19 | Page 4: sponsor logo rows use the local assets in `public/stores/` per the organizer's mapping; `image 9.png` appears in both پوشاک and ورزشی exactly as mapped. The last card spans both columns because the set has 7 categories (the Figma's layout); a different count would reflow automatically. | Organizer's logo mapping |
+| 20 | Game page: the rules-panel prize cards and the win prize card show the **config** amounts (۵۰۰٬۰۰۰ / ۱٬۰۰۰٬۰۰۰ / ۵٬۰۰۰٬۰۰۰ تومان), not the Figma's ۵٬۰۰۰ — the frame's numbers are design examples and HARD RULES forbid hard-coding them. | HARD RULES |
+| 21 | Game page: reel geometry is 250×380 with 180px digits (0.996 scale → 249.02×378.52, measured), the frame's 864×518 machine box; the Figma's raw sizes were already the design-scale equivalents. | Design canvas parity |
+| 22 | Game page: the `kbd` Space badge next to the remote hint is **decorative** — the presenter keys remain PageUp/PageDown/b/F5/Ctrl+R (existing input model untouched; no Space handler was added). | Existing behavior |
+| 23 | Game page: the frame-6 «تلاش دوباره» is absent on frame 8 (game over) — only «خروج از بازی» renders, per the explicit spec; the retry chain otherwise calls the existing `session.retry()` path (remount via `key`). | User directive |
+| 24 | Game page: a win is any `winAmount > 0` — one exact digit (۵۰۰٬۰۰۰) already wins, so the win screen shows for 1–3 correct digits; the frame's 477/453 example digits are never used. | Game logic is the source of truth |
+| 25 | Game page: the target line zero-pads to three digits («عدد هدف: ۰۴۳») — a target below 100 would otherwise show one or two digits, breaking the frame's three-digit presentation. | Frame presentation |
+| 26 | Game page: «شلیک برای رقم N» labels the shot dots (N = next wheel to stop, ۱→۳) instead of the frame's «رقم ۱» pills wording; the semantics match the LTR labels above the reels. | Frame wording, same meaning |
 
-## Restyling Pages 3–5
+## Restyling Status
 
-Pages 3–5 (category, game, leaderboard) remain in the legacy `clamp()/vmin` language. When they
-are redesigned, page 2 is the worked example:
+Registration, survey, category, and the game page (frames 5–8) are redesigned into the design-scale
+language. The **leaderboard** is the only page still in the legacy `clamp()/vmin` language — the
+worked-example steps that produced the other pages:
 
 1. Compose each page inside `PageShell` (pick the `"default"` or `"survey"` variant — or add a
    new variant) and `StepTracker` (with that page's `currentIndex`).
@@ -151,3 +234,9 @@ are redesigned, page 2 is the worked example:
 4. Follow the BEM-ish class convention (`block__element--modifier`), Persian numerals at the
    display layer, `direction: ltr` on numeric runs, no letter-spacing on Persian text.
 5. Keep container logic untouched; presentation-only changes only.
+6. The category page (Figma frame 4) added: a LTR-forced grid so config order = visual order,
+   `category-card--wide` for the full-width last card, and per-category sponsor logo rows from
+   `public/stores/` (40px circles).
+7. The game page (frames 5–8) kept the platform chrome (shell/header/tracker) while the play and
+   result screens ship their own styles — play-screen CSS in the game module
+   (`number-wheel.css`), result-screen CSS in `design-system.css`.

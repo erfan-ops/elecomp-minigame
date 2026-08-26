@@ -53,8 +53,8 @@ There is no layout component. Layout is CSS-driven:
 - `.app` — `height: 100%`, `overflow: hidden`, radial-gradient background.
 - `.page` — every page's root class; `height: 100%`, column flex, centered, `overflow: hidden`,
   fluid `clamp()` padding and gap.
-- The redesigned pages (registration, survey) render inside `PageShell` instead of `.page`. The
-  remaining legacy pages add a modifier: `.page--category`, `.page--game`, `.page--leaderboard`.
+- The redesigned pages (registration, survey, category) render inside `PageShell` instead of `.page`.
+  The remaining legacy pages add a modifier: `.page--game`, `.page--leaderboard`.
 - `.page__title`, `.page__actions` are shared page-level primitives.
 
 ## Context Provider
@@ -94,8 +94,8 @@ There is no layout component. Layout is CSS-driven:
 |---|---|---|---|---|---|---|
 | `RegistrationPage` | `src/pages/RegistrationPage.tsx` | Collect mobile; validate; anti-replay check; `register` | none | local `mobileDigits`, `error`, `checking`, `topEntries`; session `register` | `resultRepository.getResults()` twice: once on mount for the leaderboard panel's top 5, once per submit for anti-replay | Digit cap 10 hard-coded in `appendDigit`; validation via `isValidMobileDigits`. **Redesigned page 1**: container logic unchanged, presentation composed from `src/components/ui/` components inside `PageShell` |
 | `SurveyPage` | `src/pages/SurveyPage.tsx` | Collect `employeeCount` + `hasBenefits`, or skip | none | local `step` (1 \| 2), `countChoice`, `hasBenefits`, `notEmployed`; session `completeSurvey`, `startNewUser` | none | **Redesigned page 2**: two local steps inside the single SURVEY phase — step 1 = four count-range cards (`COUNT_OPTIONS` → `COUNT_TO_EMPLOYEES` {10,50,300,301}), step 2 = بله/خیر. Skip checkbox stores `{0, false}`. بازگشت: step 2 → step 1; step 1 → `startNewUser()`. ادامه disabled until the step is answerable |
-| `CategorySelectionPage` | `src/pages/CategorySelectionPage.tsx` | Pick one sector from `CATEGORIES` | none | local `selectedId`; session `selectCategory` | none | Continue disabled until a card is selected |
-| `GamePage` | `src/pages/GamePage.tsx` | Host the active game; adapt + persist; retry/continue chrome | none | session `user`, `category`, `survey`, `attempt`, `saveStatus`, `savedResult`, `submitResult`, `retrySave`, `retry`, `goToLeaderboard`, `startNewUser`; ref `submittedRef` | `new Date().toISOString()`; `session.submitResult` → repository | Returns `null` if `user`/`category`/`survey` is missing (defensive) |
+| `CategorySelectionPage` | `src/pages/CategorySelectionPage.tsx` | Pick one sector from `CATEGORIES` | none | local `selectedId`; session `selectCategory`, `startNewUser` | none | **Redesigned page 4**: `PageShell variant="survey"` + `GameHeader` + `FloatingDecorations` + `StepTracker` (index 3); glass cards (emoji + name + sponsor logos from `public/stores/`); شروع بازی disabled until a card is selected; بازگشت = `startNewUser()` (same back transition as survey step 1) |
+| `GamePage` | `src/pages/GamePage.tsx` | Host the active game; adapt + persist; retry/continue chrome | none | session `user`, `category`, `survey`, `attempt`, `saveStatus`, `savedResult`, `submitResult`, `retrySave`, `retry`, `goToLeaderboard`, `startNewUser`; local `result` (`GameResult \| null`); ref `submittedRef` | `new Date().toISOString()`; `session.submitResult` → repository | Returns `null` if `user`/`category`/`survey` is missing (defensive). After `onComplete` renders `GameResultScreen` (frames 6–8) instead of the game; retry = `setResult(null)` + `session.retry()` (remount via `key`). Wrapped in `PageShell variant="survey"` with `GameHeader` + `FloatingDecorations` + `StepTracker` (index 4) |
 | `LeaderboardPage` | `src/pages/LeaderboardPage.tsx` | Load results, build + render ranked table | none | local `loadState`, `entries`; session `startNewUser` | `resultRepository.getResults()` in `useEffect` | Only scrollable region in the app |
 
 All five pages take **no props** — they read everything from `useAppSession()`.
@@ -121,7 +121,9 @@ All five pages take **no props** — they read everything from `useAppSession()`
 ## Game Components
 
 Documented in `05_MINIGAME.md` and `07_COMPONENTS_AND_MODULES.md`:
-`NumberWheelGame`, `WheelGroup`, `NumberWheel`, `TargetDisplay`, `GameControls`, `ResultDisplay`.
+`NumberWheelGame`, `WheelGroup`, `NumberWheel`. (The old `TargetDisplay`/`GameControls`/
+`ResultDisplay` were deleted in the page redesign; their roles moved into `NumberWheelGame`
+and the host-side `GameResultScreen` in `src/pages/GameResult.tsx`.)
 
 ## Hooks
 
@@ -178,7 +180,9 @@ There is no logging framework, no `console.*` call, and no telemetry in `src/`.
 
 - `LeaderboardPage`: `loadState` = `"loading"` (`در حال بارگذاری…`) → `"loaded"` (table, or
   `هنوز نتیجه‌ای ثبت نشده است.` when empty) → `"error"` (message + retry button).
-- `GamePage`: status bar rendered only when `saveStatus !== "idle"`; `"saving"` shows `در حال ثبت نتیجه…`.
+- `GameResultScreen`: `saveStatus` variants under the result views — `"saving"` shows
+  `در حال ثبت نتیجه…`; `"error"` shows the error line + «تلاش مجدد»/«ادامه»; `"saved"` shows the
+  view's actions (خروج / تلاش دوباره / ادامه).
 - `RegistrationPage`: `checking` disables the «ورود» button during the anti-replay lookup (no spinner).
 
 ## Suspense / Lazy Loading

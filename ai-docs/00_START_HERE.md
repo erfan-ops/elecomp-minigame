@@ -83,7 +83,7 @@ Full rules and the change-type → doc mapping live in `11_AI_MAINTENANCE_RULES.
 | No page scrolling except the leaderboard list | `src/styles/global.css` (`body { overflow: hidden }`), `src/styles/app.css` (`.leaderboard { overflow-y: auto }`) |
 | No real `<input>`; digits via `VirtualNumericKeyboard` | `src/pages/RegistrationPage.tsx` (redesigned `ui/Keypad`), `src/components/VirtualNumericKeyboard.tsx` (retained, unused) |
 | All user-facing text Persian; document is `lang="fa" dir="rtl"` | `index.html` |
-| Numeric sequences render LTR | `direction: ltr` on `.wheel-group`, `.target__digits`, `.stop-dots`, `.field--ltr`, `.chip--user`, `.leaderboard__mobile`, `.keyboard` |
+| Numeric sequences render LTR | `direction: ltr` on `.wheel-group`, `.reel-labels`, `.slot-game__target`, `.game-result__digits`, `.game-result__target-value`, `.prize-card__value`, `.leaderboard__mobile`, `.keyboard` |
 | Mobile masked on public screens, stored unmasked | `formatMaskedMobile` in `src/domain/user.ts` |
 | Context menu blocked | `src/app/App.tsx` `onContextMenu` |
 | Refresh keys suppressed during the game | `src/games/number-wheel/NumberWheelGame.tsx` keydown handler |

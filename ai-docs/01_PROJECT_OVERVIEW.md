@@ -31,7 +31,9 @@ Journey (`AppPhase` values, in order — `src/app/routes.tsx`):
 ## What The Minigame Does
 
 Active game id: `number-wheel` (`ACTIVE_GAME_ID` in `src/config/appConfig.ts`).
-Registry display name: `بازی اعداد`. In-game title (`GAME_TITLE`): `عددو پیدا کن`.
+Registry display name: `بازی اعداد`. The play screen is the redesigned «ماشین شانس» slot-game page
+(Figma frame 5); the result screens (frames 6–8) render in the host (`src/pages/GameResult.tsx`).
+(`GAME_TITLE` was removed from the game config in the redesign.)
 
 - Three vertical digit reels (hundreds, tens, ones — left to right) plus an editable 3-digit **target**.
 - While `IDLE` the target can be edited digit-by-digit (tap cycles `+1 mod 10`) or randomized.

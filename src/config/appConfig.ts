@@ -18,14 +18,17 @@ export const ACTIVE_GAME_ID = "number-wheel";
  */
 export const MAX_GAME_ATTEMPTS = 3;
 
-/** Sector categories the player can choose from. */
+/**
+ * Sector categories the player can choose from — the Figma frame-4 set
+ * (2026-08-26). Array order is the visual order: the grid renders LTR, so
+ * پوشاک is top-left and کالای دیجیتال (the last item) spans both columns.
+ */
 export const CATEGORIES: readonly Category[] = [
-  { id: "fashion", name: "پوشاک" },
+  { id: "clothing", name: "پوشاک" },
+  { id: "daily-shopping", name: "خرید روزانه" },
+  { id: "jewelry", name: "طلا و زیورآلات" },
+  { id: "travel", name: "سفر و گردشگری" },
+  { id: "beauty", name: "زیبایی و سلامت" },
+  { id: "sports", name: "ورزشی" },
   { id: "digital", name: "کالای دیجیتال" },
-  { id: "sports", name: "ورزش" },
-  { id: "restaurant", name: "رستوران و کافه" },
-  { id: "entertainment", name: "سرگرمی" },
-  { id: "appliance", name: "لوازم خانگی" },
-  { id: "beauty", name: "سلامت و زیبایی" },
-  { id: "stationery", name: "کتاب و نوشت‌افزار" },
 ];

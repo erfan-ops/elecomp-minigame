@@ -46,7 +46,7 @@ export function RegistrationPage() {
   }, []);
 
   const appendDigit = (digit: string) => {
-    if (mobileDigits.length >= 10) return; // exactly 10 digits, no more
+    if (mobileDigits.length >= 11) return; // exactly 11 digits, no more
     setMobileDigits(mobileDigits + digit);
     setError(null);
   };

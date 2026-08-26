@@ -1,7 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import type { GameProps } from "../../domain/game";
+import { usePrefersReducedMotion } from "../../hooks/usePrefersReducedMotion";
+import { formatPersianNumber, toPersianDigits } from "../../utils/persian";
+import { WheelGroup } from "./components/WheelGroup";
+import type { NumberWheelHandle } from "./components/NumberWheel";
 import {
-  GAME_TITLE,
+  CURRENCY_SYMBOL,
   MIN_STOP_INTERVAL_MS,
   PRIZE_EXACT_1,
   PRIZE_EXACT_2,
@@ -10,15 +14,16 @@ import {
   WHEEL_SPEEDS,
 } from "./config";
 import { digitsToNumber, randomDigits, rollingFlags } from "./gameEngine";
-import { calculatePrizeResult, formatPrize } from "./prizeCalculator";
+import { calculatePrizeResult } from "./prizeCalculator";
 import { useNumberGame } from "./useNumberGame";
-import { GameControls } from "./components/GameControls";
-import type { NumberWheelHandle } from "./components/NumberWheel";
-import { ResultDisplay } from "./components/ResultDisplay";
-import { TargetDisplay } from "./components/TargetDisplay";
-import { WheelGroup } from "./components/WheelGroup";
-import { usePrefersReducedMotion } from "../../hooks/usePrefersReducedMotion";
 import "./number-wheel.css";
+
+/** Prize tiers shown on the rules panel, cheapest first (config values, not design mocks). */
+const PRIZE_TIERS = [
+  { emoji: "🎉", digitCount: 1, amount: PRIZE_EXACT_1 },
+  { emoji: "🔥", digitCount: 2, amount: PRIZE_EXACT_2 },
+  { emoji: "💰", digitCount: 3, amount: PRIZE_EXACT_3 },
+] as const;
 
 /**
  * The number-wheel game, packaged as a pluggable game module.
@@ -29,10 +34,9 @@ import "./number-wheel.css";
  * the platform remounting this component.
  *
  * Input model: the player presses START on the touchscreen (the button stays
- * visible), and the presenter can drive the whole round from a keyboard —
- * Page Up / Page Down / b / the refresh key start the game from IDLE and
- * act as the three STOP presses while RUNNING. There is no on-screen stop
- * button.
+ * visible and becomes «توقف» while running), and the presenter can drive the
+ * whole round from a keyboard — Page Up / Page Down / b / the refresh key
+ * start the game from IDLE and act as the three STOP presses while RUNNING.
  */
 export function NumberWheelGame({ context, onComplete, onExit }: GameProps) {
   const { state, stoppedCount, target, digits, start, stop, setTarget } = useNumberGame();
@@ -54,10 +58,15 @@ export function NumberWheelGame({ context, onComplete, onExit }: GameProps) {
     [reducedMotion],
   );
 
-  const result = useMemo(
-    () => (state === "RESULT" ? calculatePrizeResult(target, digits) : null),
-    [state, target, digits],
+  /** Total attempts the platform grants — used for the rules line and status dots. */
+  const attemptsTotal = context.attemptsTotal ?? (context.attemptsRemaining ?? 0) + 1;
+  /** Attempts already spent, including this one (platform fills both numbers). */
+  const spentAttempts = Math.max(
+    0,
+    Math.min(attemptsTotal, attemptsTotal - (context.attemptsRemaining ?? attemptsTotal - 1)),
   );
+  /** Shots already taken (a running round counts its own shot in progress). */
+  const shotsTaken = Math.min(3, stoppedCount + (state === "RUNNING" ? 1 : 0));
 
   // Report the outcome exactly once, the moment the game reaches RESULT.
   const completedRef = useRef(false);
@@ -113,6 +122,15 @@ export function NumberWheelGame({ context, onComplete, onExit }: GameProps) {
     stop(lockedDigit);
   }, [state, stoppedCount, stop]);
 
+  /** The big touchscreen button: START while idle, STOP while running. */
+  const handlePrimaryPress = useCallback(() => {
+    if (state === "IDLE") {
+      start();
+    } else {
+      handleStop();
+    }
+  }, [state, start, handleStop]);
+
   // The presenter drives the game from a keyboard: Page Up, Page Down, "b",
   // and the refresh keys start the game while IDLE and act as the stop
   // button while RUNNING. The refresh shortcuts (F5 / Ctrl+R / Cmd+R) are
@@ -142,34 +160,78 @@ export function NumberWheelGame({ context, onComplete, onExit }: GameProps) {
   }, [state, start, handleStop]);
 
   return (
-    <div className="number-wheel-game">
-      <header className="number-wheel-game__header">
-        <h1 className="number-wheel-game__title">{GAME_TITLE}</h1>
-        <button type="button" className="number-wheel-game__exit" onClick={onExit}>
-          خروج
-        </button>
-      </header>
+    <div className="slot-game">
+      <button type="button" className="slot-game__exit" onClick={onExit}>
+        خروج
+      </button>
 
-      <div className="number-wheel-game__main">
-        {state === "IDLE" && (
-          <div className="number-wheel-game__instructions">
-            <p>
-              شروع را بزنید تا سه چرخ بچرخند؛ مجری چرخ‌ها را یکی‌یکی متوقف می‌کند و هر بار چرخِ
-              برجسته از چپ به راست قفل می‌شود.
-            </p>
-            <p>
-              جایزه فقط برای رقم‌هایی است که دقیقاً با عدد هدف یکی باشند: ۳ رقم ={" "}
-              {formatPrize(PRIZE_EXACT_3)}، ۲ رقم = {formatPrize(PRIZE_EXACT_2)}، ۱ رقم ={" "}
-              {formatPrize(PRIZE_EXACT_1)}.
-            </p>
-          </div>
-        )}
-        <TargetDisplay
-          digits={target}
-          editable={state === "IDLE"}
-          onDigitTap={handleDigitTap}
-          onRandom={handleRandomTarget}
-        />
+      <span className="slot-game__kicker">ماشین شانس</span>
+
+      <h1 className="slot-game__heading">
+        <span>عدد</span>
+        {/* Target digits: tappable (cycle 0→9) only before the game starts. */}
+        <span className="slot-game__target" dir="ltr">
+          {target.map((digit, index) =>
+            state === "IDLE" ? (
+              <button
+                key={index}
+                type="button"
+                className="slot-game__target-digit"
+                onClick={() => handleDigitTap(index)}
+                aria-label={`رقم ${index + 1} هدف، ${toPersianDigits(digit)}، برای تغییر ضربه بزنید`}
+              >
+                {toPersianDigits(digit)}
+              </button>
+            ) : (
+              <span key={index} className="slot-game__target-digit">
+                {toPersianDigits(digit)}
+              </span>
+            ),
+          )}
+        </span>
+        <span>را پیدا کنید</span>
+      </h1>
+
+      {state === "IDLE" && (
+        <button type="button" className="slot-game__random" onClick={handleRandomTarget}>
+          عدد تصادفی
+        </button>
+      )}
+
+      <div className="slot-game__status" role="group" aria-label="وضعیت بازی">
+        <div className="status-pill">
+          <span className="status-pill__label">فرصت‌های بازی</span>
+          <span className="status-pill__dots" aria-hidden="true">
+            {Array.from({ length: attemptsTotal }, (_, index) => (
+              <span
+                key={index}
+                className={`status-pill__dot status-pill__dot--cyan${index < spentAttempts ? " status-pill__dot--live" : ""}`}
+              />
+            ))}
+          </span>
+        </div>
+        <div className="status-pill">
+          <span className="status-pill__label">
+            شلیک برای رقم {toPersianDigits(Math.min(stoppedCount + 1, 3))}
+          </span>
+          <span className="status-pill__dots" aria-hidden="true">
+            {Array.from({ length: 3 }, (_, index) => (
+              <span
+                key={index}
+                className={`status-pill__dot status-pill__dot--green${index < shotsTaken ? " status-pill__dot--live" : ""}`}
+              />
+            ))}
+          </span>
+        </div>
+      </div>
+
+      <div className="reel-machine">
+        {/* LTR row so رقم ۱ (the first wheel to stop, the hundreds) is leftmost. */}
+        <div className="reel-labels" dir="ltr" aria-hidden="true">
+          <span className="reel-labels__item">رقم ۱</span>
+          <span className="reel-labels__item">رقم ۲</span>
+          <span className="reel-labels__item">رقم ۳</span>
+        </div>
         <WheelGroup
           digits={digits}
           rolling={rolling}
@@ -178,22 +240,66 @@ export function NumberWheelGame({ context, onComplete, onExit }: GameProps) {
           state={state}
           reducedMotion={reducedMotion}
         />
-        <GameControls
-          state={state}
-          stoppedCount={stoppedCount}
-          onStart={start}
-        />
       </div>
 
-      {state === "RESULT" && result && (
-        <ResultDisplay
-          target={target}
-          final={digits}
-          result={result}
-          reducedMotion={reducedMotion}
-          attemptsRemaining={context.attemptsRemaining}
-        />
+      {state !== "RESULT" && (
+        <button
+          type="button"
+          className="slot-game__stop"
+          onClick={handlePrimaryPress}
+          aria-label={state === "IDLE" ? "شروع بازی" : "توقف چرخ"}
+        >
+          {state === "IDLE" ? "شروع" : "توقف"}
+        </button>
       )}
+
+      <p className="remote-hint">
+        <span>دکمه ریموت را فشار دهید تا چرخ متوقف شود</span>
+        <kbd className="remote-hint__key" dir="ltr" aria-hidden="true">
+          Space
+        </kbd>
+      </p>
+
+      <div className="rules-panel">
+        <div className="rules-panel__header">
+          <span className="rules-panel__icon" aria-hidden="true">
+            📜
+          </span>
+          <div className="rules-panel__titles">
+            <h2 className="rules-panel__title">قوانین بازی</h2>
+            <p className="rules-panel__subtitle">قبل از شروع بخوانید</p>
+          </div>
+        </div>
+        <ul className="rules-panel__list">
+          <li>
+            <span aria-hidden="true">🎯</span> عدد ۳ رقمی را پیدا کنید
+          </li>
+          <li>
+            <span aria-hidden="true">🕹️</span> برای هر رقم باید دکمه توقف را بزنید
+          </li>
+          <li>
+            <span aria-hidden="true">🔄</span> در مجموع {toPersianDigits(attemptsTotal)} فرصت برای
+            کل بازی دارید
+          </li>
+        </ul>
+        <div className="rules-panel__prizes">
+          {PRIZE_TIERS.map((tier, index) => (
+            <div
+              key={tier.digitCount}
+              className={`prize-card${index === PRIZE_TIERS.length - 1 ? " prize-card--gold" : ""}`}
+            >
+              <span className="prize-card__emoji" aria-hidden="true">
+                {tier.emoji}
+              </span>
+              <span className="prize-card__label">{toPersianDigits(tier.digitCount)} رقم درست</span>
+              <span className="prize-card__value" dir="ltr">
+                {formatPersianNumber(tier.amount)}
+              </span>
+              <span className="prize-card__currency">{CURRENCY_SYMBOL}</span>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

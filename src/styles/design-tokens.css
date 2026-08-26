@@ -72,6 +72,40 @@
   font-display: swap;
 }
 
+/* Vazirmatn — bundled supporting face (game remote hint, result messages),
+   registered from public/fonts/Vazirmatn/fonts/ttf/. */
+@font-face {
+  font-family: "Vazirmatn";
+  src: url("/fonts/Vazirmatn/fonts/ttf/Vazirmatn-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Vazirmatn";
+  src: url("/fonts/Vazirmatn/fonts/ttf/Vazirmatn-Medium.ttf") format("truetype");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Vazirmatn";
+  src: url("/fonts/Vazirmatn/fonts/ttf/Vazirmatn-SemiBold.ttf") format("truetype");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Vazirmatn";
+  src: url("/fonts/Vazirmatn/fonts/ttf/Vazirmatn-Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   /* Design scale — set by src/app/designScale.ts.
      Fixed dimensions are expressed in rem against the scaled root size. */
@@ -143,8 +177,9 @@
   --ds-connector: rgba(255, 255, 255, 0.12);
 
   /* Fonts — the placeholder face renders Latin digits with Persian glyphs.
-     Vazirmatn and Orbitron are not present in the repository; their names
-     sit first in the stacks so they activate automatically if added. */
+     Vazirmatn is bundled and registered (public/fonts/Vazirmatn); Orbitron is
+     not present in the repository, its name sits first in the stack so it
+     activates automatically if added. */
   --ds-font-fanum: "IRANYekanXFaNum", "B Yekan", "Segoe UI", sans-serif;
   /* Variable FaNum face — the page-1 Persian texts use this. */
   --ds-font-fanum-vf: "IRANYekanXVFaNum", "IRANYekanXFaNum", "B Yekan",
@@ -200,6 +235,38 @@
   --ds-fs-star: 1.875rem; /* 30 */
   --ds-lh-star: 2.25rem; /* 36 */
   --ds-ls-logo: 0.046875rem; /* 0.75px */
+
+  /* Page 4 — category cards */
+  --ds-fs-category-emoji: 3.75rem; /* 60 */
+  --ds-fs-category-name: 1.5rem; /* 24 */
+  --ds-lh-category-name: 2rem; /* 32 */
+
+  /* Pages 5–8 — game screen, result screens (Figma frames 5–8) */
+  --ds-gold: #ffcf3a;
+  --ds-gradient-gold-strong: linear-gradient(
+    180deg,
+    #ffe790 0%,
+    #ffcf3a 45%,
+    #e0a400 100%
+  );
+  --ds-gradient-win-heading: linear-gradient(
+    161deg,
+    #d6fbff 7.7%,
+    #36aebf 45.8%,
+    #2fd6c4 92.3%
+  );
+  --ds-gradient-reel: linear-gradient(180deg, #141330 0%, #0a0a1c 100%);
+  --ds-glow-active-reel: 0 0 0 1px #6fe4f2, 0 0 80px -4px rgba(54, 174, 191, 0.8);
+  --ds-shadow-stop: 0 20px 63.662px -10.535px rgba(54, 174, 191, 0.97),
+    0 0 0 12.127px rgba(54, 174, 191, 0.07);
+  --ds-shadow-result-wrong: 0 0 25px rgba(255, 77, 109, 0.6);
+  --ds-shadow-result-correct: 0 0 40px rgba(52, 209, 122, 0.7);
+  --ds-shadow-prize: 0 0 0 1px #ffcf3a, 0 30px 80px -20px rgba(255, 207, 58, 0.6);
+  --ds-fs-result-heading: 4.5rem; /* 72 */
+  --ds-lh-result-heading: 5.25rem; /* 84 */
+  --ds-fs-result-digit: 3.75rem; /* 60 */
+  --ds-fs-prize-amount: 6rem; /* 96 */
+  --ds-lh-prize-amount: 7.5rem; /* 120 */
 }
 
 /* The design system scales by rem: one rem = 16 design pixels × --s. */

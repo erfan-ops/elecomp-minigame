@@ -785,3 +785,377 @@
   opacity: 0.35;
   cursor: default;
 }
+
+/* --- Category screen (page 4) ------------------------------------------------ */
+
+/* The heading area: kicker / question / subtitle, ~20px between elements.
+   Starts ~30px below the stepper (Figma frame-4 position). */
+.category-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.25rem; /* 20 */
+  margin-top: 1.875rem; /* 30 */
+  text-align: center;
+  width: 100%;
+  max-width: 52.5rem; /* 840 */
+}
+
+.category-screen__kicker {
+  font-family: var(--ds-font-fanum-vf);
+  font-size: var(--ds-fs-step);
+  line-height: var(--ds-lh-step);
+  font-weight: 600;
+  color: var(--ds-eyebrow);
+}
+
+.category-screen__heading {
+  margin: 0;
+  max-width: 42rem; /* 672 — wraps to two lines */
+  font-family: var(--ds-font-fanum);
+  font-size: var(--ds-fs-question);
+  line-height: var(--ds-lh-question);
+  font-weight: 800;
+  color: var(--ds-text-100);
+}
+
+.category-screen__subtitle {
+  margin: 0;
+  font-family: var(--ds-font-fanum-vf);
+  font-size: var(--ds-fs-section);
+  line-height: var(--ds-lh-section);
+  font-weight: 500;
+  color: var(--ds-text-55);
+}
+
+/* 2-col grid of 408px glass cards with 24px gaps; forced LTR so the config
+   order reads left→right (پوشاک top-left, per the Figma). The last card
+   (کالای دیجیتال) spans both columns. */
+.category-grid {
+  direction: ltr;
+  display: grid;
+  grid-template-columns: repeat(2, 25.5rem); /* 408 */
+  gap: 1.5rem; /* 24 */
+  width: 100%;
+}
+
+.category-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem; /* 16 */
+  height: 12rem; /* 192 */
+  border: 1px solid var(--ds-glass-border-top);
+  border-radius: var(--ds-radius); /* 24 */
+  background: var(--ds-glass-bg);
+  backdrop-filter: var(--ds-glass-blur-soft); /* blur(12px) */
+  -webkit-backdrop-filter: var(--ds-glass-blur-soft);
+  color: var(--ds-text-100);
+  cursor: pointer;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.12s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.category-card:active {
+  transform: scale(0.96);
+}
+
+.category-card--wide {
+  grid-column: 1 / -1;
+}
+
+/* Selected category — same design language as the question-page cards:
+   cyan border + primary glow + the cyan glass gradient. */
+.category-card--selected {
+  border-color: rgba(111, 228, 242, 0.65);
+  box-shadow: var(--ds-shadow-primary);
+  background: linear-gradient(
+    180deg,
+    rgba(54, 174, 191, 0.32) 0%,
+    rgba(54, 174, 191, 0.08) 100%
+  );
+}
+
+.category-card__emoji {
+  font-size: var(--ds-fs-category-emoji); /* 60 */
+  line-height: 1;
+}
+
+.category-card__name {
+  font-family: var(--ds-font-fanum);
+  font-size: var(--ds-fs-category-name);
+  line-height: var(--ds-lh-category-name);
+  font-weight: 600;
+  color: inherit;
+}
+
+.category-card--selected .category-card__name {
+  color: #d6fbff;
+  font-weight: 700;
+}
+
+/* Sponsor logo row — 40px circles, 8px gaps, LTR (file order = left→right). */
+.category-card__logos {
+  display: flex;
+  direction: ltr;
+  align-items: center;
+  gap: 0.5rem; /* 8 */
+}
+
+.category-card__logo {
+  width: 2.5rem; /* 40 */
+  height: 2.5rem; /* 40 */
+  padding: 0.375rem; /* 6 — keep the artwork inside the circle */
+  border-radius: 50%;
+  background: #f8f8f8;
+  object-fit: contain;
+  object-position: center;
+}
+
+/* Category nav row: 138 + 16 + 189 = 343 (Figma frame-4 spec). */
+.nav-buttons--category {
+  gap: 1rem; /* 16 */
+}
+
+.nav-buttons--category .nav-button {
+  width: 8.625rem; /* 138 */
+}
+
+.nav-buttons--category .nav-button--primary {
+  width: 11.8125rem; /* 189 */
+}
+
+/* --- Game result screens (pages 6–8) ----------------------------------------- */
+
+.game-result {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.25rem; /* 20 */
+  width: 100%;
+  max-width: 60.5rem; /* 968 */
+  margin-inline: auto;
+  text-align: center;
+}
+
+.game-result__kicker {
+  font-family: var(--ds-font-fanum-vf);
+  font-size: var(--ds-fs-step);
+  line-height: var(--ds-lh-step);
+  font-weight: 600;
+  color: var(--ds-eyebrow);
+}
+
+.game-result__heading {
+  margin: 0;
+  font-family: var(--ds-font-fanum);
+  font-size: var(--ds-fs-result-heading); /* 72 */
+  line-height: var(--ds-lh-result-heading); /* 84 */
+  font-weight: 900;
+  color: var(--ds-text-100);
+}
+
+/* The win heading carries the cyan gradient (Figma frame 7). */
+.game-result__heading--gradient {
+  background-image: var(--ds-gradient-win-heading);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.game-result__subtitle {
+  margin: 0;
+  font-family: var(--ds-font-fanum-vf);
+  font-size: var(--ds-fs-section);
+  line-height: var(--ds-lh-section);
+  font-weight: 500;
+  color: var(--ds-text-55);
+}
+
+/* The three guessed digits — LTR run (hundreds leftmost). */
+.game-result__digits {
+  display: flex;
+  gap: 1.5rem; /* 24 */
+  margin-top: 0.5rem; /* 8 */
+}
+
+.result-digit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 8rem; /* 128 */
+  height: 8rem; /* 128 */
+  border-radius: var(--ds-radius-sm); /* 16 */
+  background: var(--ds-gradient-reel);
+  font-family: var(--ds-font-fanum);
+  font-size: var(--ds-fs-result-digit); /* 60 */
+  line-height: 1;
+  font-weight: 900;
+}
+
+.result-digit--wrong {
+  border: 1px solid #ff4d6d;
+  box-shadow: var(--ds-shadow-result-wrong);
+  color: #ff8b96;
+}
+
+.result-digit--correct {
+  border: 1px solid var(--ds-live);
+  box-shadow: var(--ds-shadow-result-correct);
+  color: #7dffb0;
+}
+
+.game-result__target {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem; /* 8 */
+  margin: 0;
+  font-family: var(--ds-font-fanum-vf);
+  font-size: var(--ds-fs-section);
+  line-height: var(--ds-lh-section);
+  font-weight: 500;
+  color: var(--ds-eyebrow);
+}
+
+.game-result__target-label {
+  opacity: 0.6;
+}
+
+.game-result__target-value {
+  font-family: var(--ds-font-fanum);
+  font-weight: 700;
+}
+
+/* The gold prize card (Figma frame 7). */
+.game-result__prize {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem; /* 4 */
+  width: 28.3125rem; /* 453 */
+  height: 16.125rem; /* 258 */
+  margin-top: 0.5rem; /* 8 */
+  border: 1px solid var(--ds-gold);
+  border-radius: 2rem; /* 32 */
+  background: linear-gradient(
+    180deg,
+    rgba(255, 207, 58, 0.18) 0%,
+    rgba(255, 207, 58, 0.03) 100%
+  );
+  box-shadow: var(--ds-shadow-prize);
+}
+
+.game-result__prize-label {
+  font-family: var(--ds-font-fanum-vf);
+  font-size: var(--ds-fs-section);
+  line-height: var(--ds-lh-section);
+  font-weight: 600;
+  color: var(--ds-text-55);
+}
+
+.game-result__prize-amount {
+  font-family: var(--ds-font-fanum);
+  font-size: var(--ds-fs-prize-amount); /* 96 */
+  line-height: var(--ds-lh-prize-amount); /* 120 */
+  font-weight: 900;
+  background-image: var(--ds-gradient-gold-strong);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.game-result__prize-currency {
+  font-family: var(--ds-font-fanum-vf);
+  font-size: 1.875rem; /* 30 */
+  line-height: 2.25rem; /* 36 */
+  font-weight: 600;
+  color: var(--ds-gold);
+}
+
+/* Game-over message (Figma frame 8) — supporting Vazirmatn text. */
+.game-result__message {
+  margin: 0;
+  max-width: 40rem; /* 640 */
+  font-family: var(--ds-font-body);
+  font-size: 1.125rem; /* 18 */
+  line-height: 1.875rem; /* 30 */
+  font-weight: 400;
+  color: var(--ds-text-55);
+}
+
+/* Actions — the retry (primary) / exit (glass) buttons; h64 with generous
+   inline padding (Figma frames 6–8). */
+.game-result__actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem; /* 16 */
+  margin-top: 0.5rem; /* 8 */
+}
+
+.result-action {
+  min-height: 4rem; /* 64 */
+  padding: 0 2.5rem; /* 40 */
+  border: 1px solid var(--ds-glass-border-top);
+  border-radius: var(--ds-radius-sm); /* 16 */
+  background: var(--ds-glass-bg);
+  backdrop-filter: var(--ds-glass-blur-soft);
+  -webkit-backdrop-filter: var(--ds-glass-blur-soft);
+  font-family: var(--ds-font-fanum);
+  font-size: var(--ds-fs-nav);
+  line-height: var(--ds-lh-nav);
+  font-weight: 700;
+  color: var(--ds-text-100);
+  cursor: pointer;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.12s ease, box-shadow 0.2s ease;
+}
+
+.result-action:active {
+  transform: scale(0.96);
+}
+
+.result-action:focus-visible {
+  outline: 3px solid rgba(62, 198, 255, 0.8);
+  outline-offset: 4px;
+}
+
+.result-action--primary {
+  border: none;
+  background: var(--ds-gradient-primary);
+  box-shadow: var(--ds-shadow-strong);
+  padding: 0 4rem; /* 64 */
+}
+
+.result-action:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.result-action:disabled:active {
+  transform: none;
+}
+
+/* Save status line (saving / error), below the actions. */
+.game-result__status {
+  margin: 0;
+  font-family: var(--ds-font-fanum-vf);
+  font-size: var(--ds-fs-section);
+  line-height: var(--ds-lh-section);
+  font-weight: 500;
+  color: var(--ds-text-45);
+}
+
+.game-result__status--error {
+  color: var(--ds-danger);
+}
