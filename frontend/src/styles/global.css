@@ -32,16 +32,8 @@
   --text: #eaf0fa;
   --text-dim: #8b96ac;
   --accent: #3ec6ff;
-  --start: #26b06e;
-  --start-text: #052414;
   --stop: #e23d57;
   --gold: #ffc857;
-  --silver: #c9d4e3;
-  --bronze: #d9a066;
-  --danger: #ff7b8a;
-
-  /* Buttons — comfortably above the 60px touch-target minimum */
-  --btn-min-h: clamp(60px, 8.5vmin, 84px);
 }
 
 *,

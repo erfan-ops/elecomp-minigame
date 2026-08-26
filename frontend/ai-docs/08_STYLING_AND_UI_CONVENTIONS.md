@@ -85,14 +85,11 @@ light theme, no theme switcher, and no `data-theme` attribute — the kiosk is d
 | `--text` | `#eaf0fa` | Primary text |
 | `--text-dim` | `#8b96ac` | Secondary text, labels |
 | `--accent` | `#3ec6ff` | Cyan accent: focus rings, rolling reels, links of emphasis |
-| `--start` | `#26b06e` | `.btn--primary` fill (leaderboard «کاربر جدید») |
-| `--start-text` | `#052414` | `.btn--primary` label |
 | `--stop` | `#e23d57` | **Unused** — the stop button is a cyan gradient (`.slot-game__stop`) |
-| `--gold` | `#ffc857` | Rank 1, prize emphasis |
-| `--silver` | `#c9d4e3` | Rank 2 |
-| `--bronze` | `#d9a066` | Rank 3 |
-| `--danger` | `#ff7b8a` | Error text and error borders |
-| `--btn-min-h` | `clamp(60px, 8.5vmin, 84px)` | Minimum touch target height for `.btn` |
+| `--gold` | `#ffc857` | Keypad «تایید» label accent (`.keyboard__key--action`) |
+
+(`--start`, `--start-text`, `--silver`, `--bronze`, `--danger`, and `--btn-min-h` were deleted
+together with the leaderboard page and the `.btn` family.)
 
 The redesigned palette (gold `--ds-gold #ffcf3a`, cyan `--ds-eyebrow #6fe4f2`, live green
 `--ds-live #34d17a`, reel gradient, win-heading gradient, glows) lives in `src/styles/design-tokens.css`
@@ -116,11 +113,12 @@ BEM-ish: `block`, `block__element`, `block--modifier`. Lowercase, hyphen-separat
 hashing, no utility classes, no `is-`/`has-` state prefixes.
 
 Examples: `.number-wheel`, `.number-wheel__strip`, `.number-wheel--rolling`,
-`.leaderboard-row--gold`, `.choice-card--selected`, `.choice-grid--disabled`,
+`.leaderboard-row--first`, `.choice-card--selected`, `.choice-grid--disabled`,
 `.nav-button--primary`.
 
-One class family is a stand-alone block rather than a page element: `.btn*` (the `.chip*` pills were
-removed with the old game top bar).
+The `.btn*` and `.page*` families were deleted with the leaderboard page (2026-08-26). The
+`.leaderboard-row*` panel rows are a stand-alone block in `design-system.css` (the `.chip*` pills
+were removed with the old game top bar).
 
 Conditional classes are composed in JSX with template literals and `.filter(Boolean).join(" ")`-style
 concatenation, or ternaries. There is no `clsx`/`classnames` dependency.
@@ -136,12 +134,11 @@ None in the Tailwind sense. The closest things to reusable primitives, all in `s
 
 | Class | Purpose |
 |---|---|
-| `.page` | Every page root: `height: 100%`, column flex, centered, `overflow: hidden`, fluid `clamp()` padding/gap |
-| `.page__title`, `.page__actions` | Page heading and bottom action row |
-| `.btn` | Base touch button: `min-height: var(--btn-min-h)`, `min-width: clamp(240px, 32vmin, 340px)`, `touch-action: manipulation`, `:active { transform: scale(0.96) }`, `:focus-visible` 3px `--accent` outline, `:disabled { opacity: .35 }` — used by the leaderboard only |
-| `.btn--primary`, `.btn--ghost` | Button variants (the game's old `.btn--start`/`.btn--stop` were deleted; the game uses `.slot-game__stop`) |
 | `.phone-display`, `.choice-card`, `.nav-button`, `.survey-checkbox` | The redesigned fake-input/tappable surfaces (design-system.css) |
 | `.confetti`, `.confetti__piece` | Celebration overlay |
+
+(The `.page*` and `.btn*` primitives were deleted with the leaderboard page — no page-level button
+family remains; the redesigned controls define their own styles.)
 
 ## Component Styling Patterns
 
@@ -164,32 +161,33 @@ None in the Tailwind sense. The closest things to reusable primitives, all in `s
 
 Two sizing mechanisms coexist:
 
-1. **The redesigned visual language (all pages except the leaderboard)** uses the design-scale
+1. **The redesigned visual language (every page)** uses the design-scale
    variable: `src/app/designScale.ts` sets `--s = min(viewportWidth/DESIGN_WIDTH,
    viewportHeight/DESIGN_HEIGHT)` (design canvas 1080×1800) on `<html>`, `design-tokens.css` sets
    `html { font-size: calc(var(--s) * 16px) }`, and every fixed dimension in `design-system.css`,
    `number-wheel.css`, and the game/result screens is expressed in **rem** (1 rem = 16 design pixels
    × `--s`). Content-dependent sizes use intrinsic sizing. Verified at 800×1280, 1080×1793, and
    1440×2560. Full detail in `design-system.md`.
-2. **The leaderboard** (the one legacy page) still uses fluid `clamp()` with `vmin` (the remaining
-   `clamp()` calls live in `global.css`, `app.css`, and the leaderboard styles).
+2. **Gone:** the leaderboard page was the last `clamp()`-with-`vmin` surface and was deleted, so the
+   design scale now covers everything (the remaining `clamp()` calls live in `global.css`/`app.css`).
 
 | Aspect | Approach |
 |---|---|
-| Font sizes | `rem` on the redesigned pages; `clamp(min, Nvmin, max)` on the leaderboard |
-| Spacing / padding / gap | `rem` (design-scale) on the redesigned pages |
-| Touch targets | `--btn-min-h` (`.btn`) plus per-control `min-height` (e.g. `.slot-game__stop` is 288×128 rem) |
+| Font sizes | `rem` (design-scale) on every page |
+| Spacing / padding / gap | `rem` (design-scale) |
+| Touch targets | Per-control `min-height` (e.g. `.slot-game__stop` is 288×128 rem); the `--btn-min-h` token died with `.btn` |
 | Reel dimensions | `--wheel-w`/`--wheel-h`/`--digit-font` (rem, see token table above) |
 | Grids | Fixed column counts: `.category-grid` (2 × 408px design-scale, LTR, last card full-width), `.keyboard` 3 columns, `.choice-grid` 2×2, `.rules-panel__prizes` 3 cards — they do not reflow |
-| Page height | `height: 100%` chain from `html` → `body` → `#root` → `.app` → `.page` |
+| Page height | `height: 100%` chain from `html` → `body` → `#root` → `.app` → `PageShell` |
 
 Design orientation: **portrait / vertical touchscreen**. Nothing adapts to landscape.
 
 ## No-Scroll Rule
 
-- `body { overflow: hidden; overscroll-behavior: none }`; `.app` and `.page` also `overflow: hidden`.
-- The **only** scrollable region is `.leaderboard` (`overflow-y: auto`, `touch-action: pan-y`, with
-  WebKit scrollbar styling).
+- `body { overflow: hidden; overscroll-behavior: none }`; `.app` and the page shells also
+  `overflow: hidden`.
+- **Nothing scrolls** — the registration leaderboard panel shows only the top 5 (`.leaderboard`'s
+  `overflow-y: auto` died with the leaderboard page).
 - Any new content must fit its page or live inside a deliberately scrollable container.
 
 ## RTL / Persian Conventions
@@ -197,8 +195,8 @@ Design orientation: **portrait / vertical touchscreen**. Nothing adapts to lands
 | Rule | Implementation |
 |---|---|
 | Document direction | `<html lang="fa" dir="rtl">` — everything inherits RTL |
-| Numeric sequences stay LTR | `direction: ltr` on `.keyboard`, `.leaderboard__mobile`, `.wheel-group` (CSS) and `.reel-labels`, `.slot-game__target`, `.phone-display__value`, `.game-header__logo`, `.game-result__digits`, `.game-result__target-value`, `.game-result__prize-amount`, `.prize-card__value` (JSX `dir` or rem-based CSS) |
-| Never add `letter-spacing` to Persian text | It breaks the joined script. `letter-spacing` appears only on numeric/Latin runs: `.leaderboard__mobile` (1px), the redesigned `.phone-display__value` / `.phone-display__placeholder` (5.4px on isolated digits), and the Latin `.game-header__logo` wordmark (0.75px) |
+| Numeric sequences stay LTR | `direction: ltr` on `.keyboard`, `.leaderboard-row__phone`, `.wheel-group` (CSS) and `.reel-labels`, `.slot-game__target`, `.phone-display__value`, `.game-header__logo`, `.game-result__digits`, `.game-result__target-value`, `.game-result__prize-amount`, `.prize-card__value` (JSX `dir` or rem-based CSS) |
+| Never add `letter-spacing` to Persian text | It breaks the joined script. `letter-spacing` appears only on numeric/Latin runs: the redesigned `.phone-display__value` / `.phone-display__placeholder` (5.4px on isolated digits) and the Latin `.game-header__logo` wordmark (0.75px) (`.leaderboard__mobile`'s 1px died with the leaderboard page) |
 | Emphasis | Font weight, size, and color only |
 | Persian numerals | Applied in JSX via `toPersianDigits` / `formatPersianNumber`, never via CSS |
 | Mobile numbers | Written as **English digits** everywhere (the bundled fonts draw Persian glyph shapes); the redesigned page 1 shows keypad labels, the entered display (centered), and the panel's masked `09`-form (`formatPanelMobile`). Page 1's digit runs (keypad, phone display) use the static `IRANYekanXFaNum` face; the page-1 Persian texts (welcome, stepper, panel) use the variable `IRANYekanXVFaNum` face — both `@font-face` in `design-tokens.css`. Masked on public screens |
@@ -231,23 +229,23 @@ Conventions:
 
 | Pattern | Where |
 |---|---|
-| Full-height column flex, centered | `.page` (leaderboard), `.slot-game` / `.game-result` (game + result screens, `flex: 1` inside `PageShell`) |
-| Bottom-docked actions | `.page__actions`, `.game-result__actions` |
+| Full-height column flex, centered | `.slot-game` / `.game-result` (game + result screens, `flex: 1` inside `PageShell`) |
+| Bottom-docked actions | `.game-result__actions` (the `.page__actions` family died with the leaderboard page) |
 | Fixed-column CSS grid | `.category-grid` (2 × 408px, LTR, `--wide` last card), `.keyboard` (3 cols), `.choice-grid` (2×2 answer cards), `.rules-panel__prizes` (3 cards) |
 | Glass chrome box | `.reel-machine` — 864×518 design px (54×32.375rem), `border-radius: 2.5rem`, dark translucent surface, holds the reel labels + `WheelGroup` |
 | Row flex with gaps | `.wheel-group`, `.status-pill__dots`, `.nav-buttons`, `.game-header`, `.slot-game__status`, `.game-result__digits` |
 | Layered stack for the reel | `.number-wheel__window` with absolutely positioned `__fade--top` / `__fade--bottom` gradient masks over the transformed `__strip` (no `__center` band anymore) |
-| Floating exit pill | `.slot-game__exit` — `position: absolute`, top inset-inline-end of `.slot-game` |
 
-The only `z-index` values: `1` (`.slot-game__exit`, `.status-pill__dot--live` glow layer) and
+The only `z-index` values: `1` (`.status-pill__dot--live` glow layer) and
 `1` in `design-system.css` (page-4 glow layer). No overlay z-index remains — the result screens are
 full-page sections, not overlays.
 
 ## Accessibility Considerations Present In Styles And Markup
 
-- `.btn:focus-visible` — 3px `--accent` outline with offset. Focus is visible for the presenter's
-  keyboard.
-- Touch targets meet a `clamp(60px, 8.5vmin, 84px)` minimum height.
+- `:focus-visible` outlines are defined per control in `design-system.css` (e.g.
+  `.result-action:focus-visible`). Focus is visible for the presenter's keyboard (the `.btn` outline
+  died with the leaderboard page).
+- Touch targets meet per-control `min-height`s (e.g. `.slot-game__stop` is 288×128 rem).
 - `touch-action: manipulation` on tappable surfaces (suppresses double-tap zoom delay).
 - `user-select: none` globally, `-webkit-tap-highlight-color: transparent`.
 - Reduced-motion support at two levels: the global CSS override for decorative animation and the
@@ -291,17 +289,19 @@ No icon library and no icon components. All glyphs are literal Unicode character
 2. Tokens (colors, shared sizing) → `:root` in `src/styles/global.css`. Never hard-code a hex value that
    duplicates an existing token.
 3. Game-specific styles → that game's own stylesheet, imported by the game's root component. Game
-   stylesheets MUST NOT define platform primitives (`.btn`, `.page`).
+   stylesheets MUST NOT define platform primitives (`.confetti`; the old `.btn`/`.page` families are
+   gone).
 4. Follow `block__element--modifier`. Prefix game-local blocks so they cannot collide with platform
    classes (all three CSS files share one global namespace).
 5. **Inline styles are NOT allowed** except for genuinely per-instance computed values, following the
    `Confetti` precedent. State belongs in modifier classes.
-6. **Do NOT add width/height media queries.** On the redesigned pages use rem-based sizes off the
-   design-scale `--s` (see `design-system.md`); the leaderboard keeps `clamp()` with `vmin`. If a
-   breakpoint becomes genuinely necessary, document the decision in `ai-docs`.
+6. **Do NOT add width/height media queries.** Use rem-based sizes off the design-scale `--s` (see
+   `design-system.md`); no `clamp()`-with-`vmin` sizing remains — it died with the leaderboard
+   page. If a breakpoint becomes genuinely necessary, document the decision in `ai-docs`.
 7. Never add `letter-spacing` to a selector that can contain Persian text.
 8. Any element containing a numeric sequence MUST set `direction: ltr`.
-9. Do not introduce page-level scrolling. `.leaderboard` is the only scrollable region.
+9. Do not introduce page-level scrolling. Nothing scrolls today (the `.leaderboard` scroll region
+   died with the leaderboard page).
 10. New decorative animation MUST be CSS-based so the global reduced-motion override neutralizes it.
     JS-driven motion MUST honour `usePrefersReducedMotion`.
 11. Animate only `transform` and `opacity` in per-frame paths.

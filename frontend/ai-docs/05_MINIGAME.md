@@ -60,7 +60,7 @@ and `src/pages/GameResult.tsx` (result screens, host-side).
 result ? (
   <GameResultScreen result={result} attemptsRemaining={...} saveStatus={...}
                     retryEnabled={canRetry} onRetrySave={...} onRetry={handleRetry}
-                    onExit={session.startNewUser} onContinue={session.goToLeaderboard} />
+                    onExit={session.startNewUser} onContinue={session.startNewUser} />
 ) : (
   <GameComponent
     key={`${user.id}:${attempt}`}
@@ -158,7 +158,7 @@ than the per-reel settle spring described below.
 | `Ctrl+R` / `Cmd+R` (`event.key.toLowerCase() === "r"` with `ctrlKey` or `metaKey`) | same | same, **and** `preventDefault()` |
 | Tap a target digit | `NumberWheelGame` `button.slot-game__target-digit` | `handleDigitTap(index)` → `SET_TARGET` (IDLE only) |
 | Tap «عدد تصادفی» | `NumberWheelGame` `.slot-game__random` | `handleRandomTarget()` → `SET_TARGET(randomDigits())` (IDLE only) |
-| Tap «خروج» | `NumberWheelGame` `.slot-game__exit` | `onExit()` → host `startNewUser()` |
+| Tap «خروج از بازی» | **host** `GameResultScreen` (NOT the game) | `onExit()` → host `startNewUser()`. The game screen has no exit control while playing |
 
 Input rules enforced in code:
 

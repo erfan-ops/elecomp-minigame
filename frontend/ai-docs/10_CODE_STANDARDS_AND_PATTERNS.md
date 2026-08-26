@@ -27,7 +27,7 @@ Each rule below is labeled with how it is enforced:
 | Classes | None. Zero `class` declarations in `src/` | `CONVENTION` |
 | `any` | Not used. `unknown` is used instead (`metadata?: Record<string, unknown>`, `isGameSessionResult(value: unknown)`) | `CONVENTION` |
 | Non-null assertions (`!`) | Not used. Nullability is handled with `??`, `?.`, and explicit guards | `CONVENTION` |
-| `as` casts | `as const` for literal tuples/palettes. Seven narrowing casts exist, all structural rather than error-suppressing: `as CSSProperties` (`Confetti.tsx:32`, needed for custom properties), `as keyof typeof RANK_TIERS` (`LeaderboardPage.tsx:69`), `as Record<string, unknown>` (`localResultRepository.ts:12`), `as Digits` (`gameEngine.ts:84`), `as StoppedCount` (`gameEngine.ts:86`), `as [number, number, number]` (`NumberWheelGame.tsx:53`), `as typeof target` (`NumberWheelGame.tsx:87`) — the last four re-pin a tuple type that `map`/spread widens to `number[]` | `CONVENTION` |
+| `as` casts | `as const` for literal tuples/palettes. Six narrowing casts exist, all structural rather than error-suppressing: `as CSSProperties` (`Confetti.tsx:32`, needed for custom properties), `as Record<string, unknown>` (`localResultRepository.ts:12`), `as Digits` (`gameEngine.ts:84`), `as StoppedCount` (`gameEngine.ts:86`), `as [number, number, number]` (`NumberWheelGame.tsx:53`), `as typeof target` (`NumberWheelGame.tsx:87`) — the last four re-pin a tuple type that `map`/spread widens to `number[]` | `CONVENTION` |
 
 ## TypeScript Strictness
 
@@ -73,12 +73,12 @@ Not enabled (so NOT required): `exactOptionalPropertyTypes`, `noImplicitReturns`
 | Types / interfaces | `PascalCase`, no `I` prefix, no `T` prefix | `GameContext`, `GameSessionResult`, `NumberWheelHandle` |
 | Union string literals | `SCREAMING_SNAKE` for phases/states, `lowercase` for statuses | `"REGISTRATION"`, `"RUNNING"`, `"idle"`, `"saving"` |
 | Module constants | `SCREAMING_SNAKE_CASE` | `MAX_GAME_ATTEMPTS`, `WHEEL_SPEEDS`, `MIN_STOP_INTERVAL_MS`, `STRIP_LENGTH` |
-| Functions / variables | `camelCase` | `toCanonicalMobile`, `rollingFlags`, `mobileDigits` |
+| Functions / variables | `camelCase` | `formatPanelMobile`, `rollingFlags`, `mobileDigits` |
 | Refs | `xxxRef` | `positionRef`, `submittedRef`, `completedRef`, `stripRef`, `wheelRefs` |
 | Event handlers (props) | `onX` | `onComplete`, `onExit`, `onDigit`, `onBackspace`, `onConfirm`, `onStart`, `onDigitTap`, `onRandom` |
 | Event handlers (local) | `handleX` | `handleSubmit`, `handleStop`, `handleRetry`, `handleDigitTap`, `handleRandomTarget` |
 | Persian UI strings | Extracted to `SCREAMING_SNAKE` module constants when reused or when they are error/message text; inlined in JSX otherwise | `MOBILE_ERROR`, `ALREADY_PLAYED_MESSAGE`, `ZERO_MATCH_RETRY_MESSAGE`, `WHEEL_LABELS` |
-| CSS classes | `block__element--modifier`, lowercase-hyphenated | `.number-wheel__strip`, `.leaderboard-row--gold` |
+| CSS classes | `block__element--modifier`, lowercase-hyphenated | `.number-wheel__strip`, `.leaderboard-row--first` |
 
 ## File Naming Conventions
 
@@ -145,7 +145,7 @@ is `.ts` because it only holds types.
 | `try/catch` → status state | `AppSession.submitResult` / `retrySave` | **Bare `catch { }`** — the error object is not bound and not logged; state becomes `saveStatus: "error"` |
 | `try/catch` → degrade to empty | `localResultRepository.loadAll` | Returns `[]` on any failure; corrupt entries filtered by a type guard |
 | `try/catch` → fail open | `RegistrationPage.handleSubmit` | If the anti-replay lookup throws, the user is registered anyway (documented intent) |
-| `try/catch` → error UI + retry | `LeaderboardPage.load` | Sets `loadState: "error"` and renders a retry button |
+| `try/catch` → degrade to empty | `RegistrationPage` leaderboard-panel load | `topEntries: []` → the panel renders its empty-state line (no retry UI) |
 | `finally` for cleanup | `submitResult` (`savingRef = false`), `handleSubmit` (`checking = false`) | Always releases the guard |
 | Runtime validation | `isGameSessionResult` in `localResultRepository.ts` | `typeof` checks over 11 fields before trusting stored JSON |
 | Optional-call for optional APIs | `navigator.vibrate?.(ms)` | No feature-detection branch |
@@ -158,15 +158,15 @@ UI state or be justified, following the existing style.
 ## Async Patterns
 
 - `async`/`await` only. There is no `.then()` chain in `src/`.
-- Only three async functions exist: `localResultRepository.save`, `localResultRepository.getResults`
+- Only two async functions exist: `localResultRepository.save`, `localResultRepository.getResults`
   (both `async` wrappers over synchronous `localStorage`), and the callers that `await` them
-  (`AppSession.submitResult` / `retrySave`, `RegistrationPage.handleSubmit`, `LeaderboardPage.load`).
+  (`AppSession.submitResult` / `retrySave`, `RegistrationPage.handleSubmit` + its panel load).
 - The repository interface is `Promise`-based specifically so a network implementation can drop in
   unchanged.
 - Concurrency control is a boolean ref (`savingRef`), not a queue or `AbortController`.
-- No `AbortController`, no cancellation, no `Promise.all`, no race handling. `LeaderboardPage.load`
-  does not guard against setting state after unmount (`INFERRED` acceptable: the page is never unmounted
-  mid-load in the kiosk flow).
+- No `AbortController`, no cancellation, no `Promise.all`, no race handling. RegistrationPage's panel
+  load does not guard against setting state after unmount (`INFERRED` acceptable: a late
+  `setTopEntries` after the phase moved on is a harmless no-op warning at most).
 - Async work is triggered from event handlers and one `useEffect`; effects themselves are never `async`
   functions (they call an inner async function or a `useCallback`'d one).
 
@@ -179,7 +179,7 @@ over CDP, deleted afterwards) is the de-facto substitute. See `09_BUILD_RUN_DEPL
 
 If tests are ever added, the pure modules are the natural targets: `gameReducer`, `rollingFlags`,
 `numberToDigits`/`digitsToNumber`, `countExactMatches`/`calculatePrizeResult`, `buildLeaderboard`,
-`isValidMobileDigits`/`toCanonicalMobile`/`formatMaskedMobile`, `toPersianDigits`/`formatPersianNumber`.
+`isValidMobileDigits`/`formatPanelMobile`, `toPersianDigits`/`formatPersianNumber`.
 `randomTargetNumber`, `randomDigits`, and `createNewGame` accept an injectable `rng` parameter, making them
 deterministic under test without any mocking.
 
@@ -194,7 +194,7 @@ deterministic under test without any mocking.
 | Language | English comments; Persian only inside user-facing string literals |
 | Invariant documentation | Architectural rules are written as comments in the file that owns them (`src/domain/game.ts`, `src/app/AppSession.tsx`, `src/services/resultRepository.ts`, `src/games/number-wheel/components/NumberWheel.tsx`) |
 | `TODO` / `FIXME` / `HACK` | None present |
-| Commented-out code | One block: the `isMe` leaderboard highlight in `src/pages/LeaderboardPage.tsx` (lines 73, 86–90). See `12_KNOWN_GAPS_AND_RISKS.md` |
+| Commented-out code | None (the old `isMe` leaderboard-highlight block died with `LeaderboardPage.tsx`) |
 
 New code SHOULD carry a file-header block comment in the same style, and MUST document any invariant a
 future change could silently break.
@@ -254,4 +254,4 @@ surrounding file.
 | `console` logging / telemetry | No `console.*` call in `src/` |
 | Environment variables / runtime config | All tuning is TypeScript constants |
 | `letter-spacing` on Persian text | Only on Latin-digit runs |
-| Page scrolling | Only `.leaderboard` scrolls |
+| Page scrolling | None — the registration leaderboard panel shows only the top 5 |

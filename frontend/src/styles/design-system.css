@@ -22,32 +22,7 @@
 .page-shell__glow {
   position: absolute;
   border-radius: 50%;
-  filter: blur(180px);
-}
-
-.page-shell__glow--deep {
-  width: 45rem;
-  height: 45rem;
-  background: var(--ds-glow-deep);
-  top: -18rem;
-  inset-inline-start: -12rem;
-}
-
-.page-shell__glow--plum {
-  width: 42rem;
-  height: 42rem;
-  background: var(--ds-glow-plum);
-  bottom: -16rem;
-  inset-inline-end: -12rem;
-}
-
-/* Teal glow near the primary CTA (the confirm key). */
-.page-shell__glow--teal {
-  width: 34rem;
-  height: 34rem;
-  background: var(--ds-glow-teal);
-  top: 46%;
-  inset-inline-end: -10rem;
+  filter: blur(140px);
 }
 
 .page-shell__frame {
@@ -56,15 +31,9 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  /* Frame padding: top 138, inline 56, bottom 56; 84 between major sections. */
+  /* Frame padding: top 138, inline 56, bottom 56; 32 between sections. */
   padding: 8.625rem 3.5rem 3.5rem;
-  gap: 5.25rem;
-}
-
-.page-shell__logo {
-  display: block;
-  width: 23.6875rem; /* 379 design px */
-  height: auto;
+  gap: 2rem;
 }
 
 /* --- StepTracker ----------------------------------------------------------- */
@@ -384,7 +353,7 @@
   display: flex;
   align-items: center;
   gap: 0.25rem;
-  direction: ltr;
+  direction: rtl;
 }
 
 .leaderboard-row__amount-value {
@@ -400,7 +369,7 @@
   line-height: var(--ds-lh-currency);
   font-weight: 600;
   font-family: "Orbitron", "B Yekan", "Segoe UI", sans-serif;
-  color: var(--ds-amount-2to5);
+  color: rgba(255, 255, 255, 0.45);
 }
 
 /* 1st place: gold gradient amount + currency. */
@@ -409,8 +378,15 @@
   background-image: var(--ds-gradient-gold);
   background-clip: text;
   -webkit-background-clip: text;
+}
+
+.leaderboard-row--first .leaderboard-row__amount-value {
+  background-image: var(--ds-gradient-gold);
+  background-clip: text;
+  -webkit-background-clip: text;
   color: transparent;
 }
+
 
 /* --- Welcome block (page 1) ------------------------------------------------ */
 
@@ -476,11 +452,7 @@
   color: var(--ds-danger);
 }
 
-/* --- Survey shell variant (page 2+) ----------------------------------------- */
-
-.page-shell--survey .page-shell__glow {
-  filter: blur(140px);
-}
+/* --- Page shell lighting ---------------------------------------------------- */
 
 .page-shell__glow--cyan-tl {
   width: 42rem;
@@ -515,7 +487,7 @@
 }
 
 /* Top-edge cyan wash — a soft gradient strip, not a blob. */
-.page-shell--survey .page-shell__glow--edge {
+.page-shell__glow--edge {
   inset-inline: 0;
   top: 0;
   height: 30rem;
@@ -524,12 +496,7 @@
   background: linear-gradient(180deg, var(--ds-glow-edge), rgba(120, 210, 225, 0));
 }
 
-/* Tighter header→stepper rhythm than page 1 (whose logo is much taller). */
-.page-shell--survey .page-shell__frame {
-  gap: 2rem; /* 32 */
-}
-
-/* --- GameHeader (page 2+) ---------------------------------------------------- */
+/* --- GameHeader --------------------------------------------------------------- */
 
 .game-header {
   display: flex;
@@ -658,6 +625,10 @@
   user-select: none;
   -webkit-tap-highlight-color: transparent;
   transition: transform 0.12s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.choice-card:hover {
+  transform: translateY(-6px);
 }
 
 .choice-card:active {
@@ -858,6 +829,10 @@
   user-select: none;
   -webkit-tap-highlight-color: transparent;
   transition: transform 0.12s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.category-card:hover {
+  transform: translateY(-6px);
 }
 
 .category-card:active {

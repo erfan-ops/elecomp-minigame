@@ -45,13 +45,13 @@ Values: `ACTIVE_GAME_ID = "number-wheel"`, `MAX_GAME_ATTEMPTS = 3`, `CATEGORIES`
 |---|---|---|---|---|---|---|
 | `src/domain/game.ts` | **The pluggable-game contract** | `GameContext`, `GameResult`, `GameProps` | — | none | NO — every game and `GamePage` depend on it | `CRITICAL` |
 | `src/domain/gameResult.ts` | Persisted record + leaderboard row shapes | `GameSessionResult`, `LeaderboardEntry` | — | none | NO — changing `GameSessionResult` requires updating `isGameSessionResult` in `localResultRepository.ts` | `CRITICAL` |
-| `src/domain/user.ts` | Identity + mobile normalization/validation/masking | `User`, `MOBILE_PREFIX`, `MOBILE_DIGIT_COUNT`, `toCanonicalMobile`, `isValidMobileDigits`, `formatMobileDigits`, `formatMaskedMobile`, `makeUserId` | — | `makeUserId` uses `crypto.randomUUID` with a `Math.random`+`Date.now` fallback (the only impure function here) | YES for formatters; NO for `toCanonicalMobile` (its output is the stored identity and the anti-replay key) | `CRITICAL` |
+| `src/domain/user.ts` | Identity + mobile validation/masking | `User`, `MOBILE_DIGIT_COUNT`, `isValidMobileDigits`, `formatMobileDigits`, `formatPanelMobile`, `makeUserId` | — | `makeUserId` uses `crypto.randomUUID` with a `Math.random`+`Date.now` fallback (the only impure function here) | YES for formatters; NO for the entered-mobile-as-identity (RegistrationPage stores `mobileDigits` directly — it IS the anti-replay key) | `CRITICAL` |
 | `src/domain/category.ts` | Sector shape | `Category` | — | none | YES | `IMPORTANT` |
 | `src/domain/survey.ts` | Survey answer shape | `SurveyAnswers` | — | none | YES | `IMPORTANT` |
 
-`isValidMobileDigits` uses `` new RegExp(`^9\\d{${MOBILE_DIGIT_COUNT - 1}}$`) `` — Iranian mobiles must
-start with `9` and be exactly 10 digits. `toCanonicalMobile(digits)` → `` `${MOBILE_PREFIX}${digits}` ``.
-`formatMaskedMobile(canonical)` masks digits 4–6 and regroups 3-3-4 → `912 *** 4567`.
+`isValidMobileDigits` uses `` new RegExp(`^09\\d{${MOBILE_DIGIT_COUNT - 2}}$`) `` — the full 11-digit
+09-form (e.g. `09108086113`), stored exactly as entered with no prefix.
+`formatPanelMobile(mobile)` masks the 4 middle digits → `0910****113`.
 
 ## Services
 
@@ -71,14 +71,10 @@ start with `9` and be exactly 10 digits. `toCanonicalMobile(digits)` → `` `${M
 | `src/pages/CategorySelectionPage.tsx` | Sector grid, single selection (redesigned page 4) | `CategorySelectionPage` | `src/app/AppSession`, `src/config/appConfig`, `src/components/ui/*` (PageShell, StepTracker, GameHeader, FloatingDecorations, NavButtons) | none | YES | `IMPORTANT` |
 | `src/pages/GamePage.tsx` | **The game↔platform adapter**: builds `GameContext`, widens `GameResult` → `GameSessionResult`, persists, retry/continue chrome; renders the game or `GameResultScreen` | `GamePage` | `src/app/AppSession`, `src/config/appConfig`, `src/games/registry` (`getActiveGame`), `src/domain/*`, `src/components/ui/*` (PageShell, GameHeader, FloatingDecorations, StepTracker), `./GameResult` | `new Date().toISOString()`; `session.submitResult` → repository | NO — it is the contract adapter; changes here affect every game and every stored record | `CRITICAL` |
 | `src/pages/GameResult.tsx` | Host-side result screens (Figma frames 6–8): win (prize card + Confetti), loss with retries, game over | `GameResultScreen` | `react`, `src/app/AppSession` (type), `src/components/Confetti`, `src/domain/game` (type), `src/hooks/usePrefersReducedMotion`, `src/utils/persian` | none | YES — pure presentation of a `GameResult` + save status | `IMPORTANT` |
-| `src/pages/LeaderboardPage.tsx` | Load results, build + render ranked table | `LeaderboardPage` | `src/app/AppSession`, `src/services` (`resultRepository`, `buildLeaderboard`), `src/domain/*`, `src/utils/persian` | `resultRepository.getResults()` in `useEffect` | YES | `IMPORTANT` |
 
-All six pages take **no props**. Registration, survey, category, and the game page render inside
-`PageShell` (the game page with `variant="survey"`); only the leaderboard still renders
-`.page` + its own modifier class.
-
-`LeaderboardPage` contains commented-out "highlight my row" logic (`isMe`) — see
-`12_KNOWN_GAPS_AND_RISKS.md`.
+All four pages take **no props** and render inside `PageShell` (the game page with
+`variant="survey"`). There is no leaderboard page — the leaderboard lives on registration
+(`ui/LeaderboardPanel`); `.page` and its modifier classes were deleted with the old page.
 
 ## Shared Components
 
@@ -94,7 +90,7 @@ Full detail in `design-system.md`. All are stateless presentation components con
 
 | Path | Responsibility | Main exports | Imports | Side effects | Importance |
 |---|---|---|---|---|---|
-| `src/components/ui/PageShell.tsx` | Dark canvas, glow blobs, logo, scaled content frame | `PageShell` | `react` (type) | none | `IMPORTANT` |
+| `src/components/ui/PageShell.tsx` | Dark canvas, shared corner-glow lighting + edge strip, `GameHeader` slot, scaled content frame (one shell for all pages since 2026-08-26) | `PageShell` | `react` (type) | none | `IMPORTANT` |
 | `src/components/ui/StepTracker.tsx` | RTL journey tracker | `StepTracker` | `react`, `src/utils/persian` | none | `IMPORTANT` |
 | `src/components/ui/GradientText.tsx` | Gradient-clipped text | `GradientText` | `react` (types) | none | `SUPPORTING` |
 | `src/components/ui/LiveBadge.tsx` | «زنده» pill | `LiveBadge` | `react` only | none | `SUPPORTING` |
@@ -173,7 +169,7 @@ Handle: `{ getCurrentDigit(): number }`.
 | Path | Responsibility | Notes | Importance |
 |---|---|---|---|
 | `src/styles/global.css` | `@font-face "B Yekan"`, all `:root` design tokens, reset, kiosk body rules, global reduced-motion override | Imported first in `src/main.tsx`. Everything else depends on its tokens | `CRITICAL` |
-| `src/styles/app.css` | Platform component styles: `.app`, `.page*`, `.btn*`, `.keyboard*`, leaderboard, `.confetti*` | Shared primitives only — no game-specific rules. The legacy survey/category styles and the old game-page chrome (`.btn--start`/`.btn--stop`, `.chip*`, statusbar) were removed with the redesigns; the game page's styles live in `number-wheel.css` + `design-system.css` | `CRITICAL` |
+| `src/styles/app.css` | Platform component styles: `.app`, `.keyboard*`, `.confetti*` | Shared primitives only — no game-specific rules. The legacy survey/category styles, the old game-page chrome (`.btn--start`/`.btn--stop`, `.chip*`, statusbar), and the leaderboard page's `.page*`/`.btn*`/`.leaderboard*`/`.rank-badge*` rules were removed with the redesigns (the leaderboard page itself was deleted 2026-08-26); the game page's styles live in `number-wheel.css` + `design-system.css` | `CRITICAL` |
 | `src/styles/design-tokens.css` | The redesigned visual language's token set (`--ds-*`), `@font-face` for IRANYekanXFaNum/Vazirmatn, + the scaled root font-size | Imported after `global.css`. The single source of truth for the redesign | `IMPORTANT` |
 | `src/styles/design-system.css` | Component styles for `src/components/ui/` (page shell, tracker, keypad, panels) **and the host-side result screens** (`.game-result*`, `.result-digit*`, `.result-action*`) | Consumes only `--ds-*` tokens; all fixed dimensions in rem | `IMPORTANT` |
 

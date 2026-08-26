@@ -19,7 +19,7 @@ import type { User } from "../domain/user";
 import { MAX_GAME_ATTEMPTS } from "../config/appConfig";
 import { resultRepository } from "../services";
 
-export type AppPhase = "REGISTRATION" | "SURVEY" | "CATEGORY" | "GAME" | "LEADERBOARD";
+export type AppPhase = "REGISTRATION" | "SURVEY" | "CATEGORY" | "GAME";
 
 export type SaveStatus = "idle" | "saving" | "saved" | "error";
 
@@ -40,14 +40,14 @@ interface AppSessionValue {
   completeSurvey: (survey: SurveyAnswers) => void;
   /** Category chosen → game. */
   selectCategory: (category: Category) => void;
+  /** Category page back — return to the survey (the previous step), keeping the user. */
+  goBackToSurvey: () => void;
   /** Persist a fully combined session result (built by the game host). */
   submitResult: (result: GameSessionResult) => Promise<void>;
   /** Re-attempt persistence after a failure. */
   retrySave: () => Promise<void>;
   /** Play the game again (only offered after a zero-win result, up to MAX_GAME_ATTEMPTS). */
   retry: () => void;
-  /** Continue after the result was shown → leaderboard. */
-  goToLeaderboard: () => void;
   /** End the session and return to registration with a clean slate. */
   startNewUser: () => void;
 }
@@ -100,6 +100,14 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
     setState((prev) => (prev.user ? { ...prev, phase: "GAME", category } : prev));
   }, []);
 
+  const goBackToSurvey = useCallback(() => {
+    setState((prev) =>
+      prev.user && prev.phase === "CATEGORY"
+        ? { ...prev, phase: "SURVEY", category: null, survey: null }
+        : prev,
+    );
+  }, []);
+
   const submitResult = useCallback(async (result: GameSessionResult) => {
     if (savingRef.current) return;
     savingRef.current = true;
@@ -128,10 +136,6 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
     } finally {
       savingRef.current = false;
     }
-  }, []);
-
-  const goToLeaderboard = useCallback(() => {
-    setState((prev) => ({ ...prev, phase: "LEADERBOARD" }));
   }, []);
 
   const retry = useCallback(() => {
@@ -168,10 +172,10 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
       register,
       completeSurvey,
       selectCategory,
+      goBackToSurvey,
       submitResult,
       retrySave,
       retry,
-      goToLeaderboard,
       startNewUser,
     }),
     [
@@ -185,10 +189,10 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
       register,
       completeSurvey,
       selectCategory,
+      goBackToSurvey,
       submitResult,
       retrySave,
       retry,
-      goToLeaderboard,
       startNewUser,
     ],
   );

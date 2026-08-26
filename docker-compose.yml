@@ -1,0 +1,80 @@
+version: '3.8'
+
+services:
+  backend:
+    build: ./backend
+    container_name: game-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://user:password@db:5432/game_db
+      - REDIS_URL=redis://redis:6379
+      - SECRET_KEY=your-secret-key-here
+      - CORS_ORIGINS=http://localhost:3000,http://localhost:3001
+    volumes:
+      - ./backend:/app
+      - backend_data:/app/data
+    networks:
+      - game-network
+    restart: unless-stopped
+    depends_on:
+      - db
+      - redis
+
+  frontend:
+    build: ./frontend
+    container_name: game-frontend
+    ports:
+      - "3000:80"
+    environment:
+      - REACT_APP_API_URL=http://localhost:8000
+      - REACT_APP_WS_URL=ws://localhost:8000/ws
+    networks:
+      - game-network
+    restart: unless-stopped
+    depends_on:
+      - backend
+
+  frontend-panel:
+    build: ./panel
+    container_name: game-admin-panel
+    ports:
+      - "3001:80"
+    environment:
+      - REACT_APP_API_URL=http://localhost:8000
+      - REACT_APP_WS_URL=ws://localhost:8000/ws
+    networks:
+      - game-network
+    restart: unless-stopped
+    depends_on:
+      - backend
+
+  # Optional: Add PostgreSQL database
+  db:
+    image: postgres:16-alpine
+    container_name: game-db
+    environment:
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=game_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - game-network
+    restart: unless-stopped
+
+  # Optional: Add Redis for real-time features
+  redis:
+    image: redis:7-alpine
+    container_name: game-redis
+    networks:
+      - game-network
+    restart: unless-stopped
+
+networks:
+  game-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  backend_data:

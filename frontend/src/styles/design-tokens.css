@@ -113,9 +113,6 @@
 
   /* Canvas */
   --ds-bg: rgb(7, 7, 20);
-  --ds-glow-deep: rgb(15, 35, 50);
-  --ds-glow-plum: rgb(23, 20, 23);
-  --ds-glow-teal: rgba(54, 174, 191, 0.42);
   --ds-card: rgba(9, 11, 20, 0.62);
 
   /* Glass surface (display input + keypad keys) */

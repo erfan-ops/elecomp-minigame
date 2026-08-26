@@ -7,7 +7,7 @@ function formatAmount(value: number): string {
 }
 
 export interface LeaderboardPanelEntry {
-  /** Canonical mobile (+98…) — masked for display. */
+  /** Mobile as entered (09…) — masked for display. */
   mobile: string;
   /** Stored win amount (تومان) of the user's best result. */
   amount: number;

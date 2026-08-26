@@ -15,7 +15,14 @@
 It is a **platform** that runs exactly one *pluggable game* at a time. The currently active game is
 `number-wheel` — a three-reel digit-matching minigame.
 
-- No backend. No network calls. No router library. No test framework. No linter.
+**Layout note (2026-08-26):** the React app (including this `ai-docs/` package) lives in the
+`frontend/` directory; `CLAUDE.md` sits at the repository root. **Every path in these docs is relative
+to `frontend/`** unless the `<repo-root>/` prefix is explicit. The repo root also holds `backend/` and
+`panel/` directories (empty Docker scaffolds) plus `docker-compose*.yml` / `exhibition.sh` — see
+`02_REPOSITORY_STRUCTURE.md` and `09_BUILD_RUN_DEPLOY.md`.
+
+- No backend, no network calls **in the app** (the root `backend/`/`panel/` dirs are Docker-only
+  scaffolds with no application code). No router library. No test framework. No linter.
 - Runtime dependencies: `react` + `react-dom` only.
 - Persistence: browser `localStorage`.
 - Kiosk journey is a 5-value phase switch, not URL routing.
@@ -73,17 +80,17 @@ Full rules and the change-type → doc mapping live in `11_AI_MAINTENANCE_RULES.
 - [ ] Keep Persian numeral conversion in the display layer only (`toPersianDigits`); logic and storage use Latin digits.
 - [ ] Never add `letter-spacing` to Persian text.
 - [ ] Run the only verification gate: `npm run build` (`tsc -b && vite build`). There are no tests.
-- [ ] Delete any temporary verification harness you create (`public/` harness pages, root `.cjs` drivers) so they do not ship in `dist/`.
+- [ ] Delete any temporary verification harness you create (`public/` harness pages and sibling `.cjs` drivers, both inside `frontend/`) so they do not ship in `dist/`.
 - [ ] Update every affected `ai-docs` file in the same change. Remove statements that became false.
 
 ## Hard Constraints (violating these breaks the product)
 
 | Constraint | Enforced by |
 |---|---|
-| No page scrolling except the leaderboard list | `src/styles/global.css` (`body { overflow: hidden }`), `src/styles/app.css` (`.leaderboard { overflow-y: auto }`) |
+| No page scrolling anywhere (the registration leaderboard panel shows only top-5) | `src/styles/global.css` (`body { overflow: hidden }`), `.app` + page shells `overflow: hidden` |
 | No real `<input>`; digits via `VirtualNumericKeyboard` | `src/pages/RegistrationPage.tsx` (redesigned `ui/Keypad`), `src/components/VirtualNumericKeyboard.tsx` (retained, unused) |
 | All user-facing text Persian; document is `lang="fa" dir="rtl"` | `index.html` |
-| Numeric sequences render LTR | `direction: ltr` on `.wheel-group`, `.reel-labels`, `.slot-game__target`, `.game-result__digits`, `.game-result__target-value`, `.prize-card__value`, `.leaderboard__mobile`, `.keyboard` |
-| Mobile masked on public screens, stored unmasked | `formatMaskedMobile` in `src/domain/user.ts` |
+| Numeric sequences render LTR | `direction: ltr` on `.wheel-group`, `.reel-labels`, `.slot-game__target`, `.game-result__digits`, `.game-result__target-value`, `.prize-card__value`, `.leaderboard-row__phone`, `.keyboard` |
+| Mobile masked on public screens, stored unmasked | `formatPanelMobile` in `src/domain/user.ts` |
 | Context menu blocked | `src/app/App.tsx` `onContextMenu` |
 | Refresh keys suppressed during the game | `src/games/number-wheel/NumberWheelGame.tsx` keydown handler |

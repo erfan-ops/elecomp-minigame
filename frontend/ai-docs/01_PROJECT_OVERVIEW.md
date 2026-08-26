@@ -15,18 +15,17 @@
 ## What The Application Does
 
 A vertical-touchscreen kiosk app for conference booths. It walks one attendee at a time through a
-fixed 5-step journey, runs a minigame, persists the outcome, and shows a leaderboard, then resets for
-the next attendee.
+fixed 4-step journey, runs a minigame, persists the outcome (the registration page shows the live
+«برترینهای امروز» panel), then resets for the next attendee. There is no separate leaderboard page.
 
 Journey (`AppPhase` values, in order — `src/app/routes.tsx`):
 
 | Phase | Page component | Collects / does |
 |---|---|---|
-| `REGISTRATION` | `RegistrationPage` | Mobile number (the player's only identity). Rejects a mobile that already has a stored result. |
+| `REGISTRATION` | `RegistrationPage` | Mobile number (the player's only identity). Rejects a mobile that already has a stored result. Embeds the «برترینهای امروز» leaderboard panel (top-5 by stored prize). |
 | `SURVEY` | `SurveyPage` | `employeeCount` (4 range cards → 10/50/300/301) + `hasBenefits` (yes/no), or a "not employed" skip |
 | `CATEGORY` | `CategorySelectionPage` | One sector from `CATEGORIES` |
-| `GAME` | `GamePage` | Hosts the active game, builds + persists `GameSessionResult`, offers retry |
-| `LEADERBOARD` | `LeaderboardPage` | Ranked table built from stored results; "new user" reset |
+| `GAME` | `GamePage` | Hosts the active game, builds + persists `GameSessionResult`, offers retry; result screens route back to registration (`startNewUser`) |
 
 ## What The Minigame Does
 
@@ -58,7 +57,7 @@ survey are exchanged for a chance at a prize, with a public leaderboard as socia
 - Styling: hand-written plain CSS, three global stylesheets, BEM-ish class names, CSS custom properties. No Tailwind, no CSS Modules, no CSS-in-JS.
 - State: React `useState` in one Context provider (`AppSessionProvider`) + `useReducer` inside the game + `useRef` for animation/guard state. No external state library.
 - Testing: NONE. No test framework, no test files, no test script.
-- Deployment: UNKNOWN — no CI config, no `vercel.json`, `netlify.toml`, `Dockerfile`, or deploy script in the repository. Build output is a static `dist/` directory servable by any static host. `README.md` documents launching Chrome in kiosk mode against a URL.
+- Deployment: UNKNOWN — no CI config. A Docker scaffold was added at the repo root on 2026-08-26 (`docker-compose.yml`, `docker-compose.dev.yml`, `exhibition.sh`) with `Dockerfile`s in `frontend/`, `backend/`, and `panel/` (the latter two have no application code yet). Build output is a static `dist/` directory servable by any static host; `frontend/nginx.conf` adds SPA fallback + `/api`/`/ws` proxying to the backend. `README.md` documents launching Chrome in kiosk mode against a URL.
 
 ## Package Manager
 
@@ -85,8 +84,8 @@ npm. Evidence: `package-lock.json` present at root; no `yarn.lock`, no `pnpm-loc
 - Anti-replay: registration blocks a mobile that already has a stored result (fail-open on repository error).
 - Retry chain: after a **zero-win** result the host offers up to `MAX_GAME_ATTEMPTS` (3) total attempts; any win ends the chain. Every stored result carries its `attempt` number.
 - Save-status UI with an explicit retry-save action on persistence failure.
-- Leaderboard computed purely from stored results, with gold/silver/bronze styling for ranks 1–3.
-- Masked mobile display on public screens (`912 *** 4567`); canonical `+98…` value stored unmasked.
+- Leaderboard panel on the registration page, computed purely from stored results (top 5, gold first row).
+- Masked mobile display on public screens (`0910****113`); the entered 09-form stored unmasked.
 - Persian numeral rendering at the display layer only.
 - A redesigned visual language for page 1 (mobile entry): design-scale mechanism
   (`src/app/designScale.ts`, canvas 1080×1800), a `--ds-*` token set, and shared `src/components/ui/`

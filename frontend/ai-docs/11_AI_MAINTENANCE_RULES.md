@@ -110,7 +110,7 @@ These are enforced by code review and by the contracts documented in `03_ARCHITE
 7. No real `<input>` elements. The on-screen numeric keyboard is the only text-entry mechanism.
 8. Persian numerals are display-only; state and storage use Latin digits and ISO timestamps.
 9. Numeric sequences MUST set `direction: ltr`; Persian text MUST NOT get `letter-spacing`.
-10. No page scrolling except `.leaderboard`.
+10. No page scrolling anywhere — the registration leaderboard panel shows only the top 5.
 11. Adding a field to `GameSessionResult` REQUIRES updating `isGameSessionResult` in
     `src/services/localResultRepository.ts`.
 

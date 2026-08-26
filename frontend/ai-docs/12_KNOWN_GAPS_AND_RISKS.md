@@ -27,14 +27,14 @@ labeled `INFERRED`, `UNVERIFIED`, or `UNKNOWN`.
 
 `README.md` and `CLAUDE.md` both describe exactly one game (`number-wheel`), matching
 `src/games/registry.ts`. The only stale single-game artifact is D3. See
-`02_REPOSITORY_STRUCTURE.md` → "Working-Tree vs Git HEAD" for the tracked-but-absent
-`src/games/ten-second/` directory, which no source file references.
+`02_REPOSITORY_STRUCTURE.md` → "Working-Tree vs Git HEAD" for the 2026-08-26 move under `frontend/`
+(commit `8169d35`), which also removed the deleted `ten-second` files from git.
 
 ## Missing Information Not Covered By README.md Or CLAUDE.md
 
 | # | Gap |
 |---|---|
-| M1 | **Deployment target is `UNKNOWN`.** No CI config, host config, Dockerfile, or deploy script. How `dist/` reaches the kiosk is undocumented |
+| M1 | **Deployment target is `UNKNOWN`.** No CI config. A Docker scaffold exists since 2026-08-26 (`docker-compose*.yml`, `exhibition.sh`, Dockerfiles + nginx.conf in `frontend/`/`backend/`/`panel/`), but `backend/` and `panel/` contain **no application code**, so the full stack cannot build yet. How `dist/` reaches the kiosk is undocumented |
 | M2 | **No data-retention or export story.** Results accumulate in `localStorage` forever, are never pruned, and there is no export/report mechanism — yet `README.md` mentions "future billing" and the survey answers are collected for analysis. How the organizer actually retrieves the data is undocumented |
 | M3 | **Prize fulfilment is undocumented.** The app computes `winAmount` but has no redemption, voucher, or audit trail |
 | M4 | **No stated browser/OS baseline** beyond "Chrome in kiosk mode". `crypto.randomUUID` requires a secure context (HTTPS or `localhost`) — over plain HTTP on a LAN IP it is `undefined` and the `Math.random` fallback silently takes over. Whether the kiosk is served over HTTPS is `UNKNOWN` |
@@ -49,7 +49,7 @@ labeled `INFERRED`, `UNVERIFIED`, or `UNKNOWN`.
 | # | Item | Question |
 |---|---|---|
 | Q1 | `score` === `winAmount` in the number-wheel game | `GameResult.score` is documented as a "generic ranking score" separate from the prize, yet the game sets both to the prize amount. The leaderboard therefore ranks by prize. Intentional or a shortcut? `UNKNOWN` |
-| Q2 | Leaderboard header text | **RESOLVED** — `LeaderboardPage` and the page-1 `LeaderboardPanel` now render `entry.winAmount` (the stored prize), so the «جایزه» column no longer depends on Q1. `Q1` remains open: ranking still sorts by `score` |
+| Q2 | Leaderboard header text | **RESOLVED** — the page-1 `LeaderboardPanel` renders `entry.winAmount` (the stored prize), so the «جایزه» column no longer depends on Q1. The standalone `LeaderboardPage` was deleted on 2026-08-26. `Q1` remains open: ranking still sorts by `score` |
 | Q3 | Anti-replay fails open | `RegistrationPage.handleSubmit` registers the user when the repository throws. Documented as intentional in a code comment, but it means a storage failure disables the one-play-per-mobile rule entirely |
 | Q4 | Retry only after a zero-win result | `canRetry` requires `winAmount === 0`. A 1-match win (500,000) ends the chain. Whether "any win ends the chain" is the intended business rule is stated in `CLAUDE.md` but not justified |
 | Q5 | Best-score-per-user tie handling | `buildLeaderboard` keeps the FIRST record on an exact score tie (`>` not `>=`), so the earliest attempt wins. Deliberate? `INFERRED` yes (deterministic ordering is an explicit goal) |
@@ -93,7 +93,7 @@ visually — nothing here is covered by an automated check.
 | P3 | Spin blur `filter: blur(1.6px)` | A compositor-level filter on a continuously transforming element. Increasing the radius or adding more filters is a measurable cost on kiosk-class hardware. `UNVERIFIED` on the actual target device |
 | P4 | `Confetti` with `count = 64` | 64 absolutely-positioned animated spans, mounted on a perfect result. Raising `count` materially raises paint cost during the celebration |
 | P5 | `AppContent` re-renders the whole page subtree on any session change | Fine at current page sizes; no memoization exists to absorb growth |
-| P6 | `LeaderboardPage` loads and reduces **all** stored results in memory | Unbounded growth: results are never pruned. At conference scale this is fine; over months on one device the array only grows. `UNVERIFIED` at what size it becomes noticeable |
+| P6 | The registration leaderboard panel loads and reduces **all** stored results in memory (to pick the top 5) | Unbounded growth: results are never pruned. At conference scale this is fine; over months on one device the array only grows. `UNVERIFIED` at what size it becomes noticeable |
 | P7 | `localStorage` is synchronous | `save()` blocks the main thread. Negligible for small arrays; grows with P6 |
 
 ## Untested Critical Logic
@@ -108,7 +108,7 @@ repository.
 | T2 | `rollingFlags` (`gameEngine.ts:103`) | Determines which reel a STOP locks. A wrong index would lock the wrong digit |
 | T3 | `calculatePrizeResult` / `countExactMatches` (`prizeCalculator.ts`) | Decides real money |
 | T4 | `buildLeaderboard` (`leaderboard.ts:13`) | Public ranking and tie-breaking |
-| T5 | `isValidMobileDigits`, `toCanonicalMobile`, `formatMaskedMobile` (`user.ts`) | Identity, anti-replay key, and privacy masking |
+| T5 | `isValidMobileDigits`, `formatPanelMobile` (`user.ts`) | Identity, anti-replay key, and privacy masking |
 | T6 | `isGameSessionResult` (`localResultRepository.ts:12`) | The only barrier between corrupt storage and the UI. A missed field silently discards every stored record |
 | T7 | `numberToDigits` / `digitsToNumber` (`gameEngine.ts`) | Leading-zero handling and the 0–999 clamp |
 | T8 | `toPersianDigits` / `formatPersianNumber` (`persian.ts`) | All numeric display, including the `٬` separator substitution |
@@ -126,8 +126,8 @@ Note: `randomTargetNumber`, `randomDigits`, and `createNewGame` all accept an in
 | X2 | `export { usePrefersReducedMotion }` | `useNumberGame.ts` | Dead re-export; no importer uses it from this path |
 | X3 | `createNewGame().targetNumber` | `gameEngine.ts` | Returned but never read (`useNumberGame` uses only `target` and `startDigits`) |
 | X4 | `randomTargetNumber(exclude?)` | `gameEngine.ts` | The `exclude` parameter is never passed a value — the only call site passes `undefined`. The retry `while` loop is unreachable |
-| X5 | Commented-out `isMe` highlight | `LeaderboardPage.tsx` | Dead code kept in place |
-| X6 | `.leaderboard-row--me td`, `.leaderboard__me` | `app.css` | Orphaned CSS for X5 |
+| X5 | Commented-out `isMe` highlight | `LeaderboardPage.tsx` | **Deleted** — the leaderboard page was removed on 2026-08-26; the panel's first row is styled via `leaderboard-row--first` instead |
+| X6 | `.leaderboard-row--me td`, `.leaderboard__me` | `app.css` | **Deleted** — orphaned CSS removed with the leaderboard page |
 | X7 | `.result__percent` | `number-wheel.css` | **Deleted with the result overlay in the redesign** — result UI now uses `.game-result__*` |
 | X8 | `countExactMatches` export | `prizeCalculator.ts` | Exported but only consumed internally by `calculatePrizeResult` |
 | X9 | `VirtualNumericKeyboard` is fully unused | — | Page 1 uses the redesigned `ui/Keypad` and page 2's count question became range cards (`ui/ChoiceGrid`) — no typed input remains. The component and its `.keyboard*` styles are retained as a reusable primitive |
@@ -150,23 +150,23 @@ are invisible to the compiler.
 | B7 | **`localStorage` is the system of record** | No backup, no sync, no server. Clearing browser data destroys the event's entire dataset. The kiosk browser MUST NOT clear storage between sessions |
 | B8 | **No storage pruning or schema migration** | The `.v1` key suffix is the only versioning affordance; there is no migration code |
 | B9 | **`aria-modal="true"` on `.result` without focus management** | **RESOLVED** — the `.result` dialog overlay was deleted with the redesign; `GameResultScreen` is a plain `<section>` with no dialog semantics |
-| B10 | **Legacy font has a single weight** | `BYekan+.ttf` is Regular (400) only; 600–800 weights in the legacy styles are browser-synthesized. The redesigned faces are covered by real weights (Vazirmatn 400–700 bundled, IRANYekanXFaNum statics 400–900 + a variable face) — the concern now applies only to the legacy leaderboard page. Rendering quality is `UNVERIFIED` on the target device |
+| B10 | **Legacy font has a single weight** | `BYekan+.ttf` is Regular (400) only; 600–800 weights in the legacy styles are browser-synthesized. The redesigned faces are covered by real weights (Vazirmatn 400–700 bundled, IRANYekanXFaNum statics 400–900 + a variable face). The legacy leaderboard page was deleted on 2026-08-26, so `BYekan+` remains only as the last-resort fallback in the font stacks. Rendering quality is `UNVERIFIED` on the target device |
 | B11 | **No `base` configured in `vite.config.ts`** | Assets, including `/BYekan+.ttf`, are referenced from the root. Serving `dist/` from a sub-path silently 404s the font |
 | B12 | **Registration validates Iranian mobiles only** (`^9\d{9}$`) | Correct for the intended audience; there is no path for any other number format |
-| B13 | **`LeaderboardPage.load` sets state without an unmount guard** | Would warn/no-op if the page unmounted mid-load. Not reachable in the current flow (`INFERRED` acceptable) |
+| B13 | **`RegistrationPage`'s leaderboard-panel load sets state without an unmount guard** | Would warn/no-op if registration unmounted mid-load (the user can submit before the panel load resolves). `INFERRED` acceptable — the lost update is at most a stale panel on the next registration |
 
 ## Possible Inconsistencies Within The Code Itself
 
 | # | Item |
 |---|---|
 | C1 | `attemptsRemaining` is optional in `GameContext` but load-bearing for result messaging (R7) |
-| C2 | `GameResult.score` is documented as independent of the prize, yet the only game sets them equal, and the leaderboard column is labelled «جایزه» (Q1, Q2) |
+| C2 | `GameResult.score` is documented as independent of the prize, yet the only game sets them equal, and the leaderboard panel column is labelled «جایزه» (Q1, Q2) |
 | C3 | Tuning constants are split between a `config.ts` and module-local literals (A4, A5) |
 | C4 | Two reduced-motion mechanisms coexist — a global CSS override in `global.css` and the `usePrefersReducedMotion` hook — and only the CSS one has a visible effect on reel speed (which is to say: none, per D2) |
 | C5 | `direction: rtl` on `.result__value` / `.result__prize` versus `direction: ltr` everywhere else digits appear (D6) | **RESOLVED** — both classes were deleted with the redesign; every remaining digit surface sets `direction: ltr` |
 | C6 | `data-reduced-motion` is the only state expressed as a data attribute; every other state uses a modifier class. It is set to `"true"` or omitted, never `"false"`, so `[data-reduced-motion="false"]` would never match |
-| C7 | Mobile digit rendering differs by surface: the redesigned pages 1–4, the game page, and the result screens write **English digits** rendered with Persian glyphs by the bundled fonts (keypad, display, reels, target, prizes — per user directive), while the legacy leaderboard page still renders Latin digits too. `UNKNOWN` whether the leaderboard should adopt the same treatment |
-| C8 | Two masking formats coexist: `formatMaskedMobile` (3-3-4, three stars — leaderboard page) and `formatPanelMobile` (09-form, four stars — page-1 panel). Both derive from the same canonical value |
+| C7 | Mobile digit rendering differs by surface | **RESOLVED** — the last legacy surface (the leaderboard page) was deleted on 2026-08-26; every digit surface now writes **English digits** rendered with Persian glyphs by the bundled fonts (keypad, display, reels, target, prizes, panel mobiles — per user directive) |
+| C8 | Two masking formats coexist | **RESOLVED** — `formatMaskedMobile` (3-3-4, three stars) was deleted with the leaderboard page on 2026-08-26; `formatPanelMobile` (09-form, four stars) is the only mask |
 
 ## Areas Needing Human Clarification
 

@@ -22,7 +22,6 @@
 # - src/domain/user.ts
 # - src/domain/category.ts
 # - src/config/appConfig.ts
-# - public/Container.svg
 # - public/stores/ (sponsor logos, page 4)
 # - public/fonts/IranYekanXVF/Farsi numerals/ (IRANYekanXFaNum weights 400–900)
 
@@ -44,10 +43,10 @@ resolution is unknown, so nothing in the new system hardcodes the canvas:
 `src/app/designScale.ts`; the whole redesigned UI refits. Verified at 1080×1800 (scale 1.0),
 800×1280 (scale 0.711), and 1440×2560 (scale 1.333) — measured sizes track the scale exactly.
 
-The leaderboard is the only remaining legacy page: it does not use rem, so the scaled root
-font-size does not affect it and it keeps its existing `clamp()/vmin` sizing. Registration (page 1),
-survey (page 2), category (page 4), and the game page (frames 5–8) were redesigned into this
-language — see the compositions below.
+Every surface now lives in this language: registration (page 1), survey (page 2), category
+(page 4), and the game page (frames 5–8) are all rem-based. The last legacy surface — the
+standalone leaderboard page — was deleted on 2026-08-26; the leaderboard lives on registration as
+the rem-based `LeaderboardPanel` (see below).
 
 ## Design Tokens (single source of truth: `src/styles/design-tokens.css`)
 
@@ -57,7 +56,7 @@ tokens.
 
 | Group | Tokens |
 |---|---|
-| Canvas | `--ds-bg` (rgb(7,7,20)), `--ds-glow-deep` (rgb(15,35,50)), `--ds-glow-plum` (rgb(23,20,23)), `--ds-glow-teal`, `--ds-card` |
+| Canvas | `--ds-bg` (rgb(7,7,20)), `--ds-card` (rgba(9,11,20,0.62)) — the old `--ds-glow-deep/plum/teal` page-1 blobs were removed 2026-08-26 with the default shell variant |
 | Glass surface | `--ds-glass-bg` (the 180deg cyan-tinted gradient), `--ds-glass-border-top`, `--ds-glass-blur` (blur(24px)) |
 | Gradients | `--ds-gradient-primary` (135deg #6FE4F2→#36AEBF→#1F7D8C), `--ds-gradient-heading` (120deg text gradient), `--ds-gradient-gold` (180deg gold text gradient) |
 | Shadow | `--ds-shadow-primary` (inner white highlight + 20/55/-14 teal glow) |
@@ -69,7 +68,7 @@ tokens.
 | Game gradients | `--ds-gradient-win-heading` (161deg #D6FBFF 7.7%→#36AEBF 45.8%→#2FD6C4 92.3%, the win heading), `--ds-gradient-reel` (180deg #141330→#0A0A1C, the reel window) |
 | Game glows/shadows | `--ds-glow-active-reel` (cyan ring + 80px glow for the active reel), `--ds-shadow-stop` (cyan under-glow + halo for the stop button), `--ds-shadow-result-wrong` (red glow), `--ds-shadow-result-correct` (green glow) |
 | Game typography | `--ds-fs-result-heading` 72px / `--ds-lh-result-heading` 84px, `--ds-fs-result-digit` 60px, `--ds-fs-prize-amount` 96px / `--ds-lh-prize-amount` 120px |
-| Page-2 glows | `--ds-glow-tl` (rgba(54,174,191,0.32)), `--ds-glow-tr` (rgba(47,214,196,0.18)), `--ds-glow-bl` (rgba(54,174,191,0.22)), `--ds-glow-br` (rgba(255,207,58,0.08)), `--ds-glow-edge` (rgba(120,210,225,0.06) top strip), `--ds-glow-deco` (emoji drop-shadow 0 8px 24px cyan) |
+| Shell glows (every page) | `--ds-glow-tl` (rgba(54,174,191,0.32)), `--ds-glow-tr` (rgba(47,214,196,0.18)), `--ds-glow-bl` (rgba(54,174,191,0.22)), `--ds-glow-br` (rgba(255,207,58,0.08)), `--ds-glow-edge` (rgba(120,210,225,0.06) top strip), `--ds-glow-deco` (emoji drop-shadow 0 8px 24px cyan) |
 | Page-2 shadow/glass | `--ds-shadow-strong` (inner white highlight + 0 20px 27.5px teal glow), `--ds-glass-blur-soft` (blur(12px)) |
 | Page-2 fonts | `--ds-font-body` (Vazirmatn → IRANYekanX → IRANYekanXFaNum → B Yekan → Segoe UI), `--ds-font-logo` (Orbitron → Bahnschrift → Segoe UI) |
 | Page-1 FaNum faces | `--ds-font-fanum` (static `IRANYekanXFaNum`, weights 400–900) for digit runs (keypad, phone display, «وارد کنید») and the page-4 card names/heading; `--ds-font-fanum-vf` (variable `IRANYekanXVFaNum`, weight axis 100–900) for the Persian texts (welcome block, step tracker, leaderboard panel, page-4 kicker/subtitle) |
@@ -80,15 +79,15 @@ tokens.
 
 | Component | Props | Notes |
 |---|---|---|
-| `PageShell` | `children`, `variant?: "default" \| "survey"`, `logo?: ReactNode`, `decorations?: ReactNode` | Dark canvas, blurred glow layer (`pointer-events: none`), logo `public/Container.svg` as the first element by default (379 design px wide), and the content frame (padding top 138 / inline 56 / bottom 56 design px, 84 design px gap between major sections). The `"survey"` variant swaps in the page-2 lighting (four corner radials + top-edge cyan strip, 140px blur, frame gap 32) and `logo`/`decorations` replace the header and add an atmospheric layer. |
+| `PageShell` | `children`, `logo: ReactNode`, `decorations: ReactNode` | Dark canvas + the shared lighting on **every** page (four corner radials + top-edge cyan strip, 140px blur, `pointer-events: none`), `logo` (all pages pass `GameHeader`) as the first element, and the content frame (padding top 138 / inline 56 / bottom 56 design px, 32 design px gap between sections). `decorations` (all pages pass `FloatingDecorations`) adds the atmospheric layer. The old `"default"` variant and the `Container.svg` logo fallback were removed 2026-08-26 — page 1 uses the same shell as the rest. |
 | `StepTracker` | `steps: readonly string[]`, `currentIndex: number` | RTL (right→left) journey tracker: 36px circles with 14/22 w500 numbers + labels, 32×1 connector lines with 12px gaps both sides. Steps `<= currentIndex` get the primary gradient + shadow and white text; later steps are muted (white 40%). Variable FaNum face. |
 | `GradientText` | `gradient?`, `className?`, `children` | `background-clip: text` gradient text. The gradient is passed as the per-instance CSS var `--ds-text-gradient` (defaults to the heading gradient). |
 | `LiveBadge` | — | «زنده» pill: 4×12 padding, full radius, `--ds-live-pill` background, 12/18 w550 green label + 6.8px dot at 36% opacity. |
 | `PhoneDisplay` | `value: string` (English digits), `placeholder?` | 468×96 glass display, padding-inline 24, content horizontally centered; both the placeholder `09---------` and the entered digits use the static `IRANYekanXFaNum` face (English digits drawn with Persian glyphs), 36/40 w700, 5.4px spacing. `role="textbox"`, no real `<input>`. |
 | `Keypad` | `onDigit`, `onBackspace`, `onConfirm`, `confirmDisabled?` | 3×4 LTR grid (forced `direction: ltr`), 16px gaps, 96px glass keys, English digit labels in the static `IRANYekanXFaNum` face (Persian glyphs), order 1 2 3 / 4 5 6 / 7 8 9 / تایید 0 ⌫. «تایید» carries the primary gradient + shadow. |
 | `LeaderboardPanel` | `entries: { mobile: string; amount: number }[]` | «برترینهای امروز» panel (468 wide, 24 internal gap, ~25 padding-inline, dark card, radius 24): trophy 🏆 (−2.76°) + title/subtitle on the right, `LiveBadge` on the left; 5 rows (radius 16, gap 10, padding 12×16, gap 16), content right→left: rank medal | avatar circle (44px, emoji) | masked phone (19/24 w581 white) | amount + «ت». Row 1: height 70, gold surface + gold top border, 🥇, 💰 avatar (−6°), gold gradient amount. Rows 2–5: height 68, 🥈 then plain Persian rank numbers (24/32 w400 white 40%), amounts in `#6FE4F2`. |
-| `GameHeader` | — | Page-2 header: 64×64 primary-gradient star badge (radius 20, ★ 30/36 w900 white, strong glow) + LTR `LUCKY REELS` wordmark (Orbitron stack → Bahnschrift fallback, 30/36 w800, 0.75px letter-spacing, LUCKY white + REELS heading-gradient via `GradientText`) + «تجربه هیجان در غرفه» (14/20 w500 white 45%) underneath. |
-| `FloatingDecorations` | — | The 8 page-2 emoji (⭐🎉🎲💎✨🎮🎁🎯) at the spec's design-px positions/sizes with slight rotations, `drop-shadow` cyan glow, `pointer-events: none`; positions are rem-based so they scale with `--s`. |
+| `GameHeader` | — | Page header (every page): 64×64 primary-gradient star badge (radius 20, ★ 30/36 w900 white, strong glow) + LTR `LUCKY REELS` wordmark (Orbitron stack → Bahnschrift fallback, 30/36 w800, 0.75px letter-spacing, LUCKY white + REELS heading-gradient via `GradientText`) + «تجربه هیجان در غرفه» (14/20 w500 white 45%) underneath. |
+| `FloatingDecorations` | — | The 8 page emoji (⭐🎉🎲💎✨🎮🎁🎯) at the spec's design-px positions/sizes with slight rotations, `drop-shadow` cyan glow, `pointer-events: none`; positions are rem-based so they scale with `--s`. |
 | `ChoiceGrid` | `options: readonly O[]`, `selected: O \| null`, `onSelect: (o: O) => void`, `disabled?` | 2×2 grid of 398×160 glass cards (radius 24, glass gradient, 1px cyan border, blur 12, 36/32 w600 white text). RTL flow: first option top-right, second top-left. Selected card: cyan border `rgba(111,228,242,0.65)` + primary glow + `#d6fbff` w700. `disabled` dims the grid to 35% and blocks taps (skip-checkbox state). |
 | `NavButtons` | `onBack`, `onContinue`, `continueDisabled?`, `backLabel?`, `continueLabel?`, `className?` | بازگشت (141×64 glass, radius 16) + ادامه (154×64 primary gradient + strong glow), 18/28 text, 24 gap, RTL row (بازگشت right). Disabled ادامه sits at 35% opacity (spec §13). The optional `className` lands on the row for page-specific widths — the category page passes `nav-buttons--category` (138 + 16 + 189 = 343, Figma frame-4 spec). |
 | (page composition) | — | `welcome` (eyebrow 14/22 w600 `#6FE4F2`, heading 60/66 — white w581 part + gradient w800 part, subtitle white 55%; all in the variable FaNum face except the gradient «وارد کنید» which uses the static face) and `registration-content` (2-column grid, 32 gaps, phone panel on the RIGHT in RTL, leaderboard on the LEFT, 40 design px below the welcome block). |
@@ -97,16 +96,18 @@ tokens.
 takes the top 5, and maps `{ mobile, amount: winAmount }` (the stored prize). Rows come
 exclusively from stored results — when the repository has no results (or fails to load) the panel
 shows a single empty-state line («هنوز نتیجه‌ای ثبت نشده است.»), never placeholder rows. The panel's
-texts use the variable face (`--ds-font-fanum-vf`); the final `LeaderboardPage` uses the static
-face (`--ds-font-fanum`, set on `.page--leaderboard` in `app.css`).
+texts use the variable face (`--ds-font-fanum-vf`) — there is no separate leaderboard page
+anymore (deleted 2026-08-26); the static face (`--ds-font-fanum`) remains only for the keypad
+labels, the phone display, «وارد کنید», and the page-4 card names/heading.
 
-Mobile masking for the panel: `formatPanelMobile(canonical)` in `src/domain/user.ts` →
-09-form with the 4 middle digits masked (`+989121234567` → `0912****567`), rendered as Persian
+Mobile masking for the panel: `formatPanelMobile(mobile)` in `src/domain/user.ts` → the stored
+09-form with the 4 middle digits hidden (`09108086113` → `0910****113`), rendered as Persian
 numerals by the panel.
 
 ## Page 1 Composition (top → bottom)
 
-`PageShell` → logo → `StepTracker` (steps `["شماره موبایل","سوال 1","سوال 2","سوال 3","بازی"]`,
+`PageShell` (the shared shell: corner radials + edge wash, `logo={<GameHeader />}`,
+`decorations={<FloatingDecorations />}`) → `StepTracker` (steps `["شماره موبایل","سوال 1","سوال 2","سوال 3","بازی"]`,
 `currentIndex = 0`) → welcome block → content grid (phone panel right, leaderboard left).
 The phone panel stacks `PhoneDisplay` (468×96), the optional error line, and the `Keypad`
 (3×4 × 96px + 16px gaps ≈ 468×432), gap 20.
@@ -116,7 +117,7 @@ so every page's tracker shows the same five labels.
 
 ## Page 2 Composition (survey, top → bottom)
 
-`PageShell variant="survey"` (corner glows + edge strip) + `FloatingDecorations` → `GameHeader` →
+`PageShell` (corner glows + edge strip) + `FloatingDecorations` → `GameHeader` →
 `StepTracker` (`JOURNEY_STEPS`, `currentIndex = 1` on step 1 / `= 2` on step 2) → the
 `.survey-step` block (364 design px atmospheric margin): kicker «سوال اول»/«سوال دوم» (14/22 w600
 `#6FE4F2`) → question (48/60 w800, `IRANYekanXFaNum` stack, max-width 768, centered, wraps to two
@@ -130,13 +131,14 @@ registration) and on step 2 returns to step 1; ادامه is disabled until the 
 
 ## Page 4 Composition (category, top → bottom)
 
-`PageShell variant="survey"` (corner glows + edge strip) + `FloatingDecorations` → `GameHeader` →
+`PageShell` (corner glows + edge strip) + `FloatingDecorations` → `GameHeader` →
 `StepTracker` (`JOURNEY_STEPS`, `currentIndex = 3` — «سوال ۳» active, «بازی» inactive) → the
 `.category-screen` block (~30px below the stepper): kicker «سوال سوم» (14/22 w600 `#6FE4F2`,
 variable FaNum) → heading (48/60 w800 static FaNum, max-width 672, wraps to two lines) →
 subtitle «فقط یک گزینه قابل انتخاب است» (19/24 w500 white 55%, variable FaNum) → `.category-grid`
 → `NavButtons` (`nav-buttons--category`: بازگشت 138 + شروع بازی 189, 16 gap; شروع بازی disabled
-at 35% while no category is selected) → `selectCategory` on start, `startNewUser` on back.
+at 35% while no category is selected) → `selectCategory` on start, `goBackToSurvey` on back
+(returns to the survey — the previous step; the user stays registered).
 
 The grid is **2 columns of 408px glass cards with 24px gaps, forced `direction: ltr`** so the
 `CATEGORIES` config order reads left→right (پوشاک top-left, per the Figma); the last card
@@ -149,15 +151,15 @@ file); `src` URLs are `encodeURIComponent`-encoded (spaces / Persian filenames).
 
 ## Game Page Composition (Figma frames 5–8)
 
-`PageShell variant="survey"` (corner glows + edge strip) + `FloatingDecorations` → `GameHeader` →
+`PageShell` (corner glows + edge strip) + `FloatingDecorations` → `GameHeader` →
 `StepTracker` (`JOURNEY_STEPS`, `currentIndex = 4` — «بازی» active) → either the play screen
 (`NumberWheelGame`, frame 5) or, after `onComplete`, one of three result views
 (`GameResultScreen`, frames 6–8). All game-page styles are rem-based; the play-screen classes live
 in `src/games/number-wheel/number-wheel.css` (game-scoped `:root` tokens `--wheel-w/h/digit-font`),
 the result-screen classes in `design-system.css` (`.game-result*`, `.result-digit*`, `.result-action*`).
 
-**Frame 5 (play screen)** — `.slot-game` column: exit pill (`slot-game__exit`, «خروج», top
-inset-inline-end) → kicker «ماشین شانس» (14/22 w600 `#6FE4F2`) → heading «عدد NNN را پیدا کنید»
+**Frame 5 (play screen)** — `.slot-game` column (no exit control while playing — «خروج از بازی»
+lives on the result screens): kicker «ماشین شانس» (14/22 w600 `#6FE4F2`) → heading «عدد NNN را پیدا کنید»
 (48/60 w800 static FaNum; the target digits are `slot-game__target-digit` — gold
 `--ds-gradient-gold-strong` text-clip, 64×72, LTR — rendered as **buttons** at IDLE (tap cycles the
 digit 0→9, `▲` affordance) and **spans** once running) → «عدد تصادفی» ghost pill (IDLE only) →
@@ -181,7 +183,7 @@ w900 white) → subtitle «شما N رقم را درست حدس زدید» → t
 (`game-result__heading--gradient` = `--ds-gradient-win-heading` text-clip), all three digit cards
 green, and the gold `.game-result__prize` card (453×258 design px, `--ds-shadow-prize`, amount
 96px gold-strong clip + «تومان») with the actual `winAmount`; `Confetti` when
-`!reducedMotion`. Actions: «خروج از بازی» + «ادامه» (→ leaderboard).
+`!reducedMotion`. Actions: «خروج از بازی» + «ادامه» (both → registration via `startNewUser`).
 
 **Frame 8 (game over)** — same skeleton, message «فرصتهای بازی شما به پایان رسید و در این بازی
 موفق به دریافت جایزه نشدید.», **only** «خروج از بازی» (primary).
@@ -196,8 +198,8 @@ actual `GameResult` + session — never hard-coded design values.
 |---|---|---|
 | 1 | Both FaNum faces are wired in `design-tokens.css`: the static `IRANYekanXFaNum` (weights 400–900) and the variable `IRANYekanXVFaNum` (VF file, weight axis 100–900). Page 1 uses the **static** face for digit runs (keypad labels, phone display value + placeholder, «وارد کنید») and the **variable** face for the Persian texts (welcome block, step tracker, leaderboard panel). The rest of the design system uses the bundled `"B Yekan"`. `Orbitron` remains absent — the currency «ت» stack lists it first so it activates if the asset is added. | Asset availability + user font directive |
 | 2 | The reference image (`public/App.png`) cannot be viewed by the implementing agent's environment; the spec text was treated as the source of truth for colors/typography and the described arrangement for hierarchy/mood. | Environment limitation |
-| 3 | The `+98` prefix chip is removed from the presentation; the display placeholder is `09---------`. The stored canonical value is unchanged (`+98…`), and the validation still requires exactly 10 digits starting with `9`. | Spec's placeholder style |
-| 4 | The digit cap stays at **10** (the spec's "max 11 digits" would change the validation logic; HARD RULES forbid logic changes). | HARD RULES |
+| 3 | The `+98` prefix chip is removed entirely — no prefix is added or stored. The user enters the full 11-digit 09-form (`09108086113`), the display placeholder is `09---------`, and the entered digits are stored/reported **exactly as entered** (no modification); only the panel's display masking (`0910****113`) transforms them. | User directive |
+| 4 | The digit cap is **11** — exactly the full 09-form (`isValidMobileDigits` = `/^09\d{9}$/`). | Spec's placeholder style |
 | 5 | «تایید» calls the existing submit handler — including the anti-replay lookup and its fail-open path. There is no separate «ورود» button. | Spec keypad layout |
 | 6 | Numbers are written as **English digits everywhere** in the design system (keypad, display, tracker, panel phones/ranks/amounts); the bundled fonts render them with Persian glyph shapes. Amounts use English grouping (`5,000,000`). | User directive |
 | 7 | `letter-spacing: 5.4px` is applied to the entered digits and the placeholder only (isolated digits, not joined script), with a matching `text-indent` so the centered run sits optically centered. | Spec typography vs repo rule |
@@ -210,7 +212,7 @@ actual `GameResult` + session — never hard-coded design values.
 | 14 | Page 2: `Orbitron` is absent, so the LUCKY REELS wordmark renders in Bahnschrift (fallback). Same as deviation 1. | Asset availability |
 | 15 | Page 2: option labels use English digits (`1 تا 10 نفر` … `بیش از 300 نفر`) — the spec mixed Persian and English digits; the fonts render the Persian glyphs. Same as deviation 6. | User directive |
 | 16 | Page 2: بازگشت did not exist before; it now appears on both survey steps. On step 1 it performs `startNewUser()` — the documented session reset — which returns to registration with a clean slate (a mid-survey back can never restore a previous user; none is stored). | New control vs existing session model |
-| 17 | Page 4: بازگشت did not exist on the category page before; it now performs `startNewUser()` — the same back transition the survey's first step uses (the session model has no phase-back). A mid-category back therefore returns to registration, not to the survey. | New control vs existing session model |
+| 17 | Page 4: بازگشت did not exist on the category page before; it now performs `goBackToSurvey()` — a session-level phase-back (`CATEGORY` → `SURVEY`) that keeps the user registered and restarts the survey at its step 1. The survey's own step-1 back still performs `startNewUser()` (full reset). | User request vs existing session model |
 | 18 | Page 4: `CATEGORIES` in `src/config/appConfig.ts` was replaced with the Figma frame-4 set (پوشاک، خرید روزانه، طلا و زیورآلات، سفر و گردشگری، زیبایی و سلامت، ورزشی، کالای دیجیتال) — the config previously held 8 generic categories that matched no frame. Array order = visual order (the grid renders LTR). Stored `GameSessionResult.sector` ids change accordingly (no other code referenced the old ids). | User decision (asked and confirmed) |
 | 19 | Page 4: sponsor logo rows use the local assets in `public/stores/` per the organizer's mapping; `image 9.png` appears in both پوشاک and ورزشی exactly as mapped. The last card spans both columns because the set has 7 categories (the Figma's layout); a different count would reflow automatically. | Organizer's logo mapping |
 | 20 | Game page: the rules-panel prize cards and the win prize card show the **config** amounts (۵۰۰٬۰۰۰ / ۱٬۰۰۰٬۰۰۰ / ۵٬۰۰۰٬۰۰۰ تومان), not the Figma's ۵٬۰۰۰ — the frame's numbers are design examples and HARD RULES forbid hard-coding them. | HARD RULES |
@@ -224,11 +226,12 @@ actual `GameResult` + session — never hard-coded design values.
 ## Restyling Status
 
 Registration, survey, category, and the game page (frames 5–8) are redesigned into the design-scale
-language. The **leaderboard** is the only page still in the legacy `clamp()/vmin` language — the
-worked-example steps that produced the other pages:
+language; the standalone leaderboard page was deleted on 2026-08-26 (the leaderboard panel on
+registration was part of page 1's redesign, and nothing uses the legacy `clamp()/vmin` language
+anymore). The worked-example steps that produced the pages:
 
-1. Compose each page inside `PageShell` (pick the `"default"` or `"survey"` variant — or add a
-   new variant) and `StepTracker` (with that page's `currentIndex`).
+1. Compose each page inside `PageShell` (the shell is fixed — `logo`/`decorations` are the
+   per-page slots) and `StepTracker` (with that page's `currentIndex`).
 2. Consume ONLY tokens from `design-tokens.css`; add new tokens there, never in component CSS.
 3. Fixed dimensions in rem (16 design px per rem); content-dependent sizes intrinsic.
 4. Follow the BEM-ish class convention (`block__element--modifier`), Persian numerals at the

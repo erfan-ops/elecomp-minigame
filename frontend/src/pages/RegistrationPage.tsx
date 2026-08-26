@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { useAppSession } from "../app/AppSession";
+import { FloatingDecorations } from "../components/ui/FloatingDecorations";
+import { GameHeader } from "../components/ui/GameHeader";
 import { GradientText } from "../components/ui/GradientText";
 import { Keypad } from "../components/ui/Keypad";
 import { LeaderboardPanel } from "../components/ui/LeaderboardPanel";
@@ -7,7 +9,7 @@ import type { LeaderboardPanelEntry } from "../components/ui/LeaderboardPanel";
 import { PageShell } from "../components/ui/PageShell";
 import { PhoneDisplay } from "../components/ui/PhoneDisplay";
 import { JOURNEY_STEPS, StepTracker } from "../components/ui/StepTracker";
-import { isValidMobileDigits, makeUserId, toCanonicalMobile } from "../domain/user";
+import { isValidMobileDigits, makeUserId } from "../domain/user";
 import type { User } from "../domain/user";
 import { buildLeaderboard, resultRepository } from "../services";
 
@@ -61,22 +63,21 @@ export function RegistrationPage() {
       setError(MOBILE_ERROR);
       return;
     }
-    const canonical = toCanonicalMobile(mobileDigits);
     setChecking(true);
     try {
       // A mobile that already has a stored result means the player has
       // already finished the game (won or used up their tries) — block a
       // second participation.
       const results = await resultRepository.getResults();
-      if (results.some((result) => result.mobile === canonical)) {
+      if (results.some((result) => result.mobile === mobileDigits)) {
         setError(ALREADY_PLAYED_MESSAGE);
         return;
       }
-      const user: User = { id: makeUserId(), mobile: canonical };
+      const user: User = { id: makeUserId(), mobile: mobileDigits };
       register(user);
     } catch {
       // The check must never lock the kiosk out — fail open.
-      const user: User = { id: makeUserId(), mobile: canonical };
+      const user: User = { id: makeUserId(), mobile: mobileDigits };
       register(user);
     } finally {
       setChecking(false);
@@ -84,7 +85,7 @@ export function RegistrationPage() {
   };
 
   return (
-    <PageShell>
+    <PageShell logo={<GameHeader />} decorations={<FloatingDecorations />}>
       <StepTracker steps={JOURNEY_STEPS} currentIndex={0} />
 
       <div className="welcome">

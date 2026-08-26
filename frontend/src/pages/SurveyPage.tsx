@@ -99,7 +99,7 @@ export function SurveyPage() {
   const benefitsSelected = hasBenefits === null ? null : hasBenefits ? "بله" : "خیر";
 
   return (
-    <PageShell variant="survey" logo={<GameHeader />} decorations={<FloatingDecorations />}>
+    <PageShell logo={<GameHeader />} decorations={<FloatingDecorations />}>
       <StepTracker steps={JOURNEY_STEPS} currentIndex={step} />
 
       <div className="survey-step">

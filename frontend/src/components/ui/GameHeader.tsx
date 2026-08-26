@@ -1,9 +1,9 @@
 import { GradientText } from "./GradientText";
 
 /**
- * Page-2+ header: a gradient star badge with a strong cyan glow plus the
- * LTR "LUCKY REELS" wordmark (Orbitron stack — falls back to Bahnschrift
- * while Orbitron is absent) and the Persian tagline.
+ * The shared page header (every page): a gradient star badge with a strong
+ * cyan glow plus the LTR "LUCKY REELS" wordmark (Orbitron stack — falls
+ * back to Bahnschrift while Orbitron is absent) and the Persian tagline.
  */
 export function GameHeader() {
   return (

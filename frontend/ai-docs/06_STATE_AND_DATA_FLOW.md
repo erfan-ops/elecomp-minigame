@@ -7,7 +7,6 @@
 # - src/pages/SurveyPage.tsx
 # - src/pages/CategorySelectionPage.tsx
 # - src/pages/GamePage.tsx
-# - src/pages/LeaderboardPage.tsx
 # - src/games/number-wheel/useNumberGame.ts
 # - src/games/number-wheel/gameEngine.ts
 # - src/games/number-wheel/NumberWheelGame.tsx
@@ -35,10 +34,10 @@
 
 | State Name | Owner | Location | Shape | Update Method | Persistence | Notes |
 |---|---|---|---|---|---|---|
-| `phase` | `AppSessionProvider` | `src/app/AppSession.tsx` | `AppPhase = "REGISTRATION" \| "SURVEY" \| "CATEGORY" \| "GAME" \| "LEADERBOARD"` | Only via session actions (`register`, `completeSurvey`, `selectCategory`, `goToLeaderboard`, `startNewUser`) | none — resets on reload | The single navigation source of truth |
-| `user` | `AppSessionProvider` | same | `User \| null` = `{ id: string; mobile: string } \| null` | `register(user)`; cleared by `startNewUser` | none | `mobile` is canonical `+989…`; `id` from `makeUserId()` |
-| `category` | `AppSessionProvider` | same | `Category \| null` = `{ id: string; name: string } \| null` | `selectCategory(category)`; cleared by `register` / `startNewUser` | none | Value comes from `CATEGORIES` |
-| `survey` | `AppSessionProvider` | same | `SurveyAnswers \| null` = `{ employeeCount: number; hasBenefits: boolean } \| null` | `completeSurvey(survey)`; cleared by `register` / `startNewUser` | none | Skip stores `{ employeeCount: 0, hasBenefits: false }` |
+| `phase` | `AppSessionProvider` | `src/app/AppSession.tsx` | `AppPhase = "REGISTRATION" \| "SURVEY" \| "CATEGORY" \| "GAME"` | Only via session actions (`register`, `completeSurvey`, `selectCategory`, `goBackToSurvey`, `startNewUser`) | none — resets on reload | The single navigation source of truth. No leaderboard phase — registration embeds the panel |
+| `user` | `AppSessionProvider` | same | `User \| null` = `{ id: string; mobile: string } \| null` | `register(user)`; cleared by `startNewUser` | none | `mobile` is the entered 09-form, e.g. `09108086113`; `id` from `makeUserId()` |
+| `category` | `AppSessionProvider` | same | `Category \| null` = `{ id: string; name: string } \| null` | `selectCategory(category)`; cleared by `register` / `goBackToSurvey` / `startNewUser` | none | Value comes from `CATEGORIES` |
+| `survey` | `AppSessionProvider` | same | `SurveyAnswers \| null` = `{ employeeCount: number; hasBenefits: boolean } \| null` | `completeSurvey(survey)`; cleared by `register` / `goBackToSurvey` / `startNewUser` | none | Skip stores `{ employeeCount: 0, hasBenefits: false }` |
 | `attempt` | `AppSessionProvider` | same | `number` (1-based) | `retry()` → `attempt + 1`; reset to `1` by `register` / `startNewUser` | none, but copied into each saved result | Part of the game remount `key` |
 | `saveStatus` | `AppSessionProvider` | same | `SaveStatus = "idle" \| "saving" \| "saved" \| "error"` | `submitResult`, `retrySave`; reset to `"idle"` by `retry` / `register` / `startNewUser` | none | Drives `GamePage`'s status bar and `canRetry` |
 | `savedResult` | `AppSessionProvider` | same | `GameSessionResult \| null` | Set on successful `submitResult` / `retrySave`; cleared by `retry` / `register` / `startNewUser` | none (the record itself is persisted separately) | `GamePage` reads `savedResult.winAmount` to decide retry eligibility |
@@ -56,8 +55,6 @@
 | `submittedRef` | `GamePage` | `src/pages/GamePage.tsx` | `boolean` | Set true in `handleComplete`; reset to false in `handleRetry` | none | Second guard against double persistence |
 | `context` (derived) | `GamePage` | same | `GameContext` | `useMemo(..., [user, category, attempt])` | none | `attemptsRemaining = Math.max(0, MAX_GAME_ATTEMPTS - attempt)`; also `attemptsTotal = MAX_GAME_ATTEMPTS` (added in the redesign for the game's status dots/rules) |
 | `canRetry` (derived) | `GamePage` | same | `boolean` | Recomputed each render | none | `saveStatus === "saved" && (savedResult?.winAmount ?? 0) === 0 && attempt < MAX_GAME_ATTEMPTS` |
-| `loadState` | `LeaderboardPage` | `src/pages/LeaderboardPage.tsx` | `LoadState = "loading" \| "loaded" \| "error"` | `load()` (in `useCallback`, invoked by `useEffect` and the retry button) | none | |
-| `entries` | `LeaderboardPage` | same | `LeaderboardEntry[]` | Set from `buildLeaderboard(results)` | none (derived from persisted data) | Loaded once per mount |
 | `GameSnapshot` | `useNumberGame` reducer | `src/games/number-wheel/useNumberGame.ts` | `{ phase: GameState; stoppedCount: StoppedCount; target: Digits; digits: Digits }` | `dispatch` of `START` / `STOP` / `SET_TARGET` through `gameReducer` | none | Authoritative game state; initialized lazily from `createNewGame()` |
 | `wheelRefs[0..2]` | `NumberWheelGame` | `src/games/number-wheel/NumberWheelGame.tsx` | `RefObject<NumberWheelHandle \| null>` ×3 | Assigned by React on mount | none | Only use: `getCurrentDigit()` at STOP time |
 | `lastStopAt` | `NumberWheelGame` | same | `number` (ms from `performance.now()`) | Written in `handleStop` | none | `MIN_STOP_INTERVAL_MS` debounce |
@@ -72,7 +69,7 @@
 
 `src/domain/user.ts`
 ```ts
-interface User { id: string; mobile: string }        // mobile is canonical, e.g. "+989121234567"
+interface User { id: string; mobile: string }        // mobile as entered, e.g. "09108086113"
 ```
 
 `src/domain/category.ts`
@@ -113,7 +110,7 @@ interface LeaderboardEntry { rank: number; userId: string; mobile: string; score
 
 `src/app/AppSession.tsx`
 ```ts
-type AppPhase   = "REGISTRATION" | "SURVEY" | "CATEGORY" | "GAME" | "LEADERBOARD";
+type AppPhase   = "REGISTRATION" | "SURVEY" | "CATEGORY" | "GAME";
 type SaveStatus = "idle" | "saving" | "saved" | "error";
 // SessionState and AppSessionValue are declared but NOT exported.
 ```
@@ -196,7 +193,7 @@ session sends the kiosk back to `REGISTRATION` with all in-progress data lost.
 | `canRetry` | `saveStatus`, `savedResult.winAmount`, `attempt` | Inline expression in `GamePage` |
 | Leaderboard entries | stored results | `buildLeaderboard()` |
 | Displayed mobile (input) | `mobileDigits` | `PhoneDisplay` → Persian numerals (page-1 redesign) |
-| Displayed mobile (public) | canonical mobile | `formatMaskedMobile()` → `912 *** 4567` |
+| Displayed mobile (public) | stored mobile | `formatPanelMobile()` → `0910****113` |
 | Persian numerals | any number/string | `toPersianDigits()`, `formatPersianNumber()` |
 | Route component | `phase` | `APP_ROUTES.find(e => e.id === phase) ?? APP_ROUTES[0]` |
 | Active game | `ACTIVE_GAME_ID` | `getActiveGame()` |
@@ -210,15 +207,14 @@ session sends the kiosk back to `REGISTRATION` with all in-progress data lost.
 
 ```
 Keypad.onDigit
-  └─► RegistrationPage.appendDigit → mobileDigits (≤10)
-        └─► «تایید» → isValidMobileDigits(/^9\d{9}$/)?
+  └─► RegistrationPage.appendDigit → mobileDigits (≤11)
+        └─► «تایید» → isValidMobileDigits(/^09\d{9}$/)?
               ├─ no  → error = MOBILE_ERROR                          [stop]
-              └─ yes → canonical = toCanonicalMobile(digits)
-                       await resultRepository.getResults()
+              └─ yes → await resultRepository.getResults()
                          ├─ throws → FAIL OPEN, continue
-                         └─ contains result.mobile === canonical
+                         └─ contains result.mobile === mobileDigits
                               → error = ALREADY_PLAYED_MESSAGE       [stop]
-                       session.register({ id: makeUserId(), mobile: canonical })
+                       session.register({ id: makeUserId(), mobile: mobileDigits })
                          └─► phase SURVEY   (user set; category/survey/attempt/saveStatus/savedResult reset)
 
 SurveyPage (two local steps inside SURVEY):
@@ -231,6 +227,7 @@ SurveyPage (two local steps inside SURVEY):
   )  ─► phase CATEGORY
   بازگشت → step 2: back to step 1 | step 1: startNewUser()  ─► phase REGISTRATION (full reset)
 CategorySelectionPage → selectCategory(category)             ─► phase GAME
+  بازگشت → goBackToSurvey()  ─► phase SURVEY (user kept; the survey restarts at step 1)
 
 GamePage renders (result ? <GameResultScreen …/> : <NumberWheelGame key={user.id}:{attempt} …/>)
   └─► game plays (see 05_MINIGAME.md) → onComplete(GameResult)
@@ -255,18 +252,20 @@ GamePage renders (result ? <GameResultScreen …/> : <NumberWheelGame key={user.
 
 ```
 saveStatus "error"  → «تلاش مجدد» → session.retrySave() → re-save pendingResultRef
-                    («ادامه» also offered on error → goToLeaderboard)
+                    («ادامه» also offered on error → startNewUser)
 saveStatus "saved"
   ├─ canRetry (winAmount === 0 && attempt < MAX_GAME_ATTEMPTS)
   │     → «تلاش دوباره» → GamePage.handleRetry(): submittedRef = false; setResult(null); session.retry()
   │        → attempt+1, saveStatus "idle", savedResult null
   │        → new key ⇒ game unmounts + remounts with a fresh target
+  │     → «خروج از بازی» → startNewUser()
   ├─ won (winAmount > 0): «خروج از بازی» → startNewUser()
-  │                      «ادامه» → session.goToLeaderboard() → phase LEADERBOARD
   └─ game over (loss, no retries left): «خروج از بازی» only → startNewUser()
+Every exit and «ادامه» routes to startNewUser() → phase REGISTRATION (the registration page embeds
+the «برترینهای امروز» panel — there is no leaderboard phase).
 
-LeaderboardPage mount → resultRepository.getResults() → buildLeaderboard → entries
-  └─ «کاربر جدید» → session.startNewUser() → phase REGISTRATION, full reset
+RegistrationPage leaderboard panel (mount effect) → resultRepository.getResults() → buildLeaderboard
+  → top 5 entries → ui/LeaderboardPanel rows; failure → `topEntries: []` (empty-state line)
 ```
 
 ## State Update Rules (MUST follow)
@@ -287,5 +286,5 @@ LeaderboardPage mount → resultRepository.getResults() → buildLeaderboard →
 8. Adding a field to `GameSessionResult` REQUIRES updating `isGameSessionResult` in
    `localResultRepository.ts`, or every stored record will be filtered out as invalid on read.
 9. Latin digits and ISO timestamps in state and storage; Persian numerals only at render time.
-10. `mobile` MUST be stored canonical and unmasked; masking is a display concern
-    (`formatMaskedMobile`).
+10. `mobile` MUST be stored exactly as entered and unmasked; masking is a display concern
+    (`formatPanelMobile`).

@@ -38,7 +38,9 @@ const PRIZE_TIERS = [
  * whole round from a keyboard — Page Up / Page Down / b / the refresh key
  * start the game from IDLE and act as the three STOP presses while RUNNING.
  */
-export function NumberWheelGame({ context, onComplete, onExit }: GameProps) {
+// `onExit` is intentionally not destructured: the redesigned game has no
+// exit control while playing — exiting lives on the host's result screens.
+export function NumberWheelGame({ context, onComplete }: GameProps) {
   const { state, stoppedCount, target, digits, start, stop, setTarget } = useNumberGame();
   const reducedMotion = usePrefersReducedMotion();
 

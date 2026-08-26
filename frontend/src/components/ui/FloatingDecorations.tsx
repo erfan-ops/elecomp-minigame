@@ -9,9 +9,9 @@ interface Decoration {
 }
 
 /**
- * The page-2 floating emoji decorations, positioned against the 1080×1800
- * design canvas (x/y/size in design px) with a soft cyan glow. Purely
- * atmospheric — pointer-events never reach them.
+ * The floating emoji decorations (every page), positioned against the
+ * 1080×1800 design canvas (x/y/size in design px) with a soft cyan glow.
+ * Purely atmospheric — pointer-events never reach them.
  */
 const DECORATIONS: readonly Decoration[] = [
   { glyph: "⭐", x: 30, y: 425, size: 44, rotate: -8 },

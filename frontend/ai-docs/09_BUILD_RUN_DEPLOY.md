@@ -18,8 +18,8 @@ repository (`UNKNOWN`). Everything else in this document is `VERIFIED`.
 
 ## Package Manager
 
-**npm.** Evidence: `package-lock.json` at the repository root (lockfileVersion 3 format). There is no
-`yarn.lock`, no `pnpm-lock.yaml`, no `bun.lockb`, and no `packageManager` field in `package.json`.
+**npm.** Evidence: `package-lock.json` at the app root, `frontend/` (lockfileVersion 3 format). There is
+no `yarn.lock`, no `pnpm-lock.yaml`, no `bun.lockb`, and no `packageManager` field in `package.json`.
 
 ## Package Metadata
 
@@ -61,6 +61,8 @@ Not declared by this project. Vite `7.3.6` declares
 running the tooling. The application itself is browser-only and requires no Node at runtime.
 
 ## Commands
+
+All commands run inside `frontend/` (the app root since the 2026-08-26 move).
 
 | Purpose | Command | Definition | Notes |
 |---|---|---|---|
@@ -126,6 +128,9 @@ and no `.env`, `.env.example`, `.env.local`, or `.env.production` file exists in
 - All tunable values are TypeScript constants in `src/config/appConfig.ts` and
   `src/games/number-wheel/config.ts`. Changing them is a **source-code change** requiring a rebuild —
   there is no runtime configuration mechanism.
+- The compose files and `exhibition.sh` set `REACT_APP_API_URL` / `REACT_APP_WS_URL` — those are
+  CRA-style names that **Vite ignores** (no `VITE_` prefix, and nothing reads them). They are inert
+  until the app gains an API client.
 
 If environment variables are ever introduced, Vite requires the `VITE_` prefix for them to be exposed to
 client code, and any such value would be **embedded in the public bundle** — it MUST NOT be a secret.
@@ -156,9 +161,22 @@ The only persistence is the browser's own `localStorage` (key `smartis-game.resu
 
 ## Deployment
 
-`UNKNOWN` — the repository contains no deployment configuration. Verified absent: `.github/`,
-`vercel.json`, `netlify.toml`, `Dockerfile`, `docker-compose.*`, `firebase.json`, `.gitlab-ci.yml`,
-`Jenkinsfile`, `nginx.conf`, and any `deploy` script.
+`UNKNOWN` (still) — there is no CI and no chosen host, but a **Docker scaffold** was added at the repo
+root on 2026-08-26. It is scaffolding, not a working deployment:
+
+- `docker-compose.yml` — services: `backend` (FastAPI, port 8000), `frontend` (nginx serving the Vite
+  build on host port 3000), `frontend-panel` (builds `./panel`, host port 3001), `postgres:16-alpine`,
+  `redis:7-alpine`. All on a `game-network` bridge.
+- `docker-compose.dev.yml` — `backend` with `uvicorn --reload` and bind-mounted source; `frontend` and
+  `frontend-panel` run the Vite dev server (`Dockerfile.dev`, port 3000 in-container) with bind-mounted
+  source and an anonymous `/app/node_modules` volume.
+- `frontend/Dockerfile` — node:22 build stage (`npm ci && npm run build`), then nginx serving
+  `/app/dist` with `frontend/nginx.conf` (SPA fallback + `/api/` and `/ws/` proxy to `backend:8000`).
+- `exhibition.sh` — exports the API URLs, runs `docker-compose up -d --build`, prints the service URLs.
+
+**Caveat:** `backend/` and `panel/` contain Dockerfiles but **no application code** (no
+`requirements.txt` / `package.json`), so `docker compose up` cannot build those services yet. The
+frontend image itself builds.
 
 What IS documented (`README.md` → "Kiosk mode"), i.e. how the app is intended to be *run*, not hosted:
 
@@ -194,17 +212,14 @@ Critical gotcha (from `CLAUDE.md`): React 18+ flushes state updates in a microta
 `.click()` calls in a tight loop all observe the same stale state. Insert ~30 ms gaps between synthetic
 clicks. Real touch events are separate tasks and do not hit this.
 
-An untracked, git-ignored artifact of this workflow, `.cdp-retry.cjs`, is present in the working tree.
-Its own header states it is temporary and should be deleted after verification. It is NOT part of the
-application.
-
 ## Ports Used
 
 | Port | Purpose | Configured where |
 |---|---|---|
-| `5173` | Vite dev server | Vite default (not set in `vite.config.ts`) |
+| `5173` | Vite dev server | Vite default (not set in `vite.config.ts`; the dev Dockerfile pins `3000` via `--port 3000`) |
 | `4173` | `vite preview` | Vite default (not set) |
-| `9222` / `9234` | Chrome remote-debugging during verification only | `CLAUDE.md` documents `9222`; `.cdp-retry.cjs` uses `9234` |
+| `9222` / `9234` | Chrome remote-debugging during verification only | `CLAUDE.md` documents `9222`; past harness drivers used `9234` / `9333` |
+| `3000` / `3001` / `8000` | Docker: frontend nginx / panel nginx / backend uvicorn | `docker-compose.yml` `ports:` |
 
 ## Secrets
 

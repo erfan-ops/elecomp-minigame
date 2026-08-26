@@ -127,9 +127,6 @@ export function GameResultScreen({
           <button type="button" className="result-action" onClick={onExit}>
             خروج از بازی
           </button>
-          <button type="button" className="result-action result-action--primary" onClick={onContinue}>
-            ادامه
-          </button>
         </>
       ) : retryEnabled ? (
         <>

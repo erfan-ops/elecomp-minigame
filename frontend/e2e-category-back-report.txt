@@ -1,0 +1,15 @@
+OUTPUT:
+DONE
+PASS boot: registration keypad visible
+PASS survey step 1 after registration — kicker="سوال اول"
+PASS survey step 2 after ادامه — kicker="سوال دوم"
+PASS category page after survey — continue="شروع بازی"
+PASS category بازگشت lands on survey step 1 — kicker="سوال اول"
+PASS survey grid present after back
+PASS registration keypad NOT shown after back
+PASS game never entered (no slot machine)
+PASS category cards gone after back
+PASS survey step-1 بازگشت still returns to registration — keypad visible
+PASS survey gone after step-1 back
+ISSUES (0):
+none

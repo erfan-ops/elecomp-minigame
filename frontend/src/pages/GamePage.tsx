@@ -78,7 +78,7 @@ export function GamePage() {
   if (!user || !category || !survey) return null;
 
   return (
-    <PageShell variant="survey" logo={<GameHeader />} decorations={<FloatingDecorations />}>
+    <PageShell logo={<GameHeader />} decorations={<FloatingDecorations />}>
       <StepTracker steps={JOURNEY_STEPS} currentIndex={4} />
 
       {result ? (
@@ -90,7 +90,7 @@ export function GamePage() {
           onRetrySave={() => void session.retrySave()}
           onRetry={handleRetry}
           onExit={session.startNewUser}
-          onContinue={session.goToLeaderboard}
+          onContinue={session.startNewUser}
         />
       ) : (
         // key: every attempt mounts a completely fresh game

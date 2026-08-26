@@ -67,11 +67,11 @@ const CATEGORY_LOGOS: Record<string, readonly string[]> = {
  * category's sponsor logos. Exactly one category must be chosen.
  * Selection state is unchanged: `selectedId` local state, aria-pressed,
  * and the شروع بازی button enables only when a category is selected.
- * بازگشت performs the documented session reset (`startNewUser`), the same
- * back transition the survey's first step uses.
+ * بازگشت returns to the survey (`goBackToSurvey`) — the previous journey
+ * step, keeping the user registered; the survey restarts at its step 1.
  */
 export function CategorySelectionPage() {
-  const { selectCategory, startNewUser } = useAppSession();
+  const { selectCategory, goBackToSurvey } = useAppSession();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const selected = CATEGORIES.find((category) => category.id === selectedId) ?? null;
 
@@ -80,7 +80,7 @@ export function CategorySelectionPage() {
   };
 
   return (
-    <PageShell variant="survey" logo={<GameHeader />} decorations={<FloatingDecorations />}>
+    <PageShell logo={<GameHeader />} decorations={<FloatingDecorations />}>
       <StepTracker steps={JOURNEY_STEPS} currentIndex={3} />
 
       <div className="category-screen">
@@ -122,7 +122,7 @@ export function CategorySelectionPage() {
 
         <NavButtons
           className="nav-buttons--category"
-          onBack={startNewUser}
+          onBack={goBackToSurvey}
           onContinue={handleStart}
           continueDisabled={!selected}
           continueLabel="شروع بازی"

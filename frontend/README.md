@@ -5,7 +5,7 @@ React + TypeScript + Vite — no runtime dependencies beyond React, no canvas,
 no game engine, no router library.
 
 The kiosk journey: **ثبت‌نام → نظرسنجی → انتخاب دسته‌بندی → بازی → ثبت نتیجه
-→ جدول برترین‌ها → کاربر جدید**. Registration collects the **mobile
+→ کاربر جدید**. Registration collects the **mobile
 number** (the player's identity for the session, the leaderboard, and
 future billing); the survey asks for the organization's headcount and
 whether the player receives benefits (رفاهیات). Both answers are persisted
@@ -34,8 +34,8 @@ GameContext → Game → GameResult
 ```typescript
 // src/domain/game.ts
 interface GameContext {
-  userId: string; firstName: string; lastName: string;
-  mobile: string;                 // canonical, e.g. "+989121234567"
+  userId: string;
+  mobile: string;                 // exactly as entered, e.g. "09108086113"
   sector: Category;               // { id, name } — the player's sector
 }
 
@@ -112,8 +112,8 @@ top three with metallic rank styling.
 ```
 src/
 ├── app/            AppSession (central kiosk session), App, routes
-├── pages/          Registration, Survey, CategorySelection, Game (game host), Leaderboard
-├── components/     VirtualNumericKeyboard (on-screen numeric keyboard) and shared UI
+├── pages/          Registration (embeds the live leaderboard panel), Survey, CategorySelection, Game (game host)
+├── components/     Keypad (on-screen numeric keyboard) and shared UI
 ├── domain/         User, Category, game contract, GameSessionResult, LeaderboardEntry
 ├── services/       GameResultRepository interface, local impl, leaderboard builder
 ├── games/          Game registry + one folder per pluggable game

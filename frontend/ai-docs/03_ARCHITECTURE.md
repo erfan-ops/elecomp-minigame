@@ -52,7 +52,9 @@ changes. Page components are **not** memoized and are **not** lazy-loaded.
 
 There is no router library, no URL segment, no `history` interaction, no deep linking.
 
-- `AppPhase = "REGISTRATION" | "SURVEY" | "CATEGORY" | "GAME" | "LEADERBOARD"` (`src/app/AppSession.tsx`).
+- `AppPhase = "REGISTRATION" | "SURVEY" | "CATEGORY" | "GAME"` (`src/app/AppSession.tsx`). There is no
+  leaderboard phase — the registration page embeds the live «برترینهای امروز» panel, and every result
+  screen routes back to registration (`startNewUser`).
 - `APP_ROUTES: readonly AppRoute[]` (`src/app/routes.tsx`) maps each phase to `{ id, label, component }`.
   `label` is a Persian string documented as being for accessible announcements; **no component currently
   reads `label`** (`INFERRED`: reserved for future use).
@@ -68,12 +70,13 @@ Allowed transitions (each is exactly one session action):
 | `REGISTRATION` | `register(user)` | `SURVEY` | none (resets the entire session state) |
 | `SURVEY` | `completeSurvey(survey)` | `CATEGORY` | no-op unless `user` is set |
 | `CATEGORY` | `selectCategory(category)` | `GAME` | no-op unless `user` is set |
+| `CATEGORY` | `goBackToSurvey()` | `SURVEY` | no-op unless `user` set and phase is `CATEGORY` — the category page's «بازگشت» (previous step; `category`/`survey` cleared) |
 | `GAME` | `retry()` | `GAME` (attempt + 1) | no-op unless `user` set, `saveStatus === "saved"`, `attempt < MAX_GAME_ATTEMPTS` |
-| `GAME` | `goToLeaderboard()` | `LEADERBOARD` | none |
-| any | `startNewUser()` | `REGISTRATION` | none (full reset) |
+| any | `startNewUser()` | `REGISTRATION` | none (full reset) — the only way a finished game leaves `GAME` (result screens' «خروج از بازی», «تلاش دوباره»-free exits, and «ادامه» all call it) |
 
-`onExit` passed to the game is wired directly to `session.startNewUser` (`src/pages/GamePage.tsx`), so
-the game's «خروج» button abandons the whole session.
+`onExit` is passed to the game wired to `session.startNewUser` (`src/pages/GamePage.tsx`), but the
+redesigned wheel game **ignores it** (no exit control while playing) — the «خروج از بازی» button that
+abandons the whole session lives on the host's `GameResultScreen`.
 
 ## Layering And Dependency Direction
 
@@ -144,7 +147,7 @@ The game never learns whether persistence succeeded.
 | `RegistrationPage` | `mobileDigits`, `error`, `checking` | local, discarded on unmount |
 | `SurveyPage` | `step`, `countChoice`, `hasBenefits`, `notEmployed` | local, discarded on unmount |
 | `CategorySelectionPage` | `selectedId` | local |
-| `LeaderboardPage` | `loadState`, `entries` | local, loaded once on mount |
+| `RegistrationPage` | `topEntries` | local; leaderboard panel rows, loaded once on mount |
 | `GamePage` ref | `submittedRef` | duplicate-submit guard, reset by `handleRetry` |
 | `useNumberGame` reducer | `GameSnapshot { phase, stoppedCount, target, digits }` | one mounted game instance |
 | `NumberWheelGame` refs | `wheelRefs[3]`, `lastStopAt`, `completedRef` | imperative reel access, debounce, once-only completion |
@@ -160,7 +163,7 @@ Full detail: `06_STATE_AND_DATA_FLOW.md`.
 | Effect | Where it is allowed to happen | Notes |
 |---|---|---|
 | `localStorage` read/write | `src/services/localResultRepository.ts` only | The only storage access in the repository |
-| Repository calls | `src/app/AppSession.tsx` (`submitResult`, `retrySave`), `src/pages/RegistrationPage.tsx` (anti-replay `getResults` + a top-5 `getResults` for the leaderboard panel), `src/pages/LeaderboardPage.tsx` (`getResults`) | Games never call the repository |
+| Repository calls | `src/app/AppSession.tsx` (`submitResult`, `retrySave`), `src/pages/RegistrationPage.tsx` (anti-replay `getResults` + a top-5 `getResults` for the leaderboard panel) | Games never call the repository |
 | `requestAnimationFrame` loops | `src/games/number-wheel/components/NumberWheel.tsx` only | Two loops; both cancelled in cleanup |
 | Direct DOM mutation | `NumberWheel.writeTransform` writing `strip.style.transform` | The only direct DOM write in the app |
 | `window` event listener | `NumberWheelGame.tsx` (`keydown`) | Game-scoped: added on mount, removed on unmount |
@@ -176,10 +179,10 @@ There are **no** network requests anywhere in `src/`.
 ## Data Flow: User Input → UI/Game Response
 
 **Registration**
-`Keypad` key press → `appendDigit` (caps at 10 digits) → `mobileDigits` state → «تایید» →
-`isValidMobileDigits` (`/^9\d{9}$/`) → `toCanonicalMobile` → `resultRepository.getResults()` → if
-any `result.mobile === canonical` show `ALREADY_PLAYED_MESSAGE` and stop; on repository throw,
-**fail open** and register anyway → `register({ id: makeUserId(), mobile: canonical })` → phase
+`Keypad` key press → `appendDigit` (caps at 11 digits) → `mobileDigits` state → «تایید» →
+`isValidMobileDigits` (`/^09\d{9}$/`) → `resultRepository.getResults()` → if
+any `result.mobile === mobileDigits` show `ALREADY_PLAYED_MESSAGE` and stop; on repository throw,
+**fail open** and register anyway → `register({ id: makeUserId(), mobile: mobileDigits })` → phase
 `SURVEY`.
 
 **Survey** (two local steps; the phase itself is unchanged)
@@ -192,8 +195,9 @@ or step 1 → `startNewUser()` (back to registration, full reset).
 
 **Category**
 Card tap → `selectedId` → «شروع بازی» enabled → `selectCategory(category)` → phase `GAME`.
-بازگشت → `startNewUser()` (back to registration, full reset — the same transition the survey's
-first step uses; the session model has no phase-back).
+بازگشت → `goBackToSurvey()` → phase `SURVEY` (the previous step — the user stays registered;
+`category`/`survey` clear and the survey restarts at its step 1). The survey's own step-1 back still
+calls `startNewUser()` (full reset), as do the result screens' exits.
 
 **Game**
 `GamePage` builds `context` and mounts the game keyed by `user.id:attempt`.
@@ -210,9 +214,10 @@ STOP sets `phase: "RESULT"`.
 result screen renders save-status variants (saving line / retry-save + continue) and the view's
 actions (خروج / تلاش دوباره / ادامه).
 
-**Leaderboard**
-Mount → `resultRepository.getResults()` → `buildLeaderboard(results)` → table rows.
-«کاربر جدید» → `startNewUser()` → phase `REGISTRATION`, everything cleared.
+**Leaderboard (no page — lives on registration)**
+Registration mounts the panel once: `resultRepository.getResults()` → `buildLeaderboard(results)` →
+top-5 rows in `ui/LeaderboardPanel`. Finished games leave `GAME` via `startNewUser()` → phase
+`REGISTRATION`, everything cleared.
 
 ## Important Architectural Boundaries
 

@@ -10,7 +10,7 @@ import type { Category } from "./category";
 
 export interface GameContext {
   userId: string;
-  /** Canonical mobile number, e.g. "+989121234567" — the player's identity. */
+  /** Mobile number as entered, e.g. "09108086113" — the player's identity. */
   mobile: string;
   /** The sector/category the player is playing for (id + name, for billing). */
   sector: Category;
