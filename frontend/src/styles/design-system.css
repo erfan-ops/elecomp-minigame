@@ -339,6 +339,32 @@
   transform: rotate(-6deg);
 }
 
+/* The avatar circle moves with its emoji — one smooth dip-and-return per
+   3.2s cycle: 0 → −0.75rem → 0 (the (1 − cos) curve sampled at 8 segments,
+   linear timing between stops), rotating clockwise with the same curve —
+   0 → 15° at the extreme. The cycle starts/ends at rest with zero velocity.
+   Animated via the `translate` and `rotate` properties so the first row's
+   `transform` rotate(-6deg) still composes (individual transform properties
+   apply separately). Each row is phase-offset by an inline negative
+   `animation-delay` (LeaderboardPanel: period / row count) so the rows
+   drift out of sync. Only the avatars move — the global reduced-motion
+   rule in global.css disables this. */
+.leaderboard-row__avatar {
+  animation: leaderboard-bob 3.2s linear infinite;
+}
+
+@keyframes leaderboard-bob {
+  0%    { translate: 0 0rem;       rotate: 0deg; }
+  12.5% { translate: 0 -0.1098rem; rotate: 4.39deg; }
+  25%   { translate: 0 -0.375rem;  rotate: 7.5deg; }
+  37.5% { translate: 0 -0.6402rem; rotate: 12.8deg; }
+  50%   { translate: 0 -0.75rem;   rotate: 15deg; }
+  62.5% { translate: 0 -0.6402rem; rotate: 12.8deg; }
+  75%   { translate: 0 -0.375rem;  rotate: 7.5deg; }
+  87.5% { translate: 0 -0.1098rem; rotate: 4.39deg; }
+  100%  { translate: 0 0rem;       rotate: 0deg; }
+}
+
 .leaderboard-row__phone {
   direction: ltr;
   font-size: var(--ds-fs-section);
@@ -548,11 +574,13 @@
   color: var(--ds-text-45);
 }
 
-/* --- FloatingDecorations (page 2+) -------------------------------------------- */
+/* --- FloatingDecorations (every page) ----------------------------------------- */
 
 .floating-deco {
   position: absolute;
   inset: 0;
+  /* Depth for the flip item's 3D rotateY; 2D motions are unaffected. */
+  perspective: 24rem;
   z-index: 1;
   pointer-events: none;
   user-select: none;
@@ -562,6 +590,106 @@
   position: absolute;
   line-height: 1;
   filter: drop-shadow(var(--ds-glow-deco));
+}
+
+/* Each decoration plays its own motion (class from FloatingDecorations.tsx),
+   staggered by an inline negative animation-delay so they never move in sync.
+   Animations target the individual translate / rotate / scale / opacity
+   properties so the inline `transform: rotate(...)` tilt still composes
+   (translate → rotate → scale → transform order). The global reduced-motion
+   rule in global.css disables them all. */
+.floating-deco__item--bob {
+  animation: deco-bob 4.2s ease-in-out infinite;
+}
+.floating-deco__item--sway {
+  animation: deco-sway 3.6s ease-in-out infinite;
+}
+.floating-deco__item--flip {
+  animation: deco-flip 5s linear infinite;
+}
+.floating-deco__item--twinkle {
+  animation: deco-twinkle 3s ease-in-out infinite;
+}
+.floating-deco__item--drift {
+  animation: deco-drift 5.4s ease-in-out infinite;
+}
+.floating-deco__item--hover {
+  animation: deco-hover 5.8s ease-in-out infinite;
+}
+.floating-deco__item--bounce {
+  animation: deco-bounce 4.8s ease-out infinite;
+}
+.floating-deco__item--spin {
+  animation: deco-spin 7.5s linear infinite;
+}
+
+/* ⭐ gentle up-down bob. */
+@keyframes deco-bob {
+  0% { translate: 0 0rem; }
+  50% { translate: 0 -0.6rem; }
+  100% { translate: 0 0rem; }
+}
+
+/* 🎉 rocking sway (±14°), tilting either side of the static tilt. */
+@keyframes deco-sway {
+  0% { rotate: 0deg; }
+  25% { rotate: 14deg; }
+  50% { rotate: 0deg; }
+  75% { rotate: -14deg; }
+  100% { rotate: 0deg; }
+}
+
+/* 🎲 3D tumble around the vertical axis (needs the container perspective). */
+@keyframes deco-flip {
+  0% { translate: 0 0; rotate: 0deg; opacity: 1; }
+  25% { translate: 0 -0.6rem; rotate: 12deg; opacity: 1; }
+  50% { translate: 0 0; rotate: 0deg; opacity: 0.8; }
+  75% { translate: 0 -0.6rem; rotate: -12deg; opacity: 1; }
+  100% { translate: 0 0; rotate: 0deg; opacity: 1; }
+}
+
+/* 💎 twinkle: fades out and back while swelling slightly. */
+@keyframes deco-twinkle {
+  0% { opacity: 1; scale: 1; }
+  50% { opacity: 0.25; scale: 1.1; }
+  100% { opacity: 1; scale: 1; }
+}
+
+/* ✨ gentle left-right drift, passing through centre twice per cycle. */
+@keyframes deco-drift {
+  0% { translate: 0 0; }
+  25% { translate: 0.5rem 0; }
+  50% { translate: 0 0; }
+  75% { translate: -0.5rem 0; }
+  100% { translate: 0 0; }
+}
+
+/* 🎮 hover combo: rises while tilting, dips back, blinks mid-cycle. */
+@keyframes deco-hover {
+  0% { translate: 0 0; rotate: 0deg; opacity: 1; }
+  25% { translate: 0 -0.5rem; rotate: 8deg; opacity: 1; }
+  50% { translate: 0 0; rotate: 0deg; opacity: 0.6; }
+  75% { translate: 0 -0.5rem; rotate: -8deg; opacity: 1; }
+  100% { translate: 0 0; rotate: 0deg; opacity: 1; }
+}
+
+/* 🎁 bounce: springy scale pop, then a settling wiggle, then rest. */
+@keyframes deco-bounce {
+  0% { scale: 1; rotate: 0deg; }
+  10% { scale: 1.12; rotate: 0deg; }
+  20% { scale: 0.96; rotate: 0deg; }
+  30% { scale: 1.06; rotate: 0deg; }
+  40% { scale: 1; rotate: 0deg; }
+  46% { scale: 1; rotate: 4deg; }
+  52% { scale: 1; rotate: -4deg; }
+  58% { scale: 1; rotate: 0deg; }
+  100% { scale: 1; rotate: 0deg; }
+}
+
+/* 🎯 slow continuous spin. */
+@keyframes deco-spin {
+  0% { rotate: 0deg; }
+  100% { rotate: 360deg; }
 }
 
 /* --- Survey step (page 2) ----------------------------------------------------- */

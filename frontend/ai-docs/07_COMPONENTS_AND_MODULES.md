@@ -98,7 +98,7 @@ Full detail in `design-system.md`. All are stateless presentation components con
 | `src/components/ui/Keypad.tsx` | Redesigned LTR numeric keypad | `Keypad` | `react`, `src/utils/persian` | none | `IMPORTANT` |
 | `src/components/ui/LeaderboardPanel.tsx` | «برترینهای امروز» panel | `LeaderboardPanel`, type `LeaderboardPanelEntry` | `react`, `src/domain/user`, `src/utils/persian`, `./LiveBadge` | none | `IMPORTANT` |
 | `src/components/ui/GameHeader.tsx` | Page-2 header (star badge + LUCKY REELS wordmark + tagline) | `GameHeader` | `react`, `./GradientText` | none | `IMPORTANT` |
-| `src/components/ui/FloatingDecorations.tsx` | Page-2 atmospheric emoji layer | `FloatingDecorations` | `react` (types) | none | `SUPPORTING` |
+| `src/components/ui/FloatingDecorations.tsx` | Atmospheric emoji layer (every page; per-emoji CSS motions) | `FloatingDecorations` | `react` (types) | none | `SUPPORTING` |
 | `src/components/ui/ChoiceGrid.tsx` | 2×2 glass answer cards (generic over option type) | `ChoiceGrid` | `react` only | none | `IMPORTANT` |
 | `src/components/ui/NavButtons.tsx` | بازگشت / ادامه pair | `NavButtons` | `react` only | none | `IMPORTANT` |
 

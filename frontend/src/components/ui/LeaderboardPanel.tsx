@@ -21,6 +21,14 @@ const MEDALS = ["🥇", "🥈", "🥉"] as const;
 const AVATARS = ["💰", "💷", "💴", "🪙", "💸"] as const;
 
 /**
+ * Bob tuning — must match `leaderboard-bob` in design-system.css. Each avatar
+ * starts a fraction of the period later (negative delay = mid-cycle at mount)
+ * so the rows drift out of sync instead of bobbing together.
+ */
+const BOB_PERIOD_S = 3.2;
+const BOB_STAGGER_S = BOB_PERIOD_S / AVATARS.length;
+
+/**
  * «برترین‌های امروز» — the page-1 leaderboard panel. Rows come exclusively
  * from stored results (top 5, mobile + winAmount); when nothing has been
  * stored yet it shows a single empty-state line instead of any placeholder
@@ -54,7 +62,11 @@ export function LeaderboardPanel({ entries }: LeaderboardPanelProps) {
               <span className="leaderboard-row__rank" aria-hidden="true">
                 {index < MEDALS.length ? MEDALS[index] : index + 1}
               </span>
-              <span className="leaderboard-row__avatar" aria-hidden="true">
+              <span
+                className="leaderboard-row__avatar"
+                aria-hidden="true"
+                style={{ animationDelay: `-${index * BOB_STAGGER_S}s` }}
+              >
                 {AVATARS[index % AVATARS.length]}
               </span>
               <span className="leaderboard-row__phone">{formatPanelMobile(entry.mobile)}</span>

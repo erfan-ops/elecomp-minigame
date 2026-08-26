@@ -111,7 +111,7 @@ All four pages take **no props** — they read everything from `useAppSession()`
 | `Keypad` | `src/components/ui/Keypad.tsx` | Redesigned 3×4 keypad (LTR, Persian labels, gradient confirm) | `onDigit`, `onBackspace`, `onConfirm`, `confirmDisabled?` | none | none | Order ۱ ۲ ۳ / ۴ ۵ ۶ / ۷ ۸ ۹ / تایید ۰ ⌫ |
 | `LeaderboardPanel` | `src/components/ui/LeaderboardPanel.tsx` | «برترینهای امروز» panel (top 5, gold first row) | `entries: { mobile: string; amount: number }[]` | none | none | Binds to real data passed by the page (`amount` = stored `winAmount`); empty-state line when empty |
 | `GameHeader` | `src/components/ui/GameHeader.tsx` | Page-2 header: star badge + LUCKY REELS wordmark + tagline | none | none | none | Orbitron stack → Bahnschrift fallback |
-| `FloatingDecorations` | `src/components/ui/FloatingDecorations.tsx` | Page-2 atmospheric emoji layer | none | none | none | 8 emoji at design-px positions, `aria-hidden`, `pointer-events: none` |
+| `FloatingDecorations` | `src/components/ui/FloatingDecorations.tsx` | Atmospheric emoji layer (every page) | none | none | none | 8 emoji at design-px positions, `aria-hidden`, `pointer-events: none`; each plays its own CSS motion (bob / sway / 3D flip / twinkle / drift / hover / bounce / spin) staggered by negative `animation-delay`s |
 | `ChoiceGrid` | `src/components/ui/ChoiceGrid.tsx` | 2×2 glass answer cards | `options`, `selected`, `onSelect`, `disabled?` | none (controlled) | none | Generic over the option type; `aria-pressed` per card; `disabled` for the skip state |
 | `NavButtons` | `src/components/ui/NavButtons.tsx` | بازگشت / ادامه navigation pair | `onBack`, `onContinue`, `continueDisabled?`, `backLabel?`, `continueLabel?` | none | none | ادامه disabled at 35% opacity |
 
