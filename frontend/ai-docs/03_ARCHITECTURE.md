@@ -129,7 +129,9 @@ Wiring:
 
 `GamePage` is the **only** adapter. It:
 - narrows platform state into `GameContext` (`useMemo` over `[user, category, attempt]`; also carries
-  `attemptsTotal`),
+  `attemptsTotal` and `budgetConsumedRatio` — the consumed share of the prize budget, read from
+  `getBudgetState(BUDGET)` in `src/services/budget.ts`),
+- records every win against the prize budget (`recordPrize(winAmount, BUDGET)` in `handleComplete`),
 - widens `GameResult` into `GameSessionResult` (adds `userId`, `mobile`, survey answers, `attempt`,
   `sectorId`, `sectorName`, `gameId`, `playedAt`),
 - hands the record to `session.submitResult`,

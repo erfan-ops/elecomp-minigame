@@ -1,23 +1,18 @@
-import { GradientText } from "./GradientText";
-
 /**
- * The shared page header (every page): a gradient star badge with a strong
- * cyan glow plus the LTR "LUCKY REELS" wordmark (Orbitron stack — falls
- * back to Bahnschrift while Orbitron is absent) and the Persian tagline.
+ * The shared page header (every page): the Smartis logo on the right (RTL)
+ * with the centered Persian tagline «تجربه هیجان در غرفه اسمارتیز» (Vazirmatn
+ * 600, letter-spacing 0 — see `.game-header` in design-system.css).
  */
 export function GameHeader() {
   return (
     <header className="game-header">
-      <span className="game-header__badge" aria-hidden="true">
-        ★
-      </span>
-      <span className="game-header__text">
-        <span className="game-header__logo" dir="ltr">
-          <span className="game-header__logo-white">LUCKY</span>
-          <GradientText className="game-header__logo-gradient">REELS</GradientText>
-        </span>
-        <span className="game-header__subtitle">تجربه هیجان در غرفه</span>
-      </span>
+      <img
+        className="game-header__logo-img"
+        src="/smartis_logo.svg"
+        alt="اسمارتیز"
+        draggable={false}
+      />
+      <span className="game-header__title">تجربه هیجان در غرفه اسمارتیز</span>
     </header>
   );
 }

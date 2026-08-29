@@ -83,14 +83,18 @@ npm. Evidence: `package-lock.json` present at root; no `yarn.lock`, no `pnpm-loc
 - On-screen numeric keyboard; no real `<input>` elements anywhere.
 - Anti-replay: registration blocks a mobile that already has a stored result (fail-open on repository error).
 - Retry chain: after a **zero-win** result the host offers up to `MAX_GAME_ATTEMPTS` (3) total attempts; any win ends the chain. Every stored result carries its `attempt` number.
+- Prize-budget tracking: every win is deducted from the organizer's prize pool (`BUDGET` = 100M, recorded via `src/services/budget.ts`, localStorage `smartis-game.budget.v1`); the number-wheel game scales its reel speeds up as the consumed share crosses `DIFFICULTY_THRESHOLDS` percentages (see `05_MINIGAME.md`).
 - Save-status UI with an explicit retry-save action on persistence failure.
 - Leaderboard panel on the registration page, computed purely from stored results (top 5, gold first row).
 - Masked mobile display on public screens (`0910****113`); the entered 09-form stored unmasked.
 - Persian numeral rendering at the display layer only.
-- A redesign covers every page and the result screens: design-scale mechanism
-  (`src/app/designScale.ts`, canvas 1080×1800), a `--ds-*` token set, and shared `src/components/ui/`
-  components (PageShell, StepTracker, Keypad, PhoneDisplay, LeaderboardPanel, GameHeader,
-  FloatingDecorations, ChoiceGrid, NavButtons). Documented in `ai-docs/design-system.md`.
+- A redesign covers every page and the result screens: a fixed 1080×1800 design canvas
+  (`src/app/designScale.ts` + the `--ds-canvas-*` tokens) scaled by `--s`, centered in the viewport
+  by `.app` with the dark background extending into the letterbox; a `--ds-*` token set; and shared
+  `src/components/ui/` components (PageShell, StepTracker, Keypad, PhoneDisplay, LeaderboardPanel,
+  GameHeader, FloatingDecorations, ChoiceGrid, NavButtons). Every page carries the Smartis header
+  (logo + «تجربه هیجان در غرفه اسمارتیز») and the Almas credit footer (logo + «کاری از شرکت داده
+  پردازی الماس شهر», 45% white). Documented in `ai-docs/design-system.md`.
 - `prefers-reduced-motion` support (see the caveat in `12_KNOWN_GAPS_AND_RISKS.md`).
 - Presenter keyboard control of the game (PageUp / PageDown / `b` / F5 / Ctrl+R / Cmd+R).
 - Dependency-free CSS confetti on a perfect result.

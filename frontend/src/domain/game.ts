@@ -26,6 +26,13 @@ export interface GameContext {
    * Absent when the platform does not track attempts.
    */
   attemptsTotal?: number;
+  /**
+   * Share of the organizer's prize budget already paid out (0..1).
+   * A game MAY use it to scale its difficulty — the number-wheel game
+   * multiplies its reel speeds as this ratio climbs past its thresholds.
+   * Absent when the platform does not track a budget.
+   */
+  budgetConsumedRatio?: number;
 }
 
 export interface GameResult {

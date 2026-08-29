@@ -90,14 +90,14 @@ Full detail in `design-system.md`. All are stateless presentation components con
 
 | Path | Responsibility | Main exports | Imports | Side effects | Importance |
 |---|---|---|---|---|---|
-| `src/components/ui/PageShell.tsx` | Dark canvas, shared corner-glow lighting + edge strip, `GameHeader` slot, scaled content frame (one shell for all pages since 2026-08-26) | `PageShell` | `react` (type) | none | `IMPORTANT` |
+| `src/components/ui/PageShell.tsx` | The fixed 1080×1800 design canvas (67.5rem × 112.5rem, scaled by `--s` and centered by `.app`): corner-glow lighting + edge strip, `GameHeader` slot, content frame, and the Almas credit footer pinned to the canvas bottom (one shell for all pages since 2026-08-26; footer since 2026-08-29) | `PageShell` | `react` (type) | none | `IMPORTANT` |
 | `src/components/ui/StepTracker.tsx` | RTL journey tracker | `StepTracker` | `react`, `src/utils/persian` | none | `IMPORTANT` |
 | `src/components/ui/GradientText.tsx` | Gradient-clipped text | `GradientText` | `react` (types) | none | `SUPPORTING` |
 | `src/components/ui/LiveBadge.tsx` | «زنده» pill | `LiveBadge` | `react` only | none | `SUPPORTING` |
 | `src/components/ui/PhoneDisplay.tsx` | 468×96 glass mobile display | `PhoneDisplay` | `react`, `src/utils/persian` | none | `IMPORTANT` |
 | `src/components/ui/Keypad.tsx` | Redesigned LTR numeric keypad | `Keypad` | `react`, `src/utils/persian` | none | `IMPORTANT` |
 | `src/components/ui/LeaderboardPanel.tsx` | «برترینهای امروز» panel | `LeaderboardPanel`, type `LeaderboardPanelEntry` | `react`, `src/domain/user`, `src/utils/persian`, `./LiveBadge` | none | `IMPORTANT` |
-| `src/components/ui/GameHeader.tsx` | Page-2 header (star badge + LUCKY REELS wordmark + tagline) | `GameHeader` | `react`, `./GradientText` | none | `IMPORTANT` |
+| `src/components/ui/GameHeader.tsx` | Shared page header (every page): Smartis logo (`public/smartis_logo.svg`) on the right (RTL) + centered tagline «تجربه هیجان در غرفه اسمارتیز» (Vazirmatn 600, letter-spacing 0) | `GameHeader` | `react` | none | `IMPORTANT` |
 | `src/components/ui/FloatingDecorations.tsx` | Atmospheric emoji layer (every page; per-emoji CSS motions) | `FloatingDecorations` | `react` (types) | none | `SUPPORTING` |
 | `src/components/ui/ChoiceGrid.tsx` | 2×2 glass answer cards (generic over option type) | `ChoiceGrid` | `react` only | none | `IMPORTANT` |
 | `src/components/ui/NavButtons.tsx` | بازگشت / ادامه pair | `NavButtons` | `react` only | none | `IMPORTANT` |
@@ -175,7 +175,8 @@ Handle: `{ getCurrentDigit(): number }`.
 
 `src/app/designScale.ts` exports `DESIGN_WIDTH` / `DESIGN_HEIGHT` and `applyDesignScale()`
 (called in `src/main.tsx`), which sets `--s` on `<html>`; the redesign's rem-based sizing scales
-off it. Full detail in `design-system.md`.
+off it. The fixed-canvas tokens `--ds-canvas-w` / `--ds-canvas-h` in `design-tokens.css` mirror the
+two constants, and `.app` centers the canvas in the viewport. Full detail in `design-system.md`.
 
 Details in `08_STYLING_AND_UI_CONVENTIONS.md`.
 

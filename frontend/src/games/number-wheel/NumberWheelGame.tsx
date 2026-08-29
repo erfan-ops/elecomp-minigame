@@ -11,8 +11,8 @@ import {
   PRIZE_EXACT_2,
   PRIZE_EXACT_3,
   REDUCED_MOTION_SPEED_FACTOR,
-  WHEEL_SPEEDS,
 } from "./config";
+import { effectiveWheelSpeeds } from "./difficulty";
 import { digitsToNumber, randomDigits, rollingFlags } from "./gameEngine";
 import { calculatePrizeResult } from "./prizeCalculator";
 import { useNumberGame } from "./useNumberGame";
@@ -52,12 +52,14 @@ export function NumberWheelGame({ context, onComplete }: GameProps) {
   const lastStopAt = useRef(0);
 
   const rolling = rollingFlags({ phase: state, stoppedCount });
+  // Base speeds × the difficulty row for the budget's current consumption
+  // (the game gets faster — harder — as more prize money is paid out).
   const speeds = useMemo(
     () =>
-      WHEEL_SPEEDS.map(
+      effectiveWheelSpeeds(context.budgetConsumedRatio ?? 0).map(
         (speed) => speed * (reducedMotion ? REDUCED_MOTION_SPEED_FACTOR : 1),
       ) as [number, number, number],
-    [reducedMotion],
+    [context.budgetConsumedRatio, reducedMotion],
   );
 
   /** Total attempts the platform grants — used for the rules line and status dots. */
@@ -226,11 +228,6 @@ export function NumberWheelGame({ context, onComplete }: GameProps) {
 
       <div className="reel-machine">
         {/* LTR row so رقم ۱ (the first wheel to stop, the hundreds) is leftmost. */}
-        <div className="reel-labels" dir="ltr" aria-hidden="true">
-          <span className="reel-labels__item">رقم ۱</span>
-          <span className="reel-labels__item">رقم ۲</span>
-          <span className="reel-labels__item">رقم ۳</span>
-        </div>
         <WheelGroup
           digits={digits}
           rolling={rolling}
@@ -239,6 +236,11 @@ export function NumberWheelGame({ context, onComplete }: GameProps) {
           state={state}
           reducedMotion={reducedMotion}
         />
+        <div className="reel-labels" dir="ltr" aria-hidden="true">
+          <span className="reel-labels__item">رقم ۱</span>
+          <span className="reel-labels__item">رقم ۲</span>
+          <span className="reel-labels__item">رقم ۳</span>
+        </div>
       </div>
 
       {state !== "RESULT" && (

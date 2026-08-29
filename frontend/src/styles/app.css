@@ -7,6 +7,11 @@
 .app {
   position: relative;
   height: 100%;
+  /* Centers the fixed 1080×1800 page-shell canvas; the background below
+     extends into any letterboxed space around it. */
+  display: flex;
+  align-items: center;
+  justify-content: center;
   overflow: hidden;
   background:
     radial-gradient(1100px 700px at 50% -12%, var(--bg-glow), transparent 62%),

@@ -5,11 +5,11 @@
    ========================================================================== */
 
 :root {
-  /* Reel geometry — one digit item is a full 180px block inside the 380px
-     window, so the centered digit fills the window (see BASE_OFFSET in
-     NumberWheel.tsx). */
+  /* Reel geometry — the item and window heights are measured from the
+     rendered DOM at runtime (measureGeometry in NumberWheel.tsx), so these
+     sizes may be retuned freely; only the window/item ratio matters. */
   --wheel-w: 15.625rem; /* 250 */
-  --wheel-h: 23.75rem; /* 380 */
+  --wheel-h: 26.25rem;
   --digit-font: 11.25rem; /* 180 — item height AND glyph size */
 }
 
@@ -291,8 +291,9 @@ button.slot-game__target-digit::after {
   overflow: hidden;
 }
 
-/* 30 items × 180px; the transform is written per-frame in rem-free px via
-   percentage of this height (see writeTransform in NumberWheel.tsx). */
+/* 30 items (10 digits × STRIP_REPEATS); the transform is written per-frame
+   as a percentage of this strip's own height, so the item size in px is
+   irrelevant (see writeTransform/measureGeometry in NumberWheel.tsx). */
 .number-wheel__strip {
   position: absolute;
   top: 0;
@@ -399,7 +400,8 @@ button.slot-game__target-digit::after {
 /* --- Rules panel (anchored at the bottom of the game frame) ----------------- */
 
 .rules-panel {
-  margin-top: auto;
+  /* 40 — clears the page footer (PageShell) above the frame's bottom padding. */
+  margin-bottom: 2.5rem;
   flex-shrink: 0;
   width: 29.25rem; /* 468 */
   padding: 1.5rem; /* 24 */

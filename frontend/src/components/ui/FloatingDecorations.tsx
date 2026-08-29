@@ -34,7 +34,7 @@ interface Decoration {
  */
 const DECORATIONS: readonly Decoration[] = [
   { glyph: "⭐", x: 30, y: 425, size: 44, rotate: -8, motion: "bob" },
-  { glyph: "🎉", x: 467, y: 457, size: 34, rotate: 6, motion: "sway" },
+  { glyph: "🎉", x: 450, y: 320, size: 34, rotate: 6, motion: "sway" },
   { glyph: "🎲", x: 893, y: 335, size: 34, rotate: -12, motion: "flip" },
   { glyph: "💎", x: 30, y: 804, size: 34, rotate: 10, motion: "twinkle" },
   { glyph: "✨", x: 1003, y: 902, size: 41, rotate: 0, motion: "drift" },

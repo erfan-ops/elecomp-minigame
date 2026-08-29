@@ -11,9 +11,10 @@ interface PageShellProps {
 /**
  * The redesigned page shell: dark canvas, the shared lighting spec (four
  * corner radial glows + a top-edge cyan wash), the header as the first
- * element, and the scaled content frame (padding top 138 / inline 56 /
- * bottom 56 design px). Every page renders the same shell — the first page
- * no longer differs from the rest.
+ * element, the scaled content frame (padding top 138 / inline 56 / bottom
+ * 56 design px), and the Almas credit footer pinned to the canvas bottom.
+ * Every page renders the same shell — the first page no longer differs
+ * from the rest.
  */
 export function PageShell({ children, logo, decorations }: PageShellProps) {
   return (
@@ -30,6 +31,17 @@ export function PageShell({ children, logo, decorations }: PageShellProps) {
         {logo}
         {children}
       </div>
+      <footer className="page-shell__footer">
+        <img
+          className="page-shell__footer-logo"
+          src="/almas_logo.svg"
+          alt="داده پردازی الماس شهر"
+          draggable={false}
+        />
+        <span className="page-shell__footer-credit">
+          کاری از شرکت داده پردازی الماس شهر
+        </span>
+      </footer>
     </div>
   );
 }

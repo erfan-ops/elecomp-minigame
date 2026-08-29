@@ -29,13 +29,28 @@ import {
  */
 
 const STRIP_LENGTH = 10 * STRIP_REPEATS;
+
 /**
- * Vertical offset (in item heights) that centers item 10 (digit 0) at
- * position 0. Each digit item is 180px tall and the window is 380px, so
- * position 0 sits at 180px inside the window: offset = 10.5 − 380/360 =
- * 9.4444… — item 10 (digit 0) lands dead-center.
+ * Rendered reel geometry, measured from the DOM. The strip math needs only
+ * the window/item ratio, so any rendered reel size — whatever the `--s`
+ * scale or CSS tokens resolve to — centers the digit correctly. No pixel
+ * values are hardcoded here.
  */
-const BASE_OFFSET = 380 / 360 + 9;
+interface ReelGeometry {
+  /** Rendered height of one digit item (CSS px). */
+  itemH: number;
+  /** Rendered height of the reel window (CSS px). */
+  windowH: number;
+}
+
+/**
+ * Strip offset (in item heights) that puts the centered digit in the window:
+ * translating by −(offset + position) × itemH must center item
+ * (position + 10) on windowH / 2, so offset = 10.5 − windowH / (2 × itemH).
+ */
+function centeringOffset({ itemH, windowH }: ReelGeometry): number {
+  return 10.5 - windowH / (2 * itemH);
+}
 /** How close (in item heights) a spring may be to its target before we snap. */
 const SETTLE_EPSILON = 0.004;
 /** How slow (in item heights/second) a settle may be before we consider it done. */
@@ -94,6 +109,10 @@ export function NumberWheel({
   ariaLabel,
 }: NumberWheelProps) {
   const stripRef = useRef<HTMLDivElement>(null);
+  const windowRef = useRef<HTMLDivElement>(null);
+  const digitRef = useRef<HTMLSpanElement>(null);
+  /** Measured rendered geometry — refreshed by a ResizeObserver (below). */
+  const geometryRef = useRef<ReelGeometry>({ itemH: 0, windowH: 0 });
   /** Continuous strip position in item heights, kept in [0, 10) while rolling. */
   const positionRef = useRef<number>(digit);
   /** Tracks the previous `rolling` value so a lock can be detected. */
@@ -109,16 +128,41 @@ export function NumberWheel({
     [],
   );
 
+  /** Re-measure the rendered digit/window sizes from the DOM. */
+  const measureGeometry = () => {
+    const digitEl = digitRef.current;
+    const windowEl = windowRef.current;
+    if (!digitEl || !windowEl) return;
+    geometryRef.current = {
+      itemH: digitEl.getBoundingClientRect().height,
+      windowH: windowEl.clientHeight,
+    };
+  };
+
   const writeTransform = () => {
     const strip = stripRef.current;
-    if (!strip) return;
-    const percent = (-(BASE_OFFSET + positionRef.current) * 100) / STRIP_LENGTH;
+    const { itemH, windowH } = geometryRef.current;
+    if (!strip || itemH <= 0 || windowH <= 0) return; // unmeasured — the observer below catches up
+    const percent =
+      (-(centeringOffset({ itemH, windowH }) + positionRef.current) * 100) /
+      STRIP_LENGTH + 0.5;
     strip.style.transform = `translate3d(0, ${percent}%, 0)`;
   };
 
-  // Apply the initial transform before the first paint.
+  // Measure the rendered reel and write the initial transform before the first
+  // paint; a ResizeObserver keeps the centering exact if the reel is re-laid
+  // out (font load, window resize). Only the digit/window ratio matters, so
+  // any rendered size centers correctly.
   useLayoutEffect(() => {
+    measureGeometry();
     writeTransform();
+    const observer = new ResizeObserver(() => {
+      measureGeometry();
+      writeTransform();
+    });
+    if (digitRef.current) observer.observe(digitRef.current);
+    if (windowRef.current) observer.observe(windowRef.current);
+    return () => observer.disconnect();
   }, []);
 
   // Continuous spin loop — runs only while `rolling` is true.
@@ -198,7 +242,7 @@ export function NumberWheel({
       role="img"
       aria-label={`${ariaLabel ?? "چرخ عدد"}${rolling ? "، در حال چرخش" : `، عدد ${toPersianDigits(digit)}`}`}
     >
-      <div className="number-wheel__window">
+      <div className="number-wheel__window" ref={windowRef}>
         <div
           className="number-wheel__strip"
           ref={stripRef}
@@ -206,7 +250,11 @@ export function NumberWheel({
           data-reduced-motion={reducedMotion || undefined}
         >
           {STRIP_ITEMS.map((item, index) => (
-            <span key={index} className="number-wheel__digit">
+            <span
+              key={index}
+              ref={index === 0 ? digitRef : undefined}
+              className="number-wheel__digit"
+            >
               {item}
             </span>
           ))}

@@ -8,6 +8,8 @@ import { GameHeader } from "../components/ui/GameHeader";
 import { PageShell } from "../components/ui/PageShell";
 import { JOURNEY_STEPS, StepTracker } from "../components/ui/StepTracker";
 import { getActiveGame } from "../games/registry";
+import { BUDGET } from "../games/number-wheel/config";
+import { getBudgetState, recordPrize } from "../services";
 import { GameResultScreen } from "./GameResult";
 
 /**
@@ -33,6 +35,8 @@ export function GamePage() {
       sector: category ?? { id: "", name: "" },
       attemptsRemaining: Math.max(0, MAX_GAME_ATTEMPTS - attempt),
       attemptsTotal: MAX_GAME_ATTEMPTS,
+      // The consumed share of the prize budget — games may scale difficulty on it.
+      budgetConsumedRatio: getBudgetState(BUDGET).consumedRatio,
     }),
     [user, category, attempt],
   );
@@ -43,6 +47,8 @@ export function GamePage() {
       if (!user || !category || !survey || submittedRef.current) return;
       submittedRef.current = true;
       setResult(gameResult);
+      // A win drains the organizer's prize budget (zero-win rounds consume nothing).
+      if (gameResult.winAmount > 0) recordPrize(gameResult.winAmount, BUDGET);
       const sessionResult: GameSessionResult = {
         userId: user.id,
         mobile: user.mobile,

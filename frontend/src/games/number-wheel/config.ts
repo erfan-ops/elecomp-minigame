@@ -23,6 +23,14 @@ export const PRIZE_EXACT_0 = 0; // nothing correct
 
 /** Spin speed of each wheel (left to right) in digits per second. */
 export const WHEEL_SPEEDS: readonly [number, number, number] = [8.5, 10, 11.5];
+export const BUDGET = 100_000_000;
+export const DIFFICULTY_THRESHOLDS: number[] = [25, 50, 75, 100];
+export const DIFFICULTY_MULTIPLIERS: number[][] = [
+    [1, 1, 1],
+    [1.2, 1.3, 1.4],
+    [1.4, 1.6, 1.8],
+    [1.7, 2, 2.3]
+];
 
 /** Stop animation feel — spring constants for the physical settle. */
 export const SPRING_STIFFNESS = 170;

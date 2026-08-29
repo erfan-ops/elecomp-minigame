@@ -47,7 +47,7 @@ export function Keypad({ onDigit, onBackspace, onConfirm, confirmDisabled = fals
       </button>
       <button
         type="button"
-        className="keypad__key"
+        className="keypad__key keypad__key--backspace"
         onClick={onBackspace}
         aria-label="حذف رقم"
       >

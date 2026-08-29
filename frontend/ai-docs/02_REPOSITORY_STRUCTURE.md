@@ -134,7 +134,7 @@ There are NO directories named `tests`, `scripts`, `types`, `store`, `state`, `c
 | `src/config/` | config (source) | Organizer-tunable platform settings | Editable, but it is source code — treat edits as code changes |
 | `src/utils/` | app code | Pure display helpers | Currently only Persian numeral formatting |
 | `src/styles/` | styles | `global.css` (font, tokens, reset) + `app.css` (platform components) + `design-tokens.css`/`design-system.css` (the redesign) | Imported once, in `src/main.tsx` |
-| `public/` | assets | Files copied verbatim to the build root | Fonts + `favicon.svg`; the shell logo is the text `GameHeader` (no `Container.svg`) |
+| `public/` | assets | Files copied verbatim to the build root | Fonts + `favicon.svg` + the brand logos `smartis_logo.svg` (page header) and `almas_logo.svg` (page footer); `stores/` holds the category sponsor logos |
 | `ai-docs/` | docs | AI-owned documentation (this package) | Lives inside `frontend/`. AI agents MUST keep it current |
 | `<repo-root>/docker-compose*.yml`, `<repo-root>/exhibition.sh`, `<repo-root>/.dockerignore`, `frontend/Dockerfile*`, `frontend/nginx.conf` | deploy scaffold | Docker build/run arrangement for the single `frontend/` service | See `09_BUILD_RUN_DEPLOY.md` |
 | `.claude/` | tooling | Claude Code local permission settings | Not application code |

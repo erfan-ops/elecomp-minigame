@@ -114,6 +114,10 @@
   /* Canvas */
   --ds-bg: rgb(7, 7, 20);
   --ds-card: rgba(9, 11, 20, 0.62);
+  /* Fixed design canvas — mirrors DESIGN_WIDTH / DESIGN_HEIGHT in
+     designScale.ts; the page shell is this size, scaled by --s. */
+  --ds-canvas-w: 67.5rem; /* 1080 */
+  --ds-canvas-h: 112.5rem; /* 1800 */
 
   /* Glass surface (display input + keypad keys) */
   --ds-glass-bg: linear-gradient(
@@ -191,7 +195,8 @@
   --ds-glow-bl: rgba(54, 174, 191, 0.22);
   --ds-glow-br: rgba(255, 207, 58, 0.08);
   --ds-glow-edge: rgba(120, 210, 225, 0.06);
-  --ds-glow-deco: 0 8px 24px rgba(54, 174, 191, 0.4);
+  --ds-glow-deco: drop-shadow(0 0 16px rgba(111, 228, 242, 0.6))
+    drop-shadow(0 8px 32px rgba(54, 174, 191, 0.65));
 
   /* Strong primary glow (header badge, continue button) */
   --ds-shadow-strong: inset 0 1px 0 rgba(255, 255, 255, 0.4),
@@ -225,7 +230,7 @@
   --ds-lh-choice: 2rem; /* 32 */
   --ds-fs-nav: 1.125rem; /* 18 */
   --ds-lh-nav: 1.75rem; /* 28 */
-  --ds-fs-logo: 1.875rem; /* 30 */
+  --ds-fs-logo: 1.475rem; /* 30 */
   --ds-lh-logo: 2.25rem; /* 36 */
   --ds-fs-logo-sub: 0.875rem; /* 14 */
   --ds-lh-logo-sub: 1.25rem; /* 20 */

@@ -53,7 +53,7 @@
 | `notEmployed` | `SurveyPage` | same | `boolean` | Skip checkbox toggle | none | When true, dims the `ChoiceGrid` (`--disabled`), clears `countChoice`, and enables ادامه; continue stores `{ employeeCount: 0, hasBenefits: false }` |
 | `selectedId` | `CategorySelectionPage` | `src/pages/CategorySelectionPage.tsx` | `string \| null` | Card tap | none | «شروع بازی» disabled while `null` |
 | `submittedRef` | `GamePage` | `src/pages/GamePage.tsx` | `boolean` | Set true in `handleComplete`; reset to false in `handleRetry` | none | Second guard against double persistence |
-| `context` (derived) | `GamePage` | same | `GameContext` | `useMemo(..., [user, category, attempt])` | none | `attemptsRemaining = Math.max(0, MAX_GAME_ATTEMPTS - attempt)`; also `attemptsTotal = MAX_GAME_ATTEMPTS` (added in the redesign for the game's status dots/rules) |
+| `context` (derived) | `GamePage` | same | `GameContext` | `useMemo(..., [user, category, attempt])` | none | `attemptsRemaining = Math.max(0, MAX_GAME_ATTEMPTS - attempt)`; also `attemptsTotal = MAX_GAME_ATTEMPTS` (added in the redesign for the game's status dots/rules); `budgetConsumedRatio = getBudgetState(BUDGET).consumedRatio` (budget-driven difficulty, 2026-08-29) |
 | `canRetry` (derived) | `GamePage` | same | `boolean` | Recomputed each render | none | `saveStatus === "saved" && (savedResult?.winAmount ?? 0) === 0 && attempt < MAX_GAME_ATTEMPTS` |
 | `GameSnapshot` | `useNumberGame` reducer | `src/games/number-wheel/useNumberGame.ts` | `{ phase: GameState; stoppedCount: StoppedCount; target: Digits; digits: Digits }` | `dispatch` of `START` / `STOP` / `SET_TARGET` through `gameReducer` | none | Authoritative game state; initialized lazily from `createNewGame()` |
 | `wheelRefs[0..2]` | `NumberWheelGame` | `src/games/number-wheel/NumberWheelGame.tsx` | `RefObject<NumberWheelHandle \| null>` ×3 | Assigned by React on mount | none | Only use: `getCurrentDigit()` at STOP time |
@@ -84,7 +84,7 @@ interface SurveyAnswers { employeeCount: number; hasBenefits: boolean }
 
 `src/domain/game.ts`
 ```ts
-interface GameContext { userId: string; mobile: string; sector: Category; attemptsRemaining?: number }
+interface GameContext { userId: string; mobile: string; sector: Category; attemptsRemaining?: number; attemptsTotal?: number; budgetConsumedRatio?: number }
 interface GameResult  { score: number; winAmount: number; metadata?: Record<string, unknown> }
 interface GameProps   { context: GameContext; onComplete: (result: GameResult) => void; onExit: () => void }
 ```
@@ -188,8 +188,9 @@ session sends the kiosk back to `REGISTRATION` with all in-progress data lost.
 | Active (next-to-stop) reel index | `rolling[]`, `state` | `WheelGroup`: `state === "RUNNING" ? rolling.findIndex(Boolean) : -1` |
 | Reel `locked` prop | `state`, `rolling[i]` | `state !== "IDLE" && !rolling[index]` |
 | Prize result | `target`, `digits` | `calculatePrizeResult()` → `{ correctDigits, prize, perfect }`, `useMemo` on `RESULT` |
-| Reel speeds | `WHEEL_SPEEDS`, `reducedMotion` | `useMemo(..., [reducedMotion])` |
-| `GameContext` | `user`, `category`, `attempt` (+ `attemptsTotal`) | `useMemo` in `GamePage` |
+| Reel speeds | `effectiveWheelSpeeds(context.budgetConsumedRatio ?? 0)`, `reducedMotion` | `difficulty.ts` → `WHEEL_SPEEDS × DIFFICULTY_MULTIPLIERS[level]`; `useMemo(..., [budgetConsumedRatio, reducedMotion])` |
+| `GameContext` | `user`, `category`, `attempt` (+ `attemptsTotal`, `budgetConsumedRatio`) | `useMemo` in `GamePage` |
+| Budget state | `localStorage` `smartis-game.budget.v1` + `BUDGET` (game config) | `getBudgetState()` → `{ budget, consumed, remaining, consumedRatio }`; mutated by `recordPrize()` (GamePage, on win) |
 | `canRetry` | `saveStatus`, `savedResult.winAmount`, `attempt` | Inline expression in `GamePage` |
 | Leaderboard entries | stored results | `buildLeaderboard()` |
 | Displayed mobile (input) | `mobileDigits` | `PhoneDisplay` → Persian numerals (page-1 redesign) |

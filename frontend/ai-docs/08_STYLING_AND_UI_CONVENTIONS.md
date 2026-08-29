@@ -102,7 +102,7 @@ Game-scoped tokens declared in `src/games/number-wheel/number-wheel.css` `:root`
 |---|---|---|
 | `--wheel-w` | `15.625rem` (250 px) | Reel width |
 | `--wheel-h` | `23.75rem` (380 px) | Reel window height |
-| `--digit-font` | `11.25rem` (180 px) | Reel digit size — each strip item is exactly this tall, so `BASE_OFFSET = 380/360 + 9` centers digit 0 at position 0 |
+| `--digit-font` | `11.25rem` (180 px) | Reel digit size — each strip item is this tall; the centering offset is derived at runtime from the measured item/window ratio (see `05_MINIGAME.md`), never from these px values |
 
 Per-instance CSS variables set from JSX (the only runtime-computed CSS values):
 `--drift` and `--spin` on each `.confetti__piece` (`src/components/Confetti.tsx`).
@@ -166,8 +166,10 @@ Two sizing mechanisms coexist:
    viewportHeight/DESIGN_HEIGHT)` (design canvas 1080×1800) on `<html>`, `design-tokens.css` sets
    `html { font-size: calc(var(--s) * 16px) }`, and every fixed dimension in `design-system.css`,
    `number-wheel.css`, and the game/result screens is expressed in **rem** (1 rem = 16 design pixels
-   × `--s`). Content-dependent sizes use intrinsic sizing. Verified at 800×1280, 1080×1793, and
-   1440×2560. Full detail in `design-system.md`.
+   × `--s`). The page shell is the fixed canvas (the `--ds-canvas-w` / `--ds-canvas-h` tokens),
+   centered by `.app`'s flex layout; on screens whose aspect differs from the canvas, the dark
+   background extends into the letterbox. Content-dependent sizes use intrinsic sizing. Full detail
+   in `design-system.md`.
 2. **Gone:** the leaderboard page was the last `clamp()`-with-`vmin` surface and was deleted, so the
    design scale now covers everything (the remaining `clamp()` calls live in `global.css`/`app.css`).
 
@@ -178,7 +180,7 @@ Two sizing mechanisms coexist:
 | Touch targets | Per-control `min-height` (e.g. `.slot-game__stop` is 288×128 rem); the `--btn-min-h` token died with `.btn` |
 | Reel dimensions | `--wheel-w`/`--wheel-h`/`--digit-font` (rem, see token table above) |
 | Grids | Fixed column counts: `.category-grid` (2 × 408px design-scale, LTR, last card full-width), `.keyboard` 3 columns, `.choice-grid` 2×2, `.rules-panel__prizes` 3 cards — they do not reflow |
-| Page height | `height: 100%` chain from `html` → `body` → `#root` → `.app` → `PageShell` |
+| Page height | `height: 100%` chain from `html` → `body` → `#root` → `.app`; the `PageShell` is the fixed 1080×1800 canvas (67.5rem × 112.5rem), scaled by `--s` and centered by `.app`. The Almas credit footer (`page-shell__footer`) is pinned to the canvas bottom — absolute, `pointer-events: none` — and the game page's `.rules-panel` margin-bottom (40px) clears it |
 
 Design orientation: **portrait / vertical touchscreen**. Nothing adapts to landscape.
 
@@ -195,8 +197,8 @@ Design orientation: **portrait / vertical touchscreen**. Nothing adapts to lands
 | Rule | Implementation |
 |---|---|
 | Document direction | `<html lang="fa" dir="rtl">` — everything inherits RTL |
-| Numeric sequences stay LTR | `direction: ltr` on `.keyboard`, `.leaderboard-row__phone`, `.wheel-group` (CSS) and `.reel-labels`, `.slot-game__target`, `.phone-display__value`, `.game-header__logo`, `.game-result__digits`, `.game-result__target-value`, `.game-result__prize-amount`, `.prize-card__value` (JSX `dir` or rem-based CSS) |
-| Never add `letter-spacing` to Persian text | It breaks the joined script. `letter-spacing` appears only on numeric/Latin runs: the redesigned `.phone-display__value` / `.phone-display__placeholder` (5.4px on isolated digits) and the Latin `.game-header__logo` wordmark (0.75px) (`.leaderboard__mobile`'s 1px died with the leaderboard page) |
+| Numeric sequences stay LTR | `direction: ltr` on `.keyboard`, `.leaderboard-row__phone`, `.wheel-group` (CSS) and `.reel-labels`, `.slot-game__target`, `.phone-display__value`, `.game-result__digits`, `.game-result__target-value`, `.game-result__prize-amount`, `.prize-card__value` (JSX `dir` or rem-based CSS) |
+| Never add `letter-spacing` to Persian text | It breaks the joined script. `letter-spacing` appears only on numeric runs: the redesigned `.phone-display__value` / `.phone-display__placeholder` (5.4px on isolated digits) (`.leaderboard__mobile`'s 1px died with the leaderboard page; the Latin LUCKY REELS wordmark died 2026-08-29 — header/footer text is Vazirmatn with `letter-spacing: 0`) |
 | Emphasis | Font weight, size, and color only |
 | Persian numerals | Applied in JSX via `toPersianDigits` / `formatPersianNumber`, never via CSS |
 | Mobile numbers | Written as **English digits** everywhere (the bundled fonts draw Persian glyph shapes); the redesigned page 1 shows keypad labels, the entered display (centered), and the panel's masked `09`-form (`formatPanelMobile`). Page 1's digit runs (keypad, phone display) use the static `IRANYekanXFaNum` face; the page-1 Persian texts (welcome, stepper, panel) use the variable `IRANYekanXVFaNum` face — both `@font-face` in `design-tokens.css`. Masked on public screens |
@@ -236,8 +238,10 @@ Conventions:
 | Row flex with gaps | `.wheel-group`, `.status-pill__dots`, `.nav-buttons`, `.game-header`, `.slot-game__status`, `.game-result__digits` |
 | Layered stack for the reel | `.number-wheel__window` with absolutely positioned `__fade--top` / `__fade--bottom` gradient masks over the transformed `__strip` (no `__center` band anymore) |
 
-The only `z-index` values: `1` (`.status-pill__dot--live` glow layer) and
-`1` in `design-system.css` (page-4 glow layer). No overlay z-index remains — the result screens are
+The `z-index` values (2026-08-29): inside `.page-shell` the stacking is glows (auto) →
+`.floating-deco` (1, behind the content) → `.page-shell__frame` (2, so the glass panels'
+backdrop-filter blurs the decos) → `.page-shell__footer` (3); plus `1`
+(`.status-pill__dot--live` glow layer). No overlay z-index remains — the result screens are
 full-page sections, not overlays.
 
 ## Accessibility Considerations Present In Styles And Markup
@@ -270,10 +274,9 @@ No icon library and no icon components. All glyphs are literal Unicode character
 |---|---|
 | `⌫` | Keyboard backspace key |
 | `✓` | Keypad confirm key, skip checkbox check |
-| `★` | `GameHeader` star badge (page 2) |
 | `▲` | `button.slot-game__target-digit::after` — the "tap to change" affordance, shown only at IDLE |
 
-`public/favicon.svg` is the only vector asset.
+Vector assets: `public/favicon.svg`, `public/smartis_logo.svg` (page header), `public/almas_logo.svg` (page footer).
 
 ## Asset Conventions
 

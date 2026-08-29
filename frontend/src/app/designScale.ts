@@ -5,8 +5,13 @@
  * (DESIGN_WIDTH × DESIGN_HEIGHT). At boot, a single CSS variable `--s` is
  * set to min(viewportWidth/DESIGN_WIDTH, viewportHeight/DESIGN_HEIGHT), and
  * the design-system CSS expresses every fixed dimension in rem against a
- * root font-size of calc(var(--s) * 16px). When the real device resolution
- * is known, updating the two constants below refits the whole UI.
+ * root font-size of calc(var(--s) * 16px). The `.page-shell` is sized as
+ * the fixed canvas (67.5rem × 112.5rem — see the `--ds-canvas-*` tokens in
+ * design-tokens.css) and `.app` centers it in the viewport, so on screens
+ * whose aspect differs from the canvas the content keeps the design shape
+ * and the dark background extends into the letterboxed space. When the real
+ * device resolution is known, updating the two constants below (plus the
+ * mirror canvas tokens) refits the whole UI.
  */
 
 export const DESIGN_WIDTH = 1080;

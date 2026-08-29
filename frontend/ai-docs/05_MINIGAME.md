@@ -72,7 +72,7 @@ result ? (
 ```
 
 4. `NumberWheelGame.tsx` imports `./number-wheel.css` — the stylesheet ships with the game module.
-   `GamePage` wraps everything in the shared `PageShell` (`variant="survey"`) with the `GameHeader`
+   `GamePage` wraps everything in the shared `PageShell` with the `GameHeader`
    logo, `FloatingDecorations`, and `StepTracker` — the game page shares the platform chrome.
 
 The game receives exactly `GameProps` (`src/domain/game.ts`) and nothing else.
@@ -242,7 +242,8 @@ The play screen (`NumberWheelGame`) is one `.slot-game` column: exit pill, kicke
 heading «عدد NNN را پیدا کنید» (target digits gold, tappable at IDLE), «عدد تصادفی» pill (IDLE only),
 two status pills («فرصتهای بازی» cyan dots = attempts total/spent; «شلیک برای رقم N» green dots =
 shots taken), the `.reel-machine` (labels رقم ۱/۲/۳ over `WheelGroup`), the big stop button, the
-remote hint, and the glass rules panel (3 rules + 3 prize cards from config values).
+remote hint, and the glass rules panel (3 rules + 3 prize cards from config values — frosted:
+`backdrop-filter: blur(12px)`, blurs the floating decorations that sit behind the content frame).
 
 Per reel, DOM structure produced by `NumberWheel`:
 
@@ -257,19 +258,27 @@ div.number-wheel[role=img][aria-label=…]           ← class modifiers drive a
 
 (The old `__next-badge` and `__center` band were removed in the redesign.)
 
-Transform math (`writeTransform`):
+Transform math (`writeTransform` + `measureGeometry`):
 
 ```
-STRIP_LENGTH = 10 * STRIP_REPEATS = 30
-BASE_OFFSET  = 380 / 360 + 9 = 9.4444…   // centers item 10 (digit 0) at position 0
-percent = (-(BASE_OFFSET + positionRef.current) * 100) / STRIP_LENGTH
+STRIP_LENGTH  = 10 * STRIP_REPEATS = 30
+centeringOffset({ itemH, windowH }) = 10.5 − windowH / (2 × itemH)
+percent = (-(centeringOffset(measured) + positionRef.current) * 100) / STRIP_LENGTH
 strip.style.transform = `translate3d(0, ${percent}%, 0)`
 ```
 
-- Each `.number-wheel__digit` is exactly `--digit-font` tall (11.25rem = 180 px) and the window is
-  `--wheel-h` (23.75rem = 380 px), so the window shows ~2 digits around the centered one. The digit at
-  the window center is the one `digitFromPosition` reports and STOP locks.
-- `useLayoutEffect` writes the initial transform before first paint (prevents a visible jump).
+- `itemH` / `windowH` are **measured from the rendered DOM** — `getBoundingClientRect()` on the first
+  `.number-wheel__digit`, `clientHeight` on `.number-wheel__window` — in a `useLayoutEffect`, then kept
+  in sync by a `ResizeObserver` on both elements. No pixel constants appear in the math, so any
+  rendered reel size (whatever `--s` or retuned tokens resolve to) centers the digit. Derivation:
+  translating by −(offset + position) × itemH must center item (position + 10) on windowH / 2, so
+  offset = 10.5 − windowH / (2 × itemH) — with the default tokens that is 10.5 − 380/360 ≈ 9.4444.
+- At the default tokens (`--digit-font` 11.25rem = 180 px, `--wheel-h` 23.75rem = 380 px) the window
+  shows ~2 digits around the centered one. The digit at the window center is the one
+  `digitFromPosition` reports and STOP locks.
+- `useLayoutEffect` measures and writes the initial transform before first paint (prevents a visible
+  jump); the `ResizeObserver` rewrites the transform whenever the reel is re-laid out (font load,
+  window resize).
 - Class modifiers: `--rolling` (cyan-tinted border + `filter: blur(1.6px)` on the strip),
   `--active` (cyan border + `wheel-active-pulse` glow animation, only while rolling),
   `--locked` (cyan border at higher opacity), `--just-locked` (0.7 s `wheel-lock-pulse` scale bump).
@@ -364,8 +373,27 @@ countExactMatches(target, result) = target.reduce((n, d, i) => d === result[i] ?
     hard-coded).
 - The game uses `context.attemptsTotal` / `attemptsRemaining` for its status UI (rules line «در مجموع
   N فرصت», cyan attempts dots). `GamePage` supplies `attemptsTotal: MAX_GAME_ATTEMPTS` and
-  `attemptsRemaining = Math.max(0, MAX_GAME_ATTEMPTS - attempt)`.
+  `attemptsRemaining = Math.max(0, MAX_GAME_ATTEMPTS - attempt)`. It also receives
+  `budgetConsumedRatio` (0..1) for the difficulty scaling below.
 - `formatPersianNumber` renders digits in the display layer only; stored metadata stays Latin.
+
+## Difficulty Scaling (Budget-Driven Speeds)
+
+The game gets harder as the organizer's prize budget drains:
+
+- `GamePage` passes `budgetConsumedRatio` (consumed / `BUDGET`, 0..1, from `getBudgetState()` in
+  `src/services/budget.ts`) through `GameContext` — the game never touches storage.
+- `src/games/number-wheel/difficulty.ts` (`difficultyLevel`, `effectiveWheelSpeeds`) is pure over the
+  config constants: level = number of `DIFFICULTY_THRESHOLDS` percentages the consumption strictly
+  exceeds (≤ 25% → level 0, 25% < c ≤ 50% → level 1, …, > 75% → level 3, clamped to the last row),
+  and the reel speeds become `WHEEL_SPEEDS × DIFFICULTY_MULTIPLIERS[level]` — e.g. 40% consumed →
+  `[8.5×1.2, 10×1.3, 11.5×1.4] = [10.2, 13, 16.1]`.
+- `NumberWheelGame` reads the ratio at mount (remounts per user/attempt, so it is always current);
+  the reduced-motion factor applies on top of the difficulty multipliers.
+- Every win is recorded by `GamePage.handleComplete` (`recordPrize(winAmount, BUDGET)`); only
+  `winAmount > 0` consumes budget. Persisted as `{ consumed }` under localStorage key
+  `smartis-game.budget.v1` — the budget constant itself stays in config, so retuning `BUDGET` takes
+  effect immediately and corrupt storage degrades to zero consumed.
 
 ## Pause / Resume / Reset Behavior
 
@@ -417,7 +445,10 @@ countExactMatches(target, result) = target.reduce((n, d, i) => d === result[i] ?
 | `PRIZE_EXACT_2` | `1_000_000` | Prize for 2 |
 | `PRIZE_EXACT_1` | `500_000` | Prize for 1 |
 | `PRIZE_EXACT_0` | `0` | Prize for 0 |
-| `WHEEL_SPEEDS` | `[8.5, 10, 11.5]` | Digits/second per reel, left→right |
+| `WHEEL_SPEEDS` | `[8.5, 10, 11.5]` | Base digits/second per reel, left→right |
+| `BUDGET` | `100_000_000` | Organizer prize pool (تومان). Every win is deducted from it by the platform (`recordPrize` in `src/services/budget.ts`); the difficulty levels below are ratios of this |
+| `DIFFICULTY_THRESHOLDS` | `[25, 50, 75, 100]` | Percent of `BUDGET` consumed that must be **exceeded** to reach the next difficulty level |
+| `DIFFICULTY_MULTIPLIERS` | `[[1,1,1],[1.2,1.3,1.4],[1.4,1.6,1.8],[1.7,2,2.3]]` | Per-wheel speed multipliers, one row per level (row index = level) |
 | `SPRING_STIFFNESS` | `170` | Settle spring constant |
 | `SPRING_DAMPING` | `20` | Settle damping (under-damped ⇒ bounce) |
 | `LOCK_PULSE_MS` | `700` | Duration `justLocked` stays true |
@@ -430,7 +461,7 @@ Module-local constants NOT in `config.ts` (change these in `NumberWheel.tsx`):
 | Constant | Value | Meaning |
 |---|---|---|
 | `STRIP_LENGTH` | `30` | `10 * STRIP_REPEATS` |
-| `BASE_OFFSET` | `380 / 360 + 9` ≈ `9.4444` | Item-height offset centering digit 0 at position 0 (window 380 px, item 180 px) |
+| `centeringOffset` | `10.5 − windowH / (2 × itemH)` | Item-height offset centering digit 0 at position 0 — computed from **measured** rendered geometry (`ReelGeometry`), no px constants |
 | `SETTLE_EPSILON` | `0.004` | Snap distance threshold (item heights) |
 | `SETTLE_MIN_VELOCITY` | `0.06` | Snap velocity threshold (item heights/s) |
 
@@ -481,7 +512,7 @@ Platform constants that affect the game: `MAX_GAME_ATTEMPTS = 3` and `ACTIVE_GAM
 | `window`-scoped `keydown` listener | Active for the whole game lifetime. `PageUp`/`PageDown`/`b` are not `preventDefault()`-ed, so they retain their default browser behavior. Any future focusable text surface inside the game would receive `b` as well as triggering a STOP. |
 | Under-damped spring | `SPRING_STIFFNESS`/`SPRING_DAMPING` tuning changes can make the settle oscillate long enough that `SETTLE_MIN_VELOCITY` is never satisfied on slow frames. The loop has no iteration/time cap. |
 | `dt` clamp of `0.05` | Long stalls (backgrounded tab) advance the reel far less than wall-clock time. Acceptable visually; it means position is not a function of elapsed real time. |
-| `BASE_OFFSET = 380/360 + 9` coupled to `STRIP_REPEATS = 3`, `--digit-font` and `--wheel-h` | Changing `STRIP_REPEATS`, the digit height, or the window height without re-deriving `BASE_OFFSET` misaligns the centered digit. Any CSS resizing of the reels must keep the 380/360 ratio or update the constant. |
+| Centering depends on runtime measurement | The offset is measured from the rendered reel (first `.number-wheel__digit` + `.number-wheel__window`). If a reel ever mounts without layout (`display: none`), `writeTransform` early-returns until the `ResizeObserver` fires — the digit briefly shows from the untransformed position. `STRIP_REPEATS` ↔ `STRIP_LENGTH` stay coupled by definition (`10 ×`). |
 | `getCurrentDigit()` returning `?? 0` | If a reel ref were ever null at STOP time, digit `0` is silently locked instead of erroring. |
 | `MIN_STOP_INTERVAL_MS = 200` vs presenter speed | A presenter pressing faster than 200 ms apart loses stops with no feedback. |
 | Space badge on the remote hint | Decorative — no Space keydown handler exists. If a presenter presses Space it scrolls the page; do not assume Space stops the wheels. |
