@@ -13,6 +13,11 @@ with every game result. The whole application is optimized for a vertical
 touchscreen without a physical keyboard: input happens through an
 on-screen numeric keyboard.
 
+The repository also ships a Python **backend** (`backend/`): a pywebview
+desktop wrapper that renders the built frontend in a fullscreen window and
+silently exports every completed game iteration to disk as JSON files (see
+Persistence).
+
 ## Running
 
 ```bash
@@ -21,6 +26,18 @@ npm run dev        # dev server (also reachable from other devices on the LAN)
 npm run build      # type-check + production build into dist/
 npm run preview    # serve the production build locally
 ```
+
+To run the desktop backend (Python >= 3.12, dependency `pywebview`):
+
+```bash
+# 1. sync the fresh build into the backend (replace index.html + assets/, delete stale hashed bundles)
+cd ../backend
+uv sync            # first time — creates .venv
+python main.py     # fullscreen webview; completed games are exported to backend/output
+```
+
+`backend/frontend/` is a mirror copy of `dist/` — re-sync it after every build,
+or the wrapper keeps running the old bundle.
 
 ## Pluggable games — the core contract
 
@@ -37,6 +54,9 @@ interface GameContext {
   userId: string;
   mobile: string;                 // exactly as entered, e.g. "09108086113"
   sector: Category;               // { id, name } — the player's sector
+  attemptsRemaining?: number;     // retries left after this attempt
+  attemptsTotal?: number;         // total attempts allowed
+  budgetConsumedRatio?: number;   // 0–1 share of the prize budget already paid out
 }
 
 interface GameResult {
@@ -55,7 +75,8 @@ interface GameProps {
 The game never sees registration, categories, navigation, storage, the
 leaderboard, or billing. The **game host** (`src/pages/GamePage.tsx`)
 combines the game's result with the user, sector, game id, and timestamp
-into a `GameSessionResult` and hands it to the result repository.
+into a `GameSessionResult` and hands it to the result repository (and,
+inside the Python wrapper, to the disk-export bridge).
 
 ### Bundled games
 
@@ -90,7 +111,17 @@ Pages depend only on the `GameResultRepository` interface
 can be replaced by a backend API without touching any page or game.
 The leaderboard is built purely from stored results (`src/services/leaderboard.ts`):
 best score per user, sorted by score descending with deterministic tie-breaking,
-top three with metallic rank styling.
+the registration panel showing the top five with a gold-styled first row.
+
+On top of the repository, every completed game iteration is exported to
+disk when the app runs inside the Python backend. The game host pushes the
+combined record through the pywebview JS API bridge
+(`window.pywebview.api.export_game_result`), and the Python side owns the
+directory (`backend/output/`, created automatically), the date, and the
+sequence numbers — writing `game_data_YYYY-MM-DD_NNN.json` (one permanent
+file per iteration) plus `game_data_YYYY-MM-DD.json` (always the latest
+iteration of the day). In a plain browser the bridge does not exist and the
+export silently does nothing; the game flow never depends on it.
 
 ## Kiosk mode
 
@@ -103,9 +134,8 @@ top three with metallic rank styling.
 
 - All controls are real `<button>`s with accessible Persian labels.
 - Game state is conveyed by brightness, glow, motion, and text — not color alone.
-- `prefers-reduced-motion` slows the wheels, removes the spin blur and
-  confetti, and skips decorative CSS animations while keeping the game
-  fully playable.
+- `prefers-reduced-motion` removes the spin blur and confetti and skips
+  decorative CSS animations while keeping the game fully playable.
 
 ## Architecture
 
@@ -115,12 +145,20 @@ src/
 ├── pages/          Registration (embeds the live leaderboard panel), Survey, CategorySelection, Game (game host)
 ├── components/     Keypad (on-screen numeric keyboard) and shared UI
 ├── domain/         User, Category, game contract, GameSessionResult, LeaderboardEntry
-├── services/       GameResultRepository interface, local impl, leaderboard builder
+├── services/       GameResultRepository interface, local impl, leaderboard builder, gameExporter (pywebview bridge)
+├── hooks/          usePrefersReducedMotion
 ├── games/          Game registry + one folder per pluggable game
 │   └── number-wheel/   NumberWheelGame + components/ + engine + own stylesheet
 ├── config/         appConfig (active game, categories)
 ├── utils/          persian.ts (Persian numeral display)
 └── styles/         global.css (tokens/base), app.css (platform styles)
+```
+
+```
+backend/
+├── main.py          pywebview host — fullscreen window on backend/frontend/index.html, js_api=Api()
+├── frontend/        mirror copy of dist/ (re-sync after every build)
+└── output/          exported game data: game_data_*.json (created automatically)
 ```
 
 The number-wheel game is a replaceable module, not the application's core.

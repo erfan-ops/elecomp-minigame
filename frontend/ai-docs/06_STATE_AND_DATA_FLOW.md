@@ -13,7 +13,9 @@
 # - src/games/number-wheel/components/NumberWheel.tsx
 # - src/services/localResultRepository.ts
 # - src/services/leaderboard.ts
+# - src/services/gameExporter.ts
 # - src/domain/*.ts
+# - <repo-root>/backend/main.py
 
 ## State Categories Present
 
@@ -24,7 +26,8 @@
 | Game state | YES | `useReducer` in `useNumberGame` + mutable refs in `NumberWheel` |
 | Form state | YES | Local `useState` in `RegistrationPage` / `SurveyPage`; no form library, no real `<input>` |
 | Persistent state | YES | `localStorage` key `smartis-game.results.v1` via `localResultRepository` |
-| Server state | NO | Zero network calls in `src/` |
+| Server state | NO | Zero network calls in `src/`. The only out-of-page call is the pywebview host bridge (`src/services/gameExporter.ts`) — an in-process function call, fire-and-forget |
+| Host (pywebview) export | YES (optional) | Each completed `GameSessionResult` is pushed to `window.pywebview.api.export_game_result`; the Python host writes it to `backend/output`. Silent no-op in a plain browser |
 | Derived state | YES | `useMemo` (`context`, `speeds`, `result`, `confettiPieces`, context value) + pure functions (`rollingFlags`, `buildLeaderboard`, `calculatePrizeResult`, `canRetry`) |
 | Temporary / transient state | YES | Refs: `pendingResultRef`, `savingRef`, `submittedRef`, `completedRef`, `lastStopAt`, `positionRef`, `wasRollingRef`, `stripRef`, `wheelRefs` |
 | URL state | NO | No router, no `history`, no query params |
@@ -180,6 +183,22 @@ What is persisted: only `GameSessionResult` records. **Not persisted:** current 
 survey answers of an in-progress session, attempt counter, or any game-internal state. A reload during a
 session sends the kiosk back to `REGISTRATION` with all in-progress data lost.
 
+### On-Disk Export (pywebview host)
+
+A second, one-way persistence path runs alongside the repository:
+
+| Aspect | Fact |
+|---|---|
+| Trigger | `GamePage.handleComplete` — exactly once per completed game iteration (the `submittedRef` guard; a retry is a new iteration, so it exports again with its own `attempt` number) |
+| Payload | The same combined `GameSessionResult` handed to `session.submitResult` |
+| Frontend module | `src/services/gameExporter.ts` — `exportGameResult(result)`; reads `window.pywebview.api.export_game_result`, catches everything, **never** affects the game flow or `saveStatus` |
+| Bridge | pywebview JS API: the Python method `Api.export_game_result` is exposed **under its verbatim name** `window.pywebview.api.export_game_result` — pywebview 6 does no camelCase conversion |
+| Output dir | `<repo-root>/backend/output/`, created automatically by Python (`mkdir(parents=True, exist_ok=True)`) |
+| Files written | `game_data_YYYY-MM-DD_NNN.json` — permanent record; `NNN` is the next unused sequence number for that day (the number is reserved with an exclusive create, so concurrent iterations never collide). `game_data_YYYY-MM-DD.json` — always the latest iteration of the day, replaced atomically (temp file + `os.replace`) |
+| Date | Local kiosk date (`datetime.now()`), computed per call — midnight rollover needs no extra logic |
+| Failure behavior | Never affects the game flow or `saveStatus`. An absent bridge is fully silent (normal browser mode). A present-but-broken bridge (method missing / call rejected) fires a diagnostic `console.warn` — the only `console.*` call in `src/`. Python logs every request and failure to the console + `backend/pywebview.log` |
+| Outside pywebview | Dev server, nginx/Docker: `window.pywebview` is undefined, so the export is a silent no-op; localStorage remains the only persistence |
+
 ## Derived State
 
 | Derived value | Source | Function |
@@ -240,13 +259,18 @@ GamePage renders (result ? <GameResultScreen …/> : <NumberWheelGame key={user.
                 attempt, sectorId: category.id, sectorName: category.name,
                 gameId: game.id, score, winAmount,
                 playedAt: new Date().toISOString(), metadata }
-              └─► session.submitResult(record)
+              └─► session.submitResult(record)          (localStorage repository)
                     savingRef guard → saveStatus "saving"
                     pendingResultRef = record
                     await resultRepository.save(record)
                       ├─ ok    → saveStatus "saved",  savedResult = record
                       └─ throw → saveStatus "error"   (error object discarded)
                     finally savingRef = false
+              └─► void exportGameResult(record)          (pywebview disk export, fire-and-forget)
+                    window.pywebview.api.export_game_result(record)
+                      ├─ present → Python writes game_data_YYYY-MM-DD_NNN.json + game_data_YYYY-MM-DD.json
+                      ├─ absent → silent no-op (plain browser — game flow unaffected)
+                      └─ present but broken (method missing / throws) → console.warn, game flow unaffected
 ```
 
 ## Flow: After A Result

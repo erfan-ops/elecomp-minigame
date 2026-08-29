@@ -171,7 +171,9 @@ No custom hooks exist beyond these three.
 | `localResultRepository.save` | **No try/catch** — a `QuotaExceededError` or blocked storage rejects the promise, which `submitResult` catches and surfaces as `saveStatus: "error"`. |
 | Validation errors | Rendered as `role="alert"` text next to the offending control (`.registration-error` on page 1; the redesigned survey validates via the disabled ادامه state instead of error text). |
 
-There is no logging framework, no `console.*` call, and no telemetry in `src/`.
+There is no logging framework and no telemetry in `src/`. The only `console.*` call is the
+exporter's diagnostic `console.warn` in `src/services/gameExporter.ts`, which fires when the
+pywebview bridge is present but broken (missing method or rejected call).
 
 ## Loading States
 

@@ -3,6 +3,7 @@
 # STATUS: VERIFIED
 # PRIMARY_SOURCE_PATHS:
 # - src/** (every file)
+# - <repo-root>/backend/main.py (the pywebview counterpart of the exporter)
 
 Legend for **Importance**:
 
@@ -60,7 +61,8 @@ Values: `ACTIVE_GAME_ID = "number-wheel"`, `MAX_GAME_ATTEMPTS = 3`, `CATEGORIES`
 | `src/services/resultRepository.ts` | Persistence **interface** | `GameResultRepository` | `src/domain/gameResult` (type) | none | NO — the seam the whole platform codes against | `CRITICAL` |
 | `src/services/localResultRepository.ts` | localStorage implementation | `localResultRepository` | `src/domain/gameResult` (type) | Reads/writes `localStorage["smartis-game.results.v1"]` | YES as long as it satisfies the interface | `CRITICAL` |
 | `src/services/leaderboard.ts` | Pure ranking builder | `buildLeaderboard` | `src/domain/gameResult` (types) | none | YES | `IMPORTANT` |
-| `src/services/index.ts` | Implementation selector + barrel | `resultRepository`, `buildLeaderboard`, type `GameResultRepository` | the three files above | none | YES — **the single line to change for a backend implementation** | `CRITICAL` |
+| `src/services/gameExporter.ts` | pywebview host bridge: pushes each completed `GameSessionResult` to `window.pywebview.api.export_game_result` — the verbatim name of `Api.export_game_result` in `backend/main.py` (pywebview 6 does no camelCase conversion), which writes `backend/output/game_data_*.json` and logs to `backend/pywebview.log`. Silent no-op when the bridge is absent; `console.warn` when the bridge is present but the method is missing or the call throws — never affects the game flow | `exportGameResult` | `src/domain/gameResult` (type) | Calls the pywebview bridge (the only `window.pywebview` access in `src/`) | YES — removal only drops the disk export | `IMPORTANT` |
+| `src/services/index.ts` | Implementation selector + barrel | `resultRepository`, `buildLeaderboard`, `exportGameResult`, type `GameResultRepository` | the files above | none | YES — **the single line to change for a backend implementation** | `CRITICAL` |
 
 ## Pages
 
@@ -69,7 +71,7 @@ Values: `ACTIVE_GAME_ID = "number-wheel"`, `MAX_GAME_ATTEMPTS = 3`, `CATEGORIES`
 | `src/pages/RegistrationPage.tsx` | Mobile entry, validation, anti-replay, `register` | `RegistrationPage` | `src/app/AppSession`, `src/components/ui/*`, `src/domain/user`, `src/services` | `await resultRepository.getResults()`; **fails open** on throw | YES | `IMPORTANT` |
 | `src/pages/SurveyPage.tsx` | Two survey questions (two local steps) + skip path | `SurveyPage` | `src/app/AppSession`, `src/components/ui/*` | none | YES | `IMPORTANT` |
 | `src/pages/CategorySelectionPage.tsx` | Sector grid, single selection (redesigned page 4) | `CategorySelectionPage` | `src/app/AppSession`, `src/config/appConfig`, `src/components/ui/*` (PageShell, StepTracker, GameHeader, FloatingDecorations, NavButtons) | none | YES | `IMPORTANT` |
-| `src/pages/GamePage.tsx` | **The game↔platform adapter**: builds `GameContext`, widens `GameResult` → `GameSessionResult`, persists, retry/continue chrome; renders the game or `GameResultScreen` | `GamePage` | `src/app/AppSession`, `src/config/appConfig`, `src/games/registry` (`getActiveGame`), `src/domain/*`, `src/components/ui/*` (PageShell, GameHeader, FloatingDecorations, StepTracker), `./GameResult` | `new Date().toISOString()`; `session.submitResult` → repository | NO — it is the contract adapter; changes here affect every game and every stored record | `CRITICAL` |
+| `src/pages/GamePage.tsx` | **The game↔platform adapter**: builds `GameContext`, widens `GameResult` → `GameSessionResult`, persists (localStorage + pywebview disk export), retry/continue chrome; renders the game or `GameResultScreen` | `GamePage` | `src/app/AppSession`, `src/config/appConfig`, `src/games/registry` (`getActiveGame`), `src/domain/*`, `src/components/ui/*` (PageShell, GameHeader, FloatingDecorations, StepTracker), `./GameResult` | `new Date().toISOString()`; `session.submitResult` → repository; `exportGameResult` → pywebview bridge (fire-and-forget) | NO — it is the contract adapter; changes here affect every game and every stored record | `CRITICAL` |
 | `src/pages/GameResult.tsx` | Host-side result screens (Figma frames 6–8): win (prize card + Confetti), loss with retries, game over | `GameResultScreen` | `react`, `src/app/AppSession` (type), `src/components/Confetti`, `src/domain/game` (type), `src/hooks/usePrefersReducedMotion`, `src/utils/persian` | none | YES — pure presentation of a `GameResult` + save status | `IMPORTANT` |
 
 All four pages take **no props** and render inside `PageShell` (the game page with

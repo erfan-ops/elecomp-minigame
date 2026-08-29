@@ -143,6 +143,7 @@ is `.ts` because it only holds types.
 |---|---|---|
 | Throw on programmer error | `src/main.tsx` (missing `#root`), `useAppSession` (used outside provider) | Fail loudly, immediately |
 | `try/catch` → status state | `AppSession.submitResult` / `retrySave` | **Bare `catch { }`** — the error object is not bound and not logged; state becomes `saveStatus: "error"` |
+| `try/catch` → silent no-op, with one `console.warn` exception | `gameExporter.exportGameResult` | Fire-and-forget by design — must never affect the kiosk flow. A missing bridge is fully silent (normal browser mode); a present-but-broken bridge (method missing / call rejected) emits a diagnostic `console.warn` |
 | `try/catch` → degrade to empty | `localResultRepository.loadAll` | Returns `[]` on any failure; corrupt entries filtered by a type guard |
 | `try/catch` → fail open | `RegistrationPage.handleSubmit` | If the anti-replay lookup throws, the user is registered anyway (documented intent) |
 | `try/catch` → degrade to empty | `RegistrationPage` leaderboard-panel load | `topEntries: []` → the panel renders its empty-state line (no retry UI) |
@@ -151,15 +152,17 @@ is `.ts` because it only holds types.
 | Optional-call for optional APIs | `navigator.vibrate?.(ms)` | No feature-detection branch |
 | Fallback chains | `crypto.randomUUID` → `Math.random`+`Date.now`; `getActiveGame()` → `GAME_DEFINITIONS[0]`; route lookup → `APP_ROUTES[0]` | Never crash on a missing lookup |
 
-**No error boundary exists anywhere.** There is no `console.*` call, no logger, and no telemetry in
-`src/` — failures are surfaced only through UI state. Any new `catch` MUST either surface the failure in
-UI state or be justified, following the existing style.
+**No error boundary exists anywhere.** With one exception — the exporter's diagnostic `console.warn`
+in `src/services/gameExporter.ts` (a present-but-broken pywebview bridge) — there is no `console.*`
+call, no logger, and no telemetry in `src/`; failures are surfaced only through UI state. Any new
+`catch` MUST either surface the failure in UI state or be justified, following the existing style.
 
 ## Async Patterns
 
 - `async`/`await` only. There is no `.then()` chain in `src/`.
-- Only two async functions exist: `localResultRepository.save`, `localResultRepository.getResults`
-  (both `async` wrappers over synchronous `localStorage`), and the callers that `await` them
+- Only three async functions exist: `localResultRepository.save`, `localResultRepository.getResults`
+  (both `async` wrappers over synchronous `localStorage`), and `exportGameResult`
+  (`src/services/gameExporter.ts`, awaiting the pywebview bridge), plus the callers that `await` them
   (`AppSession.submitResult` / `retrySave`, `RegistrationPage.handleSubmit` + its panel load).
 - The repository interface is `Promise`-based specifically so a network implementation can drop in
   unchanged.
@@ -251,7 +254,7 @@ surrounding file.
 | Per-frame React state during animation | `NumberWheel` writes `style.transform` through a ref |
 | In-game replay | Reset is a remount driven by `key` |
 | Dynamic imports / code splitting | Games are statically imported in `src/games/registry.ts` |
-| `console` logging / telemetry | No `console.*` call in `src/` |
+| `console` logging / telemetry | No `console.*` call in `src/` except the exporter's diagnostic `console.warn` (`gameExporter.ts`) |
 | Environment variables / runtime config | All tuning is TypeScript constants |
 | `letter-spacing` on Persian text | Only on Latin-digit runs |
 | Page scrolling | None — the registration leaderboard panel shows only the top 5 |

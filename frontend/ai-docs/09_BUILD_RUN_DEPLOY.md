@@ -12,8 +12,11 @@
 # - index.html
 # - README.md
 # - CLAUDE.md
+# - <repo-root>/backend/main.py
+# - <repo-root>/backend/pyproject.toml
 
-`STATUS: PARTIAL` because the deployment target and hosting/CI arrangement are not discoverable from the
+`STATUS: PARTIAL` because which runtime arrangement the kiosk boots on exhibition day (Docker nginx
+vs. the pywebview wrapper) and whether any launch automation exists are not discoverable from the
 repository (`UNKNOWN`). Everything else in this document is `VERIFIED`.
 
 ## Package Manager
@@ -108,10 +111,14 @@ Consequences an agent must respect:
 export default defineConfig({
   plugins: [react()],
   server: { host: true },
+  base: "./",
 });
 ```
 
-Not configured (Vite defaults apply): `base` (`/`), `build.outDir` (`dist`), `build.target`,
+`base: "./"` makes every asset URL relative, so the build also loads from `backend/frontend` over
+`file://` inside the pywebview wrapper.
+
+Not configured (Vite defaults apply): `build.outDir` (`dist`), `build.target`,
 `build.sourcemap` (off), `resolve.alias` (**no path aliases — all imports are relative**),
 `server.port` (`5173`), `server.proxy` (none), `preview.port` (`4173`), `define`, `envPrefix`.
 
@@ -128,8 +135,9 @@ and no `.env`, `.env.example`, `.env.local`, or `.env.production` file exists in
 - All tunable values are TypeScript constants in `src/config/appConfig.ts` and
   `src/games/number-wheel/config.ts`. Changing them is a **source-code change** requiring a rebuild —
   there is no runtime configuration mechanism.
-- The Docker files and `exhibition.sh` set no environment variables for the app (the `REACT_APP_*`
-  entries that existed for the removed backend are gone — Vite would ignore them anyway).
+- The Docker files, `exhibition.sh`, and the pywebview backend (`backend/main.py`) set no environment
+  variables for the app (the `REACT_APP_*` entries that existed for the removed FastAPI backend are
+  gone — Vite would ignore them anyway).
 
 If environment variables are ever introduced, Vite requires the `VITE_` prefix for them to be exposed to
 client code, and any such value would be **embedded in the public bundle** — it MUST NOT be a secret.
@@ -139,6 +147,15 @@ client code, and any such value would be **embedded in the public bundle** — i
 **None.** Verified: no `fetch`, `XMLHttpRequest`, `axios`, `WebSocket`, `EventSource`, or
 `navigator.sendBeacon` call anywhere in `src/`. There is no database, no auth provider, no analytics, no
 error-reporting service, and no CDN dependency (the font is bundled in `public/`).
+
+**Optional host bridge:** when the built app runs inside the Python pywebview wrapper
+(`<repo-root>/backend/main.py`, dependency `pywebview>=6.2.1`), the host exposes
+`window.pywebview.api.export_game_result` (the Python method's verbatim name — pywebview 6 does no
+camelCase conversion), through which each completed game iteration is written to
+`backend/output` as JSON (see `06_STATE_AND_DATA_FLOW.md`). The wrapper logs requests, written file
+paths, and failures to the console and to `backend/pywebview.log`, and logs the exposed JS API method
+list once at startup. This is an in-process function call, not a network request; in any other
+environment the bridge is absent and the export silently no-ops — the app runs fully without it.
 
 The only persistence is the browser's own `localStorage` (key `smartis-game.results.v1`). Consequences:
 
@@ -153,15 +170,16 @@ The only persistence is the browser's own `localStorage` (key `smartis-game.resu
 |---|---|
 | Output directory | `dist/` (Vite default; git-ignored) |
 | Contents | `index.html`, hashed JS/CSS under `dist/assets/`, and everything from `public/` copied verbatim (`BYekan+.ttf`, `favicon.svg`) |
-| Base path | `/` (absolute asset URLs). Serving from a sub-path REQUIRES setting `base` in `vite.config.ts` — the font is referenced as `/BYekan+.ttf` and would 404 otherwise |
+| Base path | `./` (relative asset URLs, set in `vite.config.ts`) — the build is relocatable and loads from `backend/frontend` over `file://` as well as from a web server |
 | Type | Fully static. No server runtime, no SSR, no serverless functions, no API routes |
 | Source maps | Not enabled |
 | Code splitting | The active game is statically imported by `src/games/registry.ts`, so it is in the main chunk. There is no `React.lazy` or dynamic `import()` anywhere |
 
 ## Deployment
 
-`UNKNOWN` — there is no CI and no chosen host. The repo root has a Docker arrangement that builds and
-runs only the `frontend/` service:
+There is no CI. Two runtime arrangements exist in the repo:
+
+**Docker (nginx):**
 
 - `docker-compose.yml` — one service: `frontend` (nginx image serving the Vite build), host port
   3000 → container 80, `restart: unless-stopped`.
@@ -172,6 +190,19 @@ runs only the `frontend/` service:
 - `exhibition.sh` — runs `docker-compose -f docker-compose.yml up -d --build`, prints
   `docker-compose ps` and the frontend URL.
 
+Under this arrangement the app runs in a plain browser, so the pywebview bridge is absent and the
+on-disk export silently no-ops (localStorage remains the only persistence).
+
+**Python pywebview wrapper (`backend/`):**
+
+1. Build the frontend (`npm run build`).
+2. Copy the build into `backend/frontend/` (replace `index.html` and `assets/`; stale hashed bundles
+   should be removed — the directory is a mirror of `dist/`).
+3. Run `backend/main.py` with its venv (`uv` lockfile + `pyproject.toml`; dependency `pywebview`).
+   It opens a fullscreen `webview` window rendering `backend/frontend/index.html` with
+   `js_api=Api()` — completed game iterations are exported to `backend/output` (directory created
+   automatically).
+
 What IS documented (`README.md` → "Kiosk mode"), i.e. how the app is intended to be *run*, not hosted:
 
 - Windows / Chrome: `chrome.exe --kiosk --fullscreen --disable-pinch <url>`
@@ -180,6 +211,9 @@ What IS documented (`README.md` → "Kiosk mode"), i.e. how the app is intended 
 `INFERRED` from the build characteristics: `dist/` can be served by any static file host or local static
 server. Any host must serve `index.html` for the root path; because there is no client-side router and no
 deep linking, **no SPA rewrite rule is required**.
+
+`UNKNOWN`: which arrangement the kiosk actually boots on exhibition day, and whether the
+`backend/frontend` sync step is automated anywhere (no script performs it in the repo).
 
 ## CI / CD
 

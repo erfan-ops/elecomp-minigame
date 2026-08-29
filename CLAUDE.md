@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Commands
 
-All npm commands run inside `frontend/` — the React app. The repo root also holds the Docker orchestration for it: `docker-compose.yml` / `docker-compose.dev.yml` / `exhibition.sh`. There is no backend; the app is fully client-side (persistence is browser localStorage).
+All npm commands run inside `frontend/` — the React app. The repo root also holds the Docker orchestration for it (`docker-compose.yml` / `docker-compose.dev.yml` / `exhibition.sh`) and the Python **pywebview backend** in `backend/` (see Architecture → Python backend). The app itself is fully client-side (persistence is browser localStorage); the backend is a desktop wrapper that renders the built frontend and exports every completed game iteration to disk.
 
 ```bash
 cd frontend
@@ -13,6 +13,16 @@ npm run dev        # dev server, LAN-reachable (host: true)
 npm run build      # tsc -b && vite build — the type check gate
 npm run preview    # serve dist/ locally
 ```
+
+Backend (Python >= 3.12, uv project, sole dependency `pywebview`):
+
+```bash
+cd backend
+uv sync                    # first time — creates .venv
+.venv/Scripts/python.exe main.py   # fullscreen webview; exports land in backend/output
+```
+
+**Sync step:** `backend/frontend/` is a mirror copy of `dist/`. After every `npm run build`, copy the fresh `index.html` + `assets/` over it (delete stale hashed bundles) — otherwise the webview runs the old JS and the export silently never happens.
 
 There is no test framework, linter, or test script. The de-facto way to verify this app is headless Chrome against the dev server: an iframe harness page in `public/` drives the real app via `.click()`, writes results into a `<pre>`, and a small CDP driver (Node's built-in `WebSocket` + `fetch http://127.0.0.1:9222/json/new?...` with PUT) captures the DOM, console errors, and exceptions under **real time** (`--virtual-time-budget` freezes CSS transitions, so it is only usable for logic/flow checks, not computed styles). Delete harnesses afterwards so they don't ship in `dist/`.
 
@@ -27,7 +37,7 @@ Persian (RTL) conference kiosk platform — React 19 + TS + Vite, no runtime dep
 `src/domain/game.ts` defines the contract the whole platform is built around:
 
 ```text
-GameContext { userId, firstName, lastName, mobile, sector } → Game → GameResult { score, winAmount, metadata? }
+GameContext { userId, mobile, sector, attemptsRemaining?, attemptsTotal?, budgetConsumedRatio? } → Game → GameResult { score, winAmount, metadata? }
 GameProps { context, onComplete, onExit }
 ```
 
@@ -38,7 +48,17 @@ GameProps { context, onComplete, onExit }
 
 ### Persistence & leaderboard
 
-Pages depend only on the `GameResultRepository` interface (`src/services/resultRepository.ts`); the active implementation is chosen in `src/services/index.ts` (currently localStorage, key `smartis-game.results.v1`, tolerant of corrupt data). The prize budget shares that layer: `getBudgetState` / `recordPrize` in `src/services/budget.ts` (localStorage key `smartis-game.budget.v1`, only `{ consumed }` persisted). `src/services/leaderboard.ts` builds entries purely: best score per user, sort by score desc, ties by earlier `playedAt` then `userId`, sequential ranks. Leaderboard rows never hard-code data.
+Pages depend only on the `GameResultRepository` interface (`src/services/resultRepository.ts`); the active implementation is chosen in `src/services/index.ts` (currently localStorage, key `smartis-game.results.v1`, tolerant of corrupt data). The prize budget shares that layer: `getBudgetState` / `recordPrize` in `src/services/budget.ts` (localStorage key `smartis-game.budget.v1`, only `{ consumed }` persisted). `src/services/leaderboard.ts` builds entries purely: best score per user, sort by score desc, ties by earlier `playedAt` then `userId`, sequential ranks. Leaderboard rows never hard-code data. Alongside the repository, every completed iteration is also exported to disk by the Python backend (next section).
+
+### Python backend (pywebview host)
+
+`backend/main.py` is a pywebview desktop wrapper that renders `backend/frontend/index.html` in a fullscreen window with `js_api=Api()`. The API is semantic — not a generic filesystem hole — with exactly one method:
+
+- `Api.export_game_result(data)` — exposed to JS as `window.pywebview.api.export_game_result`. **Naming gotcha:** pywebview 6 registers each method under its verbatim Python name — there is **no** snake_case→camelCase conversion. Python owns the output directory (`backend/output/`, created automatically), the local date, the sequence numbers, and all filesystem writes: `game_data_YYYY-MM-DD_NNN.json` (one permanent record per completed iteration; `NNN` is the next unused sequence number for that day, reserved with an exclusive create so iterations never collide) and `game_data_YYYY-MM-DD.json` (always the latest iteration of the day, replaced atomically).
+
+The backend logs to the console **and** to `backend/pywebview.log`: startup, the JS API methods pywebview actually exposed (a startup self-check), every export request (`mobile`/`attempt`/`gameId`), written file paths, and any write failure (traceback).
+
+Frontend side, `src/services/gameExporter.ts` provides `exportGameResult(result)` — the only module allowed to touch `window.pywebview`. `GamePage.handleComplete` calls it fire-and-forget alongside `session.submitResult`, exactly once per completed game iteration (a retry is a new iteration and exports again with its own `attempt` number). A missing bridge (dev server, nginx/Docker) is a fully silent no-op; when the bridge **is** present but the method is missing or the call rejects, the exporter emits a `console.warn` so the integration problem is diagnosable. The kiosk flow and `saveStatus` never depend on the export.
 
 ### Game module internals
 
@@ -60,4 +80,4 @@ Each game in `src/games/<id>/` is self-contained (own `config.ts` for organizer 
 - No real `<input>` elements anywhere — the mobile field is a tappable surface driven by the on-screen numeric keyboard (`src/components/ui/Keypad.tsx`), so the browser/OS keyboard never appears. Keep it that way. The mobile number is the player's identity (no name collection): `User` has only `{ id, mobile }`. The user enters the full 11-digit 09-form (`09108086113`); it is stored/reported **exactly as entered** (no `+98` prefix, no other modification) and stays in Latin digits (the bundled fonts render Persian glyph shapes). On the registration leaderboard panel the mobile is shown **masked** (`0910****113` via `formatPanelMobile` in `src/domain/user.ts` — 4 middle digits hidden, display-only). Registration rejects a mobile that already has a stored result («شما قبلاً در این مسابقه شرکت کردهاید.» — the anti-replay check, fail-open if the repository errors).
 - No page scrolling (the registration leaderboard panel shows top-5 — nothing scrolls), `user-select: none`, `touch-action: manipulation` on everything tappable, context menu blocked at the app root.
 - The page shell is a fixed 1080×1800 design canvas (the `--ds-canvas-w` / `--ds-canvas-h` tokens), scaled by `--s` (`src/app/designScale.ts`) and centered both horizontally and vertically by `.app`; on screens with a different aspect ratio the dark background extends into the letterboxed space.
-- `prefers-reduced-motion` slows the wheels and disables decorative animations; the game stays functional.
+- `prefers-reduced-motion` disables decorative animations and the spin blur; the game stays fully functional (wheel speed is unchanged — `REDUCED_MOTION_SPEED_FACTOR` is 1).

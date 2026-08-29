@@ -9,7 +9,7 @@ import { PageShell } from "../components/ui/PageShell";
 import { JOURNEY_STEPS, StepTracker } from "../components/ui/StepTracker";
 import { getActiveGame } from "../games/registry";
 import { BUDGET } from "../games/number-wheel/config";
-import { getBudgetState, recordPrize } from "../services";
+import { exportGameResult, getBudgetState, recordPrize } from "../services";
 import { GameResultScreen } from "./GameResult";
 
 /**
@@ -64,6 +64,8 @@ export function GamePage() {
         metadata: gameResult.metadata,
       };
       void session.submitResult(sessionResult);
+      // Push the same record to the Python host for on-disk export (no-op outside pywebview).
+      void exportGameResult(sessionResult);
     },
     [user, category, survey, attempt, activeGame.id, session],
   );

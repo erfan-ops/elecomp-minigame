@@ -21,8 +21,10 @@ to `frontend/`** unless the `<repo-root>/` prefix is explicit. The repo root als
 orchestration (`docker-compose*.yml` / `exhibition.sh`) — see `02_REPOSITORY_STRUCTURE.md` and
 `09_BUILD_RUN_DEPLOY.md`.
 
-- No backend and no network calls anywhere: the app is fully client-side; persistence is browser
-  `localStorage`. No router library. No test framework. No linter.
+- No network calls anywhere: the app is fully client-side; persistence is browser `localStorage`.
+  When the built app runs inside the Python pywebview wrapper (`<repo-root>/backend/main.py`), each
+  completed game iteration is additionally exported to disk through `window.pywebview.api` — the
+  export silently no-ops in a plain browser. No router library. No test framework. No linter.
 - Runtime dependencies: `react` + `react-dom` only.
 - Kiosk journey is a 5-value phase switch, not URL routing.
 
@@ -40,6 +42,8 @@ orchestration (`docker-compose*.yml` / `exhibition.sh`) — see `02_REPOSITORY_S
 | 8 | `src/games/number-wheel/config.ts` | Game tuning (prizes, speeds, spring constants) |
 | 9 | `src/services/index.ts` | Persistence implementation selector |
 | 10 | `src/domain/gameResult.ts` | Persisted record shape |
+| 11 | `src/services/gameExporter.ts` | pywebview host bridge for the on-disk export |
+| 12 | `<repo-root>/backend/main.py` | The pywebview wrapper: renders the built app and owns the export files |
 
 ## Recommended Reading Order For These Docs
 

@@ -134,7 +134,8 @@ Wiring:
 - records every win against the prize budget (`recordPrize(winAmount, BUDGET)` in `handleComplete`),
 - widens `GameResult` into `GameSessionResult` (adds `userId`, `mobile`, survey answers, `attempt`,
   `sectorId`, `sectorName`, `gameId`, `playedAt`),
-- hands the record to `session.submitResult`,
+- hands the record to `session.submitResult` (localStorage persistence) and to
+  `exportGameResult` (the pywebview on-disk export, a silent no-op outside the wrapper),
 - after `onComplete` swaps the game for `GameResultScreen` (frames 6–8: win / loss / game over) —
   all retry/continue chrome lives there, **outside** the game subtree.
 
@@ -174,9 +175,11 @@ Full detail: `06_STATE_AND_DATA_FLOW.md`.
 | Haptics | `NumberWheelGame.handleStop` → `navigator.vibrate?.()` | Optional-call, no feature detection needed |
 | `crypto.randomUUID` | `src/domain/user.ts` `makeUserId()` | Falls back to `Math.random` + `Date.now` |
 | `new Date().toISOString()` | `src/pages/GamePage.tsx` | The only timestamp source |
+| `window.pywebview.api` call | `src/services/gameExporter.ts` only | `exportGameResult` pushes each completed iteration to `window.pywebview.api.export_game_result`; fully silent when the bridge is absent, `console.warn` when the bridge is present but the method is missing or the call fails |
 | Randomness | `Math.random` via `gameEngine` defaults, and `Confetti.tsx` | See "Randomness" in `05_MINIGAME.md` |
 
-There are **no** network requests anywhere in `src/`.
+There are **no** network requests anywhere in `src/` — the pywebview bridge is an in-process
+function call to the desktop host, not a network request.
 
 ## Data Flow: User Input → UI/Game Response
 
@@ -212,7 +215,8 @@ STOP sets `phase: "RESULT"`.
 `RESULT` → ref-guarded effect → `calculatePrizeResult(target, digits)` →
 `onComplete({ score: prize, winAmount: prize, metadata: { target, finalNumber, correctDigits, perfect } })`
 → `GamePage.handleComplete` stores the result (swapping the game for `GameResultScreen`) and builds
-`GameSessionResult` → `session.submitResult` → `saveStatus` `saving` → `saved` | `error` → the
+`GameSessionResult` → `session.submitResult` (localStorage; → `saveStatus` `saving` → `saved` |
+`error`) and `exportGameResult` (pywebview disk export, fire-and-forget) → the
 result screen renders save-status variants (saving line / retry-save + continue) and the view's
 actions (خروج / تلاش دوباره / ادامه).
 
@@ -252,9 +256,9 @@ top-5 rows in `ui/LeaderboardPanel`. Finished games leave `GAME` via `startNewUs
 | Mobile number as the sole identity (no names collected) | `EXPLICIT` | `src/domain/user.ts` doc comment |
 | The stop button and the presenter keyboard both drive STOP (the 288×128 touchscreen button reads «توقف» while running; PageUp/PageDown/b/F5/Ctrl+R mirror it) | `EXPLICIT` | `NumberWheelGame.tsx` comments; `CLAUDE.md` input model |
 | Retry offered only after a zero-win result, capped by `MAX_GAME_ATTEMPTS` | `EXPLICIT` | `src/config/appConfig.ts` comment; `GamePage.canRetry` |
+| Every completed iteration is exported to disk through a semantic pywebview API; Python owns the directory, dates, sequence numbers, and writes | `EXPLICIT` | `<repo-root>/backend/main.py` doc comments; `src/services/gameExporter.ts` doc comment |
 | Anti-replay check fails open | `EXPLICIT` | `src/pages/RegistrationPage.tsx` comment |
 | One Context provider rather than a state library | `INFERRED` | Only `AppSessionContext` exists; zero external state deps |
 | Pure-core / imperative-shell split (`gameEngine` + `prizeCalculator` pure, components effectful) | `INFERRED` | Consistent across the game module; doc comments call the engine "pure" |
 | `AppRoute.label` reserved for future accessible announcements | `INFERRED` | Declared and documented but never read |
-| Deployment target | `UNKNOWN` | No CI, host config, or deploy script in the repository |
-| Why `REDUCED_MOTION_SPEED_FACTOR` is `1` (documented as "slows the wheels") | `UNKNOWN` | Value and prose disagree; see `12_KNOWN_GAPS_AND_RISKS.md` |
+| Deployment target | `UNKNOWN` | No CI or launch automation; two runtimes exist in-repo (Docker nginx, pywebview backend) but which one boots the kiosk is undiscoverable |

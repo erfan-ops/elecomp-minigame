@@ -4,3 +4,7 @@ frontend/*.local
 frontend/*.tsbuildinfo
 frontend/.*.cjs
 frontend/flow
+backend/.venv
+backend/output
+__pycache__
+backend/pywebview.log

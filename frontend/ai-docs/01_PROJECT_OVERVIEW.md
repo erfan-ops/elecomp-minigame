@@ -9,6 +9,8 @@
 # - tsconfig.app.json
 # - src/config/appConfig.ts
 # - src/games/number-wheel/config.ts
+# - src/services/gameExporter.ts
+# - <repo-root>/backend/main.py
 # - README.md
 # - CLAUDE.md
 
@@ -57,7 +59,7 @@ survey are exchanged for a chance at a prize, with a public leaderboard as socia
 - Styling: hand-written plain CSS, three global stylesheets, BEM-ish class names, CSS custom properties. No Tailwind, no CSS Modules, no CSS-in-JS.
 - State: React `useState` in one Context provider (`AppSessionProvider`) + `useReducer` inside the game + `useRef` for animation/guard state. No external state library.
 - Testing: NONE. No test framework, no test files, no test script.
-- Deployment: UNKNOWN — no CI config. The repo root has Docker orchestration (`docker-compose.yml`, `docker-compose.dev.yml`, `exhibition.sh`) that builds only the `frontend/` service (an nginx image serving the Vite build). The build output is a static `dist/` directory servable by any static host. `README.md` documents launching Chrome in kiosk mode against a URL.
+- Deployment: no CI config. Two runtime paths exist in-repo: (1) Docker orchestration (`docker-compose.yml`, `docker-compose.dev.yml`, `exhibition.sh`) that builds only the `frontend/` service (an nginx image serving the Vite build), and (2) a Python pywebview desktop wrapper (`<repo-root>/backend/main.py`) that renders the build copied into `backend/frontend` and exports completed game iterations to `backend/output`. How the kiosk actually boots on exhibition day is `UNKNOWN`. The build output is a static `dist/` directory servable by any static host. `README.md` documents launching Chrome in kiosk mode against a URL.
 
 ## Package Manager
 
@@ -68,7 +70,9 @@ npm. Evidence: `package-lock.json` present at root; no `yarn.lock`, no `pnpm-loc
 - Browser only. Client-rendered SPA. No SSR, no server code, no API routes, no service worker.
 - Browser APIs used directly: `localStorage`, `requestAnimationFrame`, `performance.now()`,
   `window.matchMedia`, `crypto.randomUUID` (with a `Math.random` fallback), `navigator.vibrate` (optional call),
-  `window.setTimeout`, `window.addEventListener("keydown", …)`.
+  `window.setTimeout`, `window.addEventListener("keydown", …)`, and — only when running inside the
+  pywebview wrapper — `window.pywebview.api.export_game_result` (the on-disk export bridge; pywebview
+  exposes method names verbatim, no camelCase conversion).
 - Target: Chrome in `--kiosk` mode on a vertical touchscreen (per `README.md`). Also works in any modern browser.
 - Node.js is required only to run Vite. No engine constraint is declared in `package.json`.
 
@@ -98,6 +102,12 @@ npm. Evidence: `package-lock.json` present at root; no `yarn.lock`, no `pnpm-loc
 - `prefers-reduced-motion` support (see the caveat in `12_KNOWN_GAPS_AND_RISKS.md`).
 - Presenter keyboard control of the game (PageUp / PageDown / `b` / F5 / Ctrl+R / Cmd+R).
 - Dependency-free CSS confetti on a perfect result.
+- Automatic on-disk export: after every completed game iteration, `GamePage.handleComplete` pushes the
+  combined `GameSessionResult` through the pywebview JS API bridge (`src/services/gameExporter.ts`).
+  The Python host (`<repo-root>/backend/main.py`) writes two files under `backend/output`:
+  `game_data_YYYY-MM-DD_NNN.json` (permanent record; `NNN` is the next unused sequence number for that
+  day) and `game_data_YYYY-MM-DD.json` (always the latest iteration of the day, replaced atomically).
+  Outside pywebview the export silently no-ops and the app is unaffected.
 
 ## Major Constraints Visible From The Code
 

@@ -9,6 +9,7 @@
 # - src/styles/app.css
 # - src/styles/global.css
 # - src/games/number-wheel/number-wheel.css
+# - <repo-root>/backend/main.py
 
 Every item below was confirmed by reading the referenced file. Nothing here is speculation unless it is
 labeled `INFERRED`, `UNVERIFIED`, or `UNKNOWN`.
@@ -17,27 +18,24 @@ labeled `INFERRED`, `UNVERIFIED`, or `UNKNOWN`.
 
 | # | Inconsistency | Documented claim | Actual code | Severity |
 |---|---|---|---|---|
-| D1 | `GameContext` shape | `README.md:36-40` and `CLAUDE.md`'s contract block show `{ userId; firstName; lastName; mobile; sector }` | `src/domain/game.ts` declares `{ userId; mobile; sector; attemptsRemaining?; attemptsTotal? }` (the latter added in the page redesign). **No first/last name is collected anywhere** (`src/domain/user.ts` `User` is `{ id, mobile }`); both attempt fields are missing from the README (left untouched — human-owned files, user-approved scope excluded this pre-redesign gap) | HIGH — an agent following `README.md` would write a game against a non-existent contract |
-| D2 | Reduced motion "slows the wheels" | `README.md:106-108` and `CLAUDE.md` state `prefers-reduced-motion` slows the wheels | `REDUCED_MOTION_SPEED_FACTOR = 1` in `src/games/number-wheel/config.ts`, and `NumberWheelGame.tsx` multiplies the (memoized) speeds by it — **reel speed is unchanged**. Blur suppression and confetti suppression DO work | MEDIUM — accessibility claim is not met |
-| D3 | `index.html` `<title>` | — | `<title>بازی 10 ثانیه — Smartis</title>` names a game that does not exist in this working tree. The registry name is `بازی اعداد` (`GAME_TITLE` was removed from the game config in the page redesign) | MEDIUM — user-visible in the browser tab / kiosk window title |
-| D4 | `global.css:87` comment | Comment says "runs at a gentler speed (see `REDUCED_MOTION_SPEED_FACTOR` in **gameConfig**)" | There is no `gameConfig` module. The constant lives in `src/games/number-wheel/config.ts`, and per D2 it does not slow anything | LOW |
-| D5 | `app.css:213` comment | "…digit grouping); **name fields** stay RTL so Persian text reads naturally" | There are no name fields — registration collects only a mobile number | LOW |
-| D6 | Numeric sequences must be LTR | `CLAUDE.md` states target/result values set `direction: ltr` | **RESOLVED** — the old `.result__value`/`.result__prize` (rtl) were deleted with the result overlay; the new result screens (`.game-result__digits`, `.game-result__target-value`, `.game-result__prize-amount`, `.prize-card__value`) set `direction: ltr` | — |
-| D7 | `README.md` architecture tree | `README.md:113-124` lists `app/ pages/ components/ domain/ services/ games/ config/ utils/ styles/` | `src/hooks/` exists and is omitted from the tree | LOW |
+| D1 | `index.html` `<title>` | — | `<title>بازی 10 ثانیه — Smartis</title>` names a game that does not exist in this working tree. The registry name is `بازی اعداد` (`GAME_TITLE` was removed from the game config in the page redesign) | MEDIUM — user-visible in the browser tab / kiosk window title |
+| D2 | `global.css:87` comment | Comment says "runs at a gentler speed (see `REDUCED_MOTION_SPEED_FACTOR` in **gameConfig**)" | There is no `gameConfig` module. The constant lives in `src/games/number-wheel/config.ts`, and it does not slow anything (`REDUCED_MOTION_SPEED_FACTOR` is 1) | LOW |
+| D3 | `app.css:213` comment | "…digit grouping); **name fields** stay RTL so Persian text reads naturally" | There are no name fields — registration collects only a mobile number | LOW |
+| D4 | Numeric sequences must be LTR | `CLAUDE.md` states target/result values set `direction: ltr` | **RESOLVED** — the old `.result__value`/`.result__prize` (rtl) were deleted with the result overlay; the new result screens (`.game-result__digits`, `.game-result__target-value`, `.game-result__prize-amount`, `.prize-card__value`) set `direction: ltr` | — |
 
 `README.md` and `CLAUDE.md` both describe exactly one game (`number-wheel`), matching
-`src/games/registry.ts`. The only stale single-game artifact is D3. See
+`src/games/registry.ts`. The only stale single-game artifact is D1. See
 `02_REPOSITORY_STRUCTURE.md` → "Working-Tree vs Git HEAD" for the git state.
 
 ## Missing Information Not Covered By README.md Or CLAUDE.md
 
 | # | Gap |
 |---|---|
-| M1 | **Deployment target is `UNKNOWN`.** No CI config. The repo-root Docker arrangement (`docker-compose*.yml`, `exhibition.sh`, `frontend/Dockerfile*`, `frontend/nginx.conf`) builds only the frontend nginx image — whether that is how `dist/` actually reaches the kiosk is undocumented |
-| M2 | **No data-retention or export story.** Results accumulate in `localStorage` forever, are never pruned, and there is no export/report mechanism — yet `README.md` mentions "future billing" and the survey answers are collected for analysis. How the organizer actually retrieves the data is undocumented |
+| M1 | **Which runtime arrangement boots the kiosk is `UNKNOWN`.** No CI config and no launch automation. The repo holds two runtimes — the Docker nginx arrangement (`docker-compose*.yml`, `exhibition.sh`, `frontend/Dockerfile*`, `frontend/nginx.conf`) and the pywebview wrapper (`backend/main.py`) — but which one exhibition day uses, and whether the `backend/frontend` sync step runs anywhere, is undocumented |
+| M2 | **How the organizer retrieves and consolidates the exported data is undocumented.** Each completed iteration lands as JSON in `backend/output` (per machine); there is no documented collection/consolidation procedure |
 | M3 | **Prize fulfilment is undocumented.** The app computes `winAmount` but has no redemption, voucher, or audit trail |
 | M4 | **No stated browser/OS baseline** beyond "Chrome in kiosk mode". `crypto.randomUUID` requires a secure context (HTTPS or `localhost`) — over plain HTTP on a LAN IP it is `undefined` and the `Math.random` fallback silently takes over. Whether the kiosk is served over HTTPS is `UNKNOWN` |
-| M5 | **Multi-kiosk operation is undefined.** `localStorage` is per-device, so several kiosks produce several disjoint leaderboards and the anti-replay check does not span devices. Whether that is acceptable is `UNKNOWN` |
+| M5 | **Multi-kiosk operation is undefined.** `localStorage` is per-device, so several kiosks produce several disjoint leaderboards and the anti-replay check does not span devices; the disk exports are equally per-device (each kiosk writes its own `backend/output`). Whether that is acceptable is `UNKNOWN` |
 | M6 | **`src/config/appConfig.ts` `CATEGORIES` has no stated source.** Whether the 8 sectors are fixed by the client or arbitrary is `UNKNOWN` |
 | M7 | **Prize amounts have no stated authority.** Whether `5_000_000` / `1_000_000` / `500_000` تومان are final and who approves changes is `UNKNOWN` |
 | M8 | **No accessibility target** (WCAG level or contrast requirement) is stated; contrast is `UNVERIFIED` |
@@ -116,6 +114,7 @@ repository.
 | T8 | `toPersianDigits` / `formatPersianNumber` (`persian.ts`) | All numeric display, including the `٬` separator substitution |
 | T9 | The anti-replay branch in `RegistrationPage.handleSubmit` | Business rule (one play per mobile) plus its fail-open path |
 | T10 | `submitResult` / `retrySave` concurrency guard (`AppSession.tsx`) | Prevents double persistence |
+| T11 | `Api.export_game_result` sequence numbering + collision handling (`<repo-root>/backend/main.py`) | Filename generation for real data; only exercised manually via the venv, not by any automated check |
 
 Note: `randomTargetNumber`, `randomDigits`, and `createNewGame` all accept an injectable
 `rng: () => number = Math.random`, so the whole engine is deterministically testable with zero mocking.
@@ -146,16 +145,25 @@ are invisible to the compiler.
 | B1 | **No tests at all** | See T1–T10. Every refactor of pure logic is unverified |
 | B2 | **No linter, no formatter** | Style is maintained by imitation only; nothing prevents drift |
 | B3 | **No error boundary** | Any render-time throw in a page or the game blanks the kiosk with no recovery path and no operator-visible message |
-| B4 | **Bare `catch { }` blocks discard errors** | `AppSession.submitResult` / `retrySave` and `localResultRepository.loadAll` swallow the error object entirely. There is no `console.*` call, no logging, and no telemetry anywhere in `src/`, so a persistence failure at an event is diagnosable only from the result screen's save-status line (the error variant with «تلاش مجدد» / «ادامه») |
+| B4 | **Bare `catch { }` blocks discard errors** | `AppSession.submitResult` / `retrySave` and `localResultRepository.loadAll` swallow the error object entirely. Outside the exporter's diagnostic `console.warn` (`gameExporter.ts`), there is no `console.*` call, no logging, and no telemetry in `src/`, so a persistence failure at an event is diagnosable only from the result screen's save-status line (the error variant with «تلاش مجدد» / «ادامه») |
 | B5 | **`localResultRepository.save` has no `try/catch`** | Deliberate (the rejection becomes `saveStatus: "error"`), but a `QuotaExceededError` is indistinguishable from any other failure and the record is lost unless the operator taps «تلاش مجدد» |
 | B6 | **Session state is not persisted** | A reload or crash mid-session loses the user, survey, category, and attempt, and returns to `REGISTRATION` |
-| B7 | **`localStorage` is the system of record** | No backup, no sync, no server. Clearing browser data destroys the event's entire dataset. The kiosk browser MUST NOT clear storage between sessions |
+| B7 | **`localStorage` is the system of record for the app's own features** | The leaderboard, anti-replay, and budget live only in `localStorage`; clearing browser data wipes them and resets the app. The pywebview disk export (`backend/output`) preserves the raw iteration records, but only when the app runs inside the wrapper — a Docker/nginx deployment exports nothing |
 | B8 | **No storage pruning or schema migration** | The `.v1` key suffix is the only versioning affordance; there is no migration code |
 | B9 | **`aria-modal="true"` on `.result` without focus management** | **RESOLVED** — the `.result` dialog overlay was deleted with the redesign; `GameResultScreen` is a plain `<section>` with no dialog semantics |
 | B10 | **Legacy font has a single weight** | `BYekan+.ttf` is Regular (400) only; 600–800 weights in the legacy styles are browser-synthesized. The redesigned faces are covered by real weights (Vazirmatn 400–700 bundled, IRANYekanXFaNum statics 400–900 + a variable face). The legacy leaderboard page was deleted on 2026-08-26, so `BYekan+` remains only as the last-resort fallback in the font stacks. Rendering quality is `UNVERIFIED` on the target device |
 | B11 | **No `base` configured in `vite.config.ts`** | Assets, including `/BYekan+.ttf`, are referenced from the root. Serving `dist/` from a sub-path silently 404s the font |
 | B12 | **Registration validates Iranian mobiles only** (`^9\d{9}$`) | Correct for the intended audience; there is no path for any other number format |
 | B13 | **`RegistrationPage`'s leaderboard-panel load sets state without an unmount guard** | Would warn/no-op if registration unmounted mid-load (the user can submit before the panel load resolves). `INFERRED` acceptable — the lost update is at most a stale panel on the next registration |
+
+## On-Disk Export Risks (pywebview wrapper)
+
+| # | Item | Impact |
+|---|---|---|
+| E1 | **The export is fire-and-forget with no retry UI** | There is no save-status line and no retry (mirrors A7). A failed export is not re-attempted. Diagnostics exist: the exporter `console.warn`s when the bridge is present but broken, and Python logs every request/failure to `backend/pywebview.log` — but a fully absent bridge (browser-mode deployment) is silent by design and nothing checks whether exports actually landed |
+| E2 | **`backend/frontend` must be re-synced from `dist/` manually** | No script performs the copy. A rebuilt frontend with a stale `backend/frontend` ships the old JS — the export silently never happens |
+| E3 | **`backend/output` is never pruned** | One sequential file per iteration accumulates unbounded across an event; the daily file is overwritten but the `_NNN` files are permanent by design |
+| E4 | **The pywebview bridge has no automated end-to-end check** | The bridge was verified via the temporary-harness workflow (headless Chrome with an injected fake `window.pywebview`), not against a real webview window; a real pywebview-specific failure mode would only surface on the kiosk |
 
 ## Possible Inconsistencies Within The Code Itself
 
@@ -164,8 +172,8 @@ are invisible to the compiler.
 | C1 | `attemptsRemaining` is optional in `GameContext` but load-bearing for result messaging (R7) |
 | C2 | `GameResult.score` is documented as independent of the prize, yet the only game sets them equal, and the leaderboard panel column is labelled «جایزه» (Q1, Q2) |
 | C3 | Tuning constants are split between a `config.ts` and module-local literals (A4, A5) |
-| C4 | Two reduced-motion mechanisms coexist — a global CSS override in `global.css` and the `usePrefersReducedMotion` hook — and only the CSS one has a visible effect on reel speed (which is to say: none, per D2) |
-| C5 | `direction: rtl` on `.result__value` / `.result__prize` versus `direction: ltr` everywhere else digits appear (D6) | **RESOLVED** — both classes were deleted with the redesign; every remaining digit surface sets `direction: ltr` |
+| C4 | Two reduced-motion mechanisms coexist — a global CSS override in `global.css` and the `usePrefersReducedMotion` hook — and only the CSS one has a visible effect on reel speed (which is to say: none — `REDUCED_MOTION_SPEED_FACTOR` is 1) |
+| C5 | `direction: rtl` on `.result__value` / `.result__prize` versus `direction: ltr` everywhere else digits appear (D4) | **RESOLVED** — both classes were deleted with the redesign; every remaining digit surface sets `direction: ltr` |
 | C6 | `data-reduced-motion` is the only state expressed as a data attribute; every other state uses a modifier class. It is set to `"true"` or omitted, never `"false"`, so `[data-reduced-motion="false"]` would never match |
 | C7 | Mobile digit rendering differs by surface | **RESOLVED** — the last legacy surface (the leaderboard page) was deleted on 2026-08-26; every digit surface now writes **English digits** rendered with Persian glyphs by the bundled fonts (keypad, display, reels, target, prizes, panel mobiles — per user directive) |
 | C8 | Two masking formats coexist | **RESOLVED** — `formatMaskedMobile` (3-3-4, three stars) was deleted with the leaderboard page on 2026-08-26; `formatPanelMobile` (09-form, four stars) is the only mask |
@@ -174,19 +182,17 @@ are invisible to the compiler.
 
 Ranked by how much a wrong assumption would cost:
 
-1. **The `GameContext` contract (D1).** Should `firstName`/`lastName` be reinstated, or is the README
-   stale? This determines what a new game can rely on.
-2. **Reduced motion (D2).** Should `REDUCED_MOTION_SPEED_FACTOR` be lowered so the accessibility claim
-   holds, or should the claim be removed?
-3. **`index.html` `<title>` (D3).** What should the kiosk window title be?
-4. **Data retrieval (M2, B7).** How does the organizer get results off the device, and what happens if
-   storage is cleared?
-5. **Multi-kiosk operation (M5).** One device or several? This decides whether a backend repository
-   implementation is required.
-6. **Deployment (M1).** Where does `dist/` get served from, and over HTTPS or HTTP (M4)?
-7. **`score` vs `winAmount` semantics (Q1, Q2, C2).**
-8. **Retry rule (Q4)** and **stop-debounce behavior (Q8)**.
-9. **Whether tests should be introduced (B1)** — the pure core is ready for them.
+1. **`index.html` `<title>` (D1).** What should the kiosk window title be?
+2. **Data retrieval (M2, B7).** How does the organizer collect and consolidate the per-device
+   `backend/output` JSON files, and what happens if localStorage is cleared (the app features reset,
+   the export files survive)?
+3. **Multi-kiosk operation (M5).** One device or several? Whether the disjoint leaderboards,
+   anti-replay scopes, and per-device export directories are acceptable.
+4. **Deployment (M1).** Which runtime boots the kiosk — Docker nginx or the pywebview wrapper — and
+   over HTTPS or HTTP (M4)?
+5. **`score` vs `winAmount` semantics (Q1, Q2, C2).**
+6. **Retry rule (Q4)** and **stop-debounce behavior (Q8)**.
+7. **Whether tests should be introduced (B1)** — the pure core is ready for them.
 
 ## Documents In This Package With Non-VERIFIED Status
 

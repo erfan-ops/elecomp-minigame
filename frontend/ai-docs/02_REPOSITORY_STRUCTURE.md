@@ -11,19 +11,27 @@
 
 The React app and **all of its supporting files** — including this `ai-docs/` package — live under
 `frontend/`. **Every path in this documentation package is relative to `frontend/`** unless the
-`<repo-root>/` prefix is written explicitly. The repo root itself holds only the orchestration files
-(`CLAUDE.md`, the Docker compose files, `exhibition.sh`, ignore files) and the `frontend/` directory.
+`<repo-root>/` prefix is written explicitly. The repo root holds the orchestration files
+(`CLAUDE.md`, the Docker compose files, `exhibition.sh`, ignore files), the `frontend/` directory,
+and the `backend/` directory (the Python pywebview wrapper).
 
 ```
 <repo-root>/
 ├── .claude/
 │   └── settings.local.json
 ├── .dockerignore              (docker build ignores: node_modules, dist, logs, .git, .env)
-├── .gitignore                 (frontend/-prefixed ignores only — see "Generated / Ignored")
+├── .gitignore                 (frontend/-prefixed ignores plus backend/.venv and backend/output)
 ├── CLAUDE.md                  (repo instructions for Claude Code; npm commands run inside frontend/)
 ├── docker-compose.yml         (production: frontend nginx service, host port 3000)
 ├── docker-compose.dev.yml     (dev: frontend vite dev server with bind-mounted source)
 ├── exhibition.sh              (builds & starts docker-compose.yml, prints the frontend URL)
+├── backend/                   (THE PYTHON PYwebview WRAPPER)
+│   ├── main.py                (webview host; js_api=Api(); exports completed game iterations to output/; logs to pywebview.log)
+│   ├── pyproject.toml         (pywebview dependency; Python >=3.12)
+│   ├── uv.lock                (uv lockfile)
+│   ├── .venv/                 (local virtualenv — git-ignored)
+│   ├── frontend/              (copy of the built frontend the webview renders; re-sync from dist/)
+│   └── output/                (runtime export files — created automatically, git-ignored)
 └── frontend/                  (THE REACT APP)
     ├── Dockerfile             (node:22 build stage → nginx serving dist/)
     ├── Dockerfile.dev         (vite dev server on port 3000)
@@ -97,6 +105,7 @@ The React app and **all of its supporting files** — including this `ai-docs/` 
         │   └── SurveyPage.tsx
         ├── services/
         │   ├── index.ts
+        │   ├── gameExporter.ts
         │   ├── leaderboard.ts
         │   ├── localResultRepository.ts
         │   └── resultRepository.ts
@@ -126,7 +135,8 @@ There are NO directories named `tests`, `scripts`, `types`, `store`, `state`, `c
 | `src/components/` | app code | Shared platform UI primitives usable by pages and games | Currently `Confetti`, `VirtualNumericKeyboard` (retained, unused) |
 | `src/components/ui/` | app code | The redesigned visual language's shared components (page shell, tracker, keypad, panels, page-2 header/choices/nav) | Used by the redesigned pages (registration + survey); documented in `design-system.md` |
 | `src/domain/` | app code | Pure types + pure helpers. No React, no DOM, no side effects | The contract layer everything else agrees on |
-| `src/services/` | app code | Persistence boundary + pure leaderboard builder | `index.ts` is the implementation selector |
+| `src/services/` | app code | Persistence boundary + pure leaderboard builder + the pywebview export bridge | `index.ts` is the implementation selector |
+| `<repo-root>/backend/` | host wrapper | Python pywebview desktop shell: renders the build in `backend/frontend`, exposes `window.pywebview.api.export_game_result` (verbatim method names — no camelCase), owns all export-file writes, and logs to the console + `backend/pywebview.log` | `backend/output` is created at runtime; `backend/frontend` must be re-synced from `dist/` after each rebuild |
 | `src/games/` | game code | Registry types + registry + one subdirectory per pluggable game | `Game.ts` holds `GameDefinition` (platform side of the contract) |
 | `src/games/number-wheel/` | game code | The entire active minigame: shell, engine, tuning, components, stylesheet | Self-contained; must not import pages/services/session |
 | `src/games/number-wheel/components/` | game code | Presentational + animation components local to this game | `NumberWheel.tsx` writes to the DOM directly |
@@ -144,13 +154,18 @@ There are NO directories named `tests`, `scripts`, `types`, `store`, `state`, `c
 ## Generated / Ignored — Do Not Read Or Edit
 
 From `<repo-root>/.gitignore` (frontend/-prefixed after the move): `frontend/node_modules`,
-`frontend/dist`, `frontend/*.local`, `frontend/*.tsbuildinfo`, `frontend/.*.cjs`, `frontend/flow`.
+`frontend/dist`, `frontend/*.local`, `frontend/*.tsbuildinfo`, `frontend/.*.cjs`, `frontend/flow`,
+plus `backend/.venv`, `backend/output`, and `backend/pywebview.log` (runtime artifacts of the
+pywebview wrapper).
 
 - `frontend/dist/` — Vite output; present in the working tree.
 - `frontend/node_modules/` — dependency tree.
 - `frontend/tsconfig.app.tsbuildinfo`, `frontend/tsconfig.node.tsbuildinfo` — TypeScript incremental
   build state.
 - `frontend/flow/` — the organizer's `.docx` request/content files; git-ignored, not part of the app.
+- `backend/.venv/` — the wrapper's local virtualenv.
+- `backend/output/` — runtime export files (`game_data_*.json`), created automatically by `backend/main.py`.
+- `backend/pywebview.log` — the wrapper's runtime log (requests, written files, failures).
 
 ## Important Files
 
@@ -159,12 +174,14 @@ From `<repo-root>/.gitignore` (frontend/-prefixed after the move): `frontend/nod
 | `frontend/index.html` | Vite HTML entry. `lang="fa" dir="rtl"`, `#root` mount node, `theme-color` `#0a0e17`, viewport locked (`maximum-scale=1.0, user-scalable=no, viewport-fit=cover`), favicon `/favicon.svg`, module script `/src/main.tsx`. |
 | `frontend/package.json` | Name `smartis-game`, `private: true`, `version: 1.0.0`, `type: module`. Scripts: `dev`, `build`, `preview`. |
 | `frontend/package-lock.json` | npm lockfile — the reason npm is the package manager. |
-| `frontend/vite.config.ts` | `defineConfig({ plugins: [react()], server: { host: true } })`. Nothing else is configured — no aliases, no proxy, no custom `base` or `build` options. |
+| `frontend/vite.config.ts` | `defineConfig({ plugins: [react()], server: { host: true }, base: "./" })`. `base: "./"` makes all asset URLs relative so the build loads from `backend/frontend` over `file://`. No aliases, no proxy, no custom `build` options. |
+| `<repo-root>/backend/main.py` | The pywebview wrapper: `Api.export_game_result(data)` (exposed to JS as `window.pywebview.api.export_game_result` — verbatim names, no camelCase) writes `game_data_YYYY-MM-DD_NNN.json` + `game_data_YYYY-MM-DD.json` into `backend/output`; logs to the console + `backend/pywebview.log`, including a startup self-check of the exposed JS API methods; `main()` opens the window with `js_api=Api()`. |
+| `<repo-root>/backend/pyproject.toml` | Python >=3.12; sole dependency `pywebview>=6.2.1`. |
 | `frontend/tsconfig.json` | Solution file: `files: []`, references `tsconfig.app.json` and `tsconfig.node.json`. |
 | `frontend/tsconfig.app.json` | Rules for `src`. `target: ES2022`, `lib: [ES2022, DOM, DOM.Iterable]`, `jsx: react-jsx`, `moduleResolution: bundler`, `strict`, `noUnusedLocals`, `noUnusedParameters`, `noFallthroughCasesInSwitch`, `verbatimModuleSyntax`, `noUncheckedSideEffectImports`, `noEmit`. |
 | `frontend/tsconfig.node.json` | Rules for `vite.config.ts` only. `target: ES2023`, `lib: [ES2023]` (no DOM). |
-| `frontend/README.md` | Human-facing overview. DO NOT MODIFY. |
-| `<repo-root>/CLAUDE.md` | Repo instructions for Claude Code (npm commands run inside `frontend/`). The user's checked-in file — get approval before changing it. |
+| `frontend/README.md` | Human-facing overview (app + Python backend). Human-owned — modify only on explicit user request. |
+| `<repo-root>/CLAUDE.md` | Repo instructions for Claude Code (frontend npm commands + backend run/sync steps). Human-owned — get approval before changing it. |
 | `<repo-root>/.gitignore` | See list above. |
 | `<repo-root>/docker-compose.yml` | Production: builds `./frontend` (nginx image serving the Vite build), host port 3000 → container 80. |
 | `<repo-root>/docker-compose.dev.yml` | Dev: builds `./frontend` with `Dockerfile.dev` (vite dev server, port 3000), bind-mounted source + anonymous `node_modules` volume. |
@@ -187,7 +204,8 @@ From `<repo-root>/.gitignore` (frontend/-prefixed after the move): `frontend/nod
 `git ls-files` tracks **no** files at the old root paths (`src/…`, `public/…`, `ai-docs/…`) — every
 source file lives under `frontend/`. The root-level deploy files are untracked (not yet committed):
 `.dockerignore`, `docker-compose.yml`, `docker-compose.dev.yml`, `exhibition.sh`,
-`frontend/Dockerfile`, `frontend/Dockerfile.dev`, `frontend/nginx.conf`.
+`frontend/Dockerfile`, `frontend/Dockerfile.dev`, `frontend/nginx.conf`. The entire `backend/`
+directory (pywebview wrapper) is also untracked.
 
 **The current state of the project is the working tree: only `number-wheel` exists.** No source file
 references `ten-second`. `frontend/src/games/registry.ts` registers exactly one game. One stale

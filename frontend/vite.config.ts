@@ -8,4 +8,5 @@ export default defineConfig({
     // Allow testing from other devices on the LAN (e.g. the actual kiosk).
     host: true,
   },
+  base: "./"
 });
