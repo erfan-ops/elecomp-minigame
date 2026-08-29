@@ -24,40 +24,42 @@ const CATEGORY_EMOJI: Record<string, string> = {
  */
 const CATEGORY_LOGOS: Record<string, readonly string[]> = {
   "daily-shopping": [
-    "3c45f916a0c2bd938cea4e0057bc17ea28ab8690.png",
+    "917b73a947f53ea9807ed0f391aea62d7165b881.png",
     "41a095b71dd7db142230cc86d5bf146064bcfcac.png",
-    "917b73a947f53ea9807ed0f391aea62d7165b881.png"],
+    "3c45f916a0c2bd938cea4e0057bc17ea28ab8690.png",
+  ],
   clothing: [
-    "3296fcde6db307653218e6126d38c33581a44453.png",
-    "2b27d56036e2d7f79214bf6ac29d1a7528ba9a89.png",
-    "77061b06e155b93b50a9a748390bbe954e7b826b.png",
-    "7a2f96bfe37a9088f63175f68636135bb091d403.png",
     "53404edd2ef260247d3fa986579885fca0cf58ef.png",
+    "7a2f96bfe37a9088f63175f68636135bb091d403.png",
+    "77061b06e155b93b50a9a748390bbe954e7b826b.png",
+    "2b27d56036e2d7f79214bf6ac29d1a7528ba9a89.png",
+    "3296fcde6db307653218e6126d38c33581a44453.png",
   ],
   travel: [
-    "266fdf4200e4048ddd6ed916196c27b37de2db10.png",
-    "1cbb6993728f9a69f807397cd90a7b1863a6ec85.png",
-    "3f50cfd31ee54dfdd8fd42ed98b78330e872b229.png",
     "dd8ca6c12181e3ebbdc5770b5a7db87b81e6d207.png",
+    "3f50cfd31ee54dfdd8fd42ed98b78330e872b229.png",
+    "1cbb6993728f9a69f807397cd90a7b1863a6ec85.png",
+    "266fdf4200e4048ddd6ed916196c27b37de2db10.png",
   ],
   jewelry: [
-    "b24df7355833afc50c0810c276c5eb5759949163.png",
+    "delaram-logo 1.svg",
     "bbf0e44097251c8cf5973685cb51efc4cf1ab4ff.png",
-    "delaram-logo 1.svg"
+    "b24df7355833afc50c0810c276c5eb5759949163.png",
   ],
   sports: [
-    "7a2f96bfe37a9088f63175f68636135bb091d403.png",
+    "f5d4b6c22092a3e7c66e17ebaba31a740bbe031e.png",
     "824d6312000794a78c8d650ea054c9a01d42453c.png",
-    "f5d4b6c22092a3e7c66e17ebaba31a740bbe031e.png"
+    "7a2f96bfe37a9088f63175f68636135bb091d403.png",
   ],
   beauty: [
-    "f042732aed451bfd3b393fb4a644e5c3ec14a021.png",
-    "a56117fb085c893509199af3b0857439b6f59f99.png",
     "75cccde6e373961976dd525e4a67389597a8296b.png",
+    "a56117fb085c893509199af3b0857439b6f59f99.png",
+    "f042732aed451bfd3b393fb4a644e5c3ec14a021.png",
   ],
   digital: [
+    "digital3.svg",
+    "logo-mo7-1 1.svg",
     "66598f8f8eb2e6802890bd438acfae09b9b3413f.png",
-    "logo-mo7-1 1.svg"
   ],
 };
 
