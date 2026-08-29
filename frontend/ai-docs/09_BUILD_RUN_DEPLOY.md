@@ -62,7 +62,7 @@ running the tooling. The application itself is browser-only and requires no Node
 
 ## Commands
 
-All commands run inside `frontend/` (the app root since the 2026-08-26 move).
+All commands run inside `frontend/` (the app root).
 
 | Purpose | Command | Definition | Notes |
 |---|---|---|---|
@@ -128,9 +128,8 @@ and no `.env`, `.env.example`, `.env.local`, or `.env.production` file exists in
 - All tunable values are TypeScript constants in `src/config/appConfig.ts` and
   `src/games/number-wheel/config.ts`. Changing them is a **source-code change** requiring a rebuild —
   there is no runtime configuration mechanism.
-- The compose files and `exhibition.sh` set `REACT_APP_API_URL` / `REACT_APP_WS_URL` — those are
-  CRA-style names that **Vite ignores** (no `VITE_` prefix, and nothing reads them). They are inert
-  until the app gains an API client.
+- The Docker files and `exhibition.sh` set no environment variables for the app (the `REACT_APP_*`
+  entries that existed for the removed backend are gone — Vite would ignore them anyway).
 
 If environment variables are ever introduced, Vite requires the `VITE_` prefix for them to be exposed to
 client code, and any such value would be **embedded in the public bundle** — it MUST NOT be a secret.
@@ -161,22 +160,17 @@ The only persistence is the browser's own `localStorage` (key `smartis-game.resu
 
 ## Deployment
 
-`UNKNOWN` (still) — there is no CI and no chosen host, but a **Docker scaffold** was added at the repo
-root on 2026-08-26. It is scaffolding, not a working deployment:
+`UNKNOWN` — there is no CI and no chosen host. The repo root has a Docker arrangement that builds and
+runs only the `frontend/` service:
 
-- `docker-compose.yml` — services: `backend` (FastAPI, port 8000), `frontend` (nginx serving the Vite
-  build on host port 3000), `frontend-panel` (builds `./panel`, host port 3001), `postgres:16-alpine`,
-  `redis:7-alpine`. All on a `game-network` bridge.
-- `docker-compose.dev.yml` — `backend` with `uvicorn --reload` and bind-mounted source; `frontend` and
-  `frontend-panel` run the Vite dev server (`Dockerfile.dev`, port 3000 in-container) with bind-mounted
-  source and an anonymous `/app/node_modules` volume.
+- `docker-compose.yml` — one service: `frontend` (nginx image serving the Vite build), host port
+  3000 → container 80, `restart: unless-stopped`.
+- `docker-compose.dev.yml` — `frontend` via `Dockerfile.dev` (vite dev server, port 3000 in-container)
+  with bind-mounted source and an anonymous `/app/node_modules` volume.
 - `frontend/Dockerfile` — node:22 build stage (`npm ci && npm run build`), then nginx serving
-  `/app/dist` with `frontend/nginx.conf` (SPA fallback + `/api/` and `/ws/` proxy to `backend:8000`).
-- `exhibition.sh` — exports the API URLs, runs `docker-compose up -d --build`, prints the service URLs.
-
-**Caveat:** `backend/` and `panel/` contain Dockerfiles but **no application code** (no
-`requirements.txt` / `package.json`), so `docker compose up` cannot build those services yet. The
-frontend image itself builds.
+  `/usr/share/nginx/html` (the build output) with `frontend/nginx.conf` (SPA fallback only).
+- `exhibition.sh` — runs `docker-compose -f docker-compose.yml up -d --build`, prints
+  `docker-compose ps` and the frontend URL.
 
 What IS documented (`README.md` → "Kiosk mode"), i.e. how the app is intended to be *run*, not hosted:
 
@@ -219,7 +213,7 @@ clicks. Real touch events are separate tasks and do not hit this.
 | `5173` | Vite dev server | Vite default (not set in `vite.config.ts`; the dev Dockerfile pins `3000` via `--port 3000`) |
 | `4173` | `vite preview` | Vite default (not set) |
 | `9222` / `9234` | Chrome remote-debugging during verification only | `CLAUDE.md` documents `9222`; past harness drivers used `9234` / `9333` |
-| `3000` / `3001` / `8000` | Docker: frontend nginx / panel nginx / backend uvicorn | `docker-compose.yml` `ports:` |
+| `3000` | Docker: frontend nginx (production compose) and the vite dev server (dev compose / `Dockerfile.dev`) | `docker-compose*.yml` `ports:` |
 
 ## Secrets
 

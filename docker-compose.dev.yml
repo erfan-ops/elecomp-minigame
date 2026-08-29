@@ -1,19 +1,6 @@
 version: '3.8'
 
 services:
-  backend:
-    build: ./backend
-    ports:
-      - "8000:8000"
-    volumes:
-      - ./backend:/app
-    environment:
-      - ENVIRONMENT=development
-      - RELOAD=true
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-    networks:
-      - game-network
-
   frontend:
     build:
       context: ./frontend
@@ -25,31 +12,4 @@ services:
       - /app/node_modules
     environment:
       - NODE_ENV=development
-      - REACT_APP_API_URL=http://localhost:8000
       - CHOKIDAR_USEPOLLING=true
-    networks:
-      - game-network
-    depends_on:
-      - backend
-
-  frontend-panel:
-    build:
-      context: ./panel
-      dockerfile: Dockerfile.dev
-    ports:
-      - "3001:3000"
-    volumes:
-      - ./panel:/app
-      - /app/node_modules
-    environment:
-      - NODE_ENV=development
-      - REACT_APP_API_URL=http://localhost:8000
-      - CHOKIDAR_USEPOLLING=true
-    networks:
-      - game-network
-    depends_on:
-      - backend
-
-networks:
-  game-network:
-    driver: bridge

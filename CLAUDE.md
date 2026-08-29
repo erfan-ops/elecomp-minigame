@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Commands
 
-All npm commands run inside `frontend/` — the React app moved there on 2026-08-26. The repo root also holds `backend/` (FastAPI scaffold) and `panel/` (admin-panel scaffold), plus `docker-compose.yml` / `docker-compose.dev.yml` / `exhibition.sh`.
+All npm commands run inside `frontend/` — the React app. The repo root also holds the Docker orchestration for it: `docker-compose.yml` / `docker-compose.dev.yml` / `exhibition.sh`. There is no backend; the app is fully client-side (persistence is browser localStorage).
 
 ```bash
 cd frontend

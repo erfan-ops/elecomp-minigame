@@ -27,14 +27,13 @@ labeled `INFERRED`, `UNVERIFIED`, or `UNKNOWN`.
 
 `README.md` and `CLAUDE.md` both describe exactly one game (`number-wheel`), matching
 `src/games/registry.ts`. The only stale single-game artifact is D3. See
-`02_REPOSITORY_STRUCTURE.md` → "Working-Tree vs Git HEAD" for the 2026-08-26 move under `frontend/`
-(commit `8169d35`), which also removed the deleted `ten-second` files from git.
+`02_REPOSITORY_STRUCTURE.md` → "Working-Tree vs Git HEAD" for the git state.
 
 ## Missing Information Not Covered By README.md Or CLAUDE.md
 
 | # | Gap |
 |---|---|
-| M1 | **Deployment target is `UNKNOWN`.** No CI config. A Docker scaffold exists since 2026-08-26 (`docker-compose*.yml`, `exhibition.sh`, Dockerfiles + nginx.conf in `frontend/`/`backend/`/`panel/`), but `backend/` and `panel/` contain **no application code**, so the full stack cannot build yet. How `dist/` reaches the kiosk is undocumented |
+| M1 | **Deployment target is `UNKNOWN`.** No CI config. The repo-root Docker arrangement (`docker-compose*.yml`, `exhibition.sh`, `frontend/Dockerfile*`, `frontend/nginx.conf`) builds only the frontend nginx image — whether that is how `dist/` actually reaches the kiosk is undocumented |
 | M2 | **No data-retention or export story.** Results accumulate in `localStorage` forever, are never pruned, and there is no export/report mechanism — yet `README.md` mentions "future billing" and the survey answers are collected for analysis. How the organizer actually retrieves the data is undocumented |
 | M3 | **Prize fulfilment is undocumented.** The app computes `winAmount` but has no redemption, voucher, or audit trail |
 | M4 | **No stated browser/OS baseline** beyond "Chrome in kiosk mode". `crypto.randomUUID` requires a secure context (HTTPS or `localhost`) — over plain HTTP on a LAN IP it is `undefined` and the `Math.random` fallback silently takes over. Whether the kiosk is served over HTTPS is `UNKNOWN` |

@@ -57,7 +57,7 @@ survey are exchanged for a chance at a prize, with a public leaderboard as socia
 - Styling: hand-written plain CSS, three global stylesheets, BEM-ish class names, CSS custom properties. No Tailwind, no CSS Modules, no CSS-in-JS.
 - State: React `useState` in one Context provider (`AppSessionProvider`) + `useReducer` inside the game + `useRef` for animation/guard state. No external state library.
 - Testing: NONE. No test framework, no test files, no test script.
-- Deployment: UNKNOWN — no CI config. A Docker scaffold was added at the repo root on 2026-08-26 (`docker-compose.yml`, `docker-compose.dev.yml`, `exhibition.sh`) with `Dockerfile`s in `frontend/`, `backend/`, and `panel/` (the latter two have no application code yet). Build output is a static `dist/` directory servable by any static host; `frontend/nginx.conf` adds SPA fallback + `/api`/`/ws` proxying to the backend. `README.md` documents launching Chrome in kiosk mode against a URL.
+- Deployment: UNKNOWN — no CI config. The repo root has Docker orchestration (`docker-compose.yml`, `docker-compose.dev.yml`, `exhibition.sh`) that builds only the `frontend/` service (an nginx image serving the Vite build). The build output is a static `dist/` directory servable by any static host. `README.md` documents launching Chrome in kiosk mode against a URL.
 
 ## Package Manager
 
@@ -87,10 +87,10 @@ npm. Evidence: `package-lock.json` present at root; no `yarn.lock`, no `pnpm-loc
 - Leaderboard panel on the registration page, computed purely from stored results (top 5, gold first row).
 - Masked mobile display on public screens (`0910****113`); the entered 09-form stored unmasked.
 - Persian numeral rendering at the display layer only.
-- A redesigned visual language for page 1 (mobile entry): design-scale mechanism
+- A redesign covers every page and the result screens: design-scale mechanism
   (`src/app/designScale.ts`, canvas 1080×1800), a `--ds-*` token set, and shared `src/components/ui/`
-  components (PageShell, StepTracker, Keypad, PhoneDisplay, LeaderboardPanel, …). Documented in
-  `ai-docs/design-system.md`; pages 2–5 will be restyled with the same system.
+  components (PageShell, StepTracker, Keypad, PhoneDisplay, LeaderboardPanel, GameHeader,
+  FloatingDecorations, ChoiceGrid, NavButtons). Documented in `ai-docs/design-system.md`.
 - `prefers-reduced-motion` support (see the caveat in `12_KNOWN_GAPS_AND_RISKS.md`).
 - Presenter keyboard control of the game (PageUp / PageDown / `b` / F5 / Ctrl+R / Cmd+R).
 - Dependency-free CSS confetti on a perfect result.

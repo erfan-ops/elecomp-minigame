@@ -15,16 +15,15 @@
 It is a **platform** that runs exactly one *pluggable game* at a time. The currently active game is
 `number-wheel` — a three-reel digit-matching minigame.
 
-**Layout note (2026-08-26):** the React app (including this `ai-docs/` package) lives in the
-`frontend/` directory; `CLAUDE.md` sits at the repository root. **Every path in these docs is relative
-to `frontend/`** unless the `<repo-root>/` prefix is explicit. The repo root also holds `backend/` and
-`panel/` directories (empty Docker scaffolds) plus `docker-compose*.yml` / `exhibition.sh` — see
-`02_REPOSITORY_STRUCTURE.md` and `09_BUILD_RUN_DEPLOY.md`.
+**Layout note:** the React app (including this `ai-docs/` package) lives in the `frontend/`
+directory; `CLAUDE.md` sits at the repository root. **Every path in these docs is relative
+to `frontend/`** unless the `<repo-root>/` prefix is explicit. The repo root also holds the Docker
+orchestration (`docker-compose*.yml` / `exhibition.sh`) — see `02_REPOSITORY_STRUCTURE.md` and
+`09_BUILD_RUN_DEPLOY.md`.
 
-- No backend, no network calls **in the app** (the root `backend/`/`panel/` dirs are Docker-only
-  scaffolds with no application code). No router library. No test framework. No linter.
+- No backend and no network calls anywhere: the app is fully client-side; persistence is browser
+  `localStorage`. No router library. No test framework. No linter.
 - Runtime dependencies: `react` + `react-dom` only.
-- Persistence: browser `localStorage`.
 - Kiosk journey is a 5-value phase switch, not URL routing.
 
 ## Most Important Files (read in this order)

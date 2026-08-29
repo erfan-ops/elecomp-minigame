@@ -254,9 +254,6 @@ export function NumberWheelGame({ context, onComplete }: GameProps) {
 
       <p className="remote-hint">
         <span>دکمه ریموت را فشار دهید تا چرخ متوقف شود</span>
-        <kbd className="remote-hint__key" dir="ltr" aria-hidden="true">
-          Space
-        </kbd>
       </p>
 
       <div className="rules-panel">

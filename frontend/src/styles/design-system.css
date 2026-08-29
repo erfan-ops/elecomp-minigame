@@ -744,7 +744,7 @@
   backdrop-filter: var(--ds-glass-blur-soft);
   -webkit-backdrop-filter: var(--ds-glass-blur-soft);
   color: var(--ds-text-100);
-  font-family: inherit;
+  font-family: var(--ds-font-fanum);
   font-size: var(--ds-fs-choice);
   line-height: var(--ds-lh-choice);
   font-weight: 600;

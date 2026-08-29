@@ -9,10 +9,10 @@
 
 ## Top-Level Tree (working tree, excluding generated/dependency dirs)
 
-The repository root became a multi-part layout on 2026-08-26 (commit `8169d35` "moved frontend
-stuff"): the React app and **all of its supporting files** — including this `ai-docs/` package — live
-under `frontend/`. **Every path in this documentation package is relative to `frontend/`** unless the
-`<repo-root>/` prefix is written explicitly.
+The React app and **all of its supporting files** — including this `ai-docs/` package — live under
+`frontend/`. **Every path in this documentation package is relative to `frontend/`** unless the
+`<repo-root>/` prefix is written explicitly. The repo root itself holds only the orchestration files
+(`CLAUDE.md`, the Docker compose files, `exhibition.sh`, ignore files) and the `frontend/` directory.
 
 ```
 <repo-root>/
@@ -21,17 +21,14 @@ under `frontend/`. **Every path in this documentation package is relative to `fr
 ├── .dockerignore              (docker build ignores: node_modules, dist, logs, .git, .env)
 ├── .gitignore                 (frontend/-prefixed ignores only — see "Generated / Ignored")
 ├── CLAUDE.md                  (repo instructions for Claude Code; npm commands run inside frontend/)
-├── backend/                   (FastAPI service scaffold — Dockerfile only, no application code yet)
-├── panel/                     (admin-panel scaffold — Dockerfile, Dockerfile.dev, nginx.conf only,
-│                               no application code yet)
-├── docker-compose.yml         (backend + frontend + frontend-panel(build: ./panel) + postgres + redis)
-├── docker-compose.dev.yml     (backend --reload + frontend/panel vite dev servers on 3000/3001)
-├── exhibition.sh              (exports API URLs, builds & starts docker-compose.yml, prints the URLs)
-└── frontend/                  (THE REACT APP — the old repo root)
+├── docker-compose.yml         (production: frontend nginx service, host port 3000)
+├── docker-compose.dev.yml     (dev: frontend vite dev server with bind-mounted source)
+├── exhibition.sh              (builds & starts docker-compose.yml, prints the frontend URL)
+└── frontend/                  (THE REACT APP)
     ├── Dockerfile             (node:22 build stage → nginx serving dist/)
     ├── Dockerfile.dev         (vite dev server on port 3000)
-    ├── nginx.conf             (SPA fallback + /api/ and /ws/ proxy to backend:8000)
-    ├── README.md              (human-facing app README — moved with the app)
+    ├── nginx.conf             (SPA fallback; serves the Vite build)
+    ├── README.md              (human-facing app README)
     ├── ai-docs/               (this documentation package)
     ├── flow/                  (organizer's .docx files — git-ignored, not part of the app)
     ├── index.html
@@ -137,11 +134,9 @@ There are NO directories named `tests`, `scripts`, `types`, `store`, `state`, `c
 | `src/config/` | config (source) | Organizer-tunable platform settings | Editable, but it is source code — treat edits as code changes |
 | `src/utils/` | app code | Pure display helpers | Currently only Persian numeral formatting |
 | `src/styles/` | styles | `global.css` (font, tokens, reset) + `app.css` (platform components) + `design-tokens.css`/`design-system.css` (the redesign) | Imported once, in `src/main.tsx` |
-| `public/` | assets | Files copied verbatim to the build root | Fonts + `favicon.svg` (`Container.svg` deleted 2026-08-26 — the shell logo is the text `GameHeader`) |
+| `public/` | assets | Files copied verbatim to the build root | Fonts + `favicon.svg`; the shell logo is the text `GameHeader` (no `Container.svg`) |
 | `ai-docs/` | docs | AI-owned documentation (this package) | Lives inside `frontend/`. AI agents MUST keep it current |
-| `<repo-root>/backend/` | scaffold | FastAPI service intended to back the app | Dockerfile only; no application code yet. Compose wires it to port 8000 + postgres/redis |
-| `<repo-root>/panel/` | scaffold | Admin panel intended for organizers | Dockerfile + Dockerfile.dev + nginx.conf only; no application code yet |
-| `<repo-root>/docker-compose*.yml`, `exhibition.sh`, `.dockerignore`, `frontend/Dockerfile*`, `frontend/nginx.conf`, `panel/nginx.conf` | deploy scaffold | Docker build/run arrangement added 2026-08-26 | See `09_BUILD_RUN_DEPLOY.md` |
+| `<repo-root>/docker-compose*.yml`, `<repo-root>/exhibition.sh`, `<repo-root>/.dockerignore`, `frontend/Dockerfile*`, `frontend/nginx.conf` | deploy scaffold | Docker build/run arrangement for the single `frontend/` service | See `09_BUILD_RUN_DEPLOY.md` |
 | `.claude/` | tooling | Claude Code local permission settings | Not application code |
 | `dist/` | generated | Vite build output (under `frontend/`) | Git-ignored. Do not read or edit. |
 | `node_modules/` | generated | Dependencies (under `frontend/`) | Git-ignored. Do not read or edit. |
@@ -171,10 +166,10 @@ From `<repo-root>/.gitignore` (frontend/-prefixed after the move): `frontend/nod
 | `frontend/README.md` | Human-facing overview. DO NOT MODIFY. |
 | `<repo-root>/CLAUDE.md` | Repo instructions for Claude Code (npm commands run inside `frontend/`). The user's checked-in file — get approval before changing it. |
 | `<repo-root>/.gitignore` | See list above. |
-| `<repo-root>/docker-compose.yml` | Production scaffold: backend (:8000), frontend nginx (:3000), panel nginx (:3001), postgres, redis. |
-| `<repo-root>/docker-compose.dev.yml` | Dev scaffold: backend `uvicorn --reload`, frontend/panel vite dev servers with bind-mounted source. |
-| `<repo-root>/exhibition.sh` | Exports API URLs, runs `docker-compose -f docker-compose.yml up -d --build`, prints the three service URLs. |
-| `frontend/nginx.conf` | SPA fallback (`try_files … /index.html`) + `/api/` and `/ws/` proxy to `backend:8000`. Used by the frontend Dockerfile. |
+| `<repo-root>/docker-compose.yml` | Production: builds `./frontend` (nginx image serving the Vite build), host port 3000 → container 80. |
+| `<repo-root>/docker-compose.dev.yml` | Dev: builds `./frontend` with `Dockerfile.dev` (vite dev server, port 3000), bind-mounted source + anonymous `node_modules` volume. |
+| `<repo-root>/exhibition.sh` | Runs `docker-compose -f docker-compose.yml up -d --build`, prints `docker-compose ps` and the frontend URL. |
+| `frontend/nginx.conf` | SPA fallback (`try_files … /index.html`) serving `/usr/share/nginx/html` (the Vite build). Used by the frontend Dockerfile. |
 
 ## Absent Configuration (verified: these files do not exist)
 
@@ -183,18 +178,16 @@ From `<repo-root>/.gitignore` (frontend/-prefixed after the move): `frontend/nod
 `.env`, `.env.example`, `.env.local.example`, `.github/`, `vercel.json`, `netlify.toml`,
 `next.config.*`, `jsconfig.json`.
 
-(No longer absent since 2026-08-26: `Dockerfile`s in `frontend/`, `backend/`, `panel/`, plus
-`docker-compose.yml`, `docker-compose.dev.yml`, `nginx.conf` files, `exhibition.sh`, `.dockerignore`.)
+(Present, unlike a default Vite scaffold: `frontend/Dockerfile`, `frontend/Dockerfile.dev`,
+`frontend/nginx.conf`, root `docker-compose.yml` / `docker-compose.dev.yml` / `exhibition.sh` /
+`.dockerignore`.)
 
 ## Working-Tree vs Git HEAD
 
-Commit `8169d35` ("moved frontend stuff") moved the entire app under `frontend/` and removed the
-deleted `ten-second` game's files from git in the same commit: `git ls-files` tracks **no** files at
-the old root paths (`src/…`, `public/…`, `ai-docs/…`) and **no** `ten-second` files.
-
-Untracked at the repo root (new scaffolding, not yet committed): `.dockerignore`, `backend/`,
-`panel/`, `docker-compose.yml`, `docker-compose.dev.yml`, `exhibition.sh`, `frontend/Dockerfile`,
-`frontend/Dockerfile.dev`, `frontend/nginx.conf`.
+`git ls-files` tracks **no** files at the old root paths (`src/…`, `public/…`, `ai-docs/…`) — every
+source file lives under `frontend/`. The root-level deploy files are untracked (not yet committed):
+`.dockerignore`, `docker-compose.yml`, `docker-compose.dev.yml`, `exhibition.sh`,
+`frontend/Dockerfile`, `frontend/Dockerfile.dev`, `frontend/nginx.conf`.
 
 **The current state of the project is the working tree: only `number-wheel` exists.** No source file
 references `ten-second`. `frontend/src/games/registry.ts` registers exactly one game. One stale
