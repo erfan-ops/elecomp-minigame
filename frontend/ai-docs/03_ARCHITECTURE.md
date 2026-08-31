@@ -221,19 +221,22 @@ STOP sets `phase: "RESULT"`.
 result screen renders save-status variants (saving line / retry-save + continue) and the view's
 actions (خروج / تلاش دوباره / ادامه).
 
-**Leaderboard (no page — lives on registration)**
-Registration mounts the panel once: `resultRepository.getResults()` → `buildLeaderboard(results)` →
-top-5 rows in `ui/LeaderboardPanel`. Finished games leave `GAME` via `startNewUser()` → phase
-`REGISTRATION`, everything cleared.
+**Leaderboard + stats (no page — live on registration)**
+Registration mounts the panels once from the same fetch: `resultRepository.getResults()` →
+`buildLeaderboard(results)` → top-5 rows in `ui/LeaderboardPanel`, and `buildGameStats(results)` →
+the «آمار مسابقه» tiles in `ui/StatsPanel` (total prize paid out, distinct players, winners per
+exact-match count). Finished games leave `GAME` via `startNewUser()` → phase `REGISTRATION`,
+everything cleared — the panels re-mount and re-fetch, so they refresh on every return.
 
 ## Important Architectural Boundaries
 
 1. **Game ↔ platform**: only `GameProps`. A game that needs more platform data must extend
    `GameContext` in `src/domain/game.ts` and have `GamePage` populate it.
 2. **Persistence**: only `GameResultRepository`. UI code must never touch `localStorage`.
-3. **Purity**: `src/domain/`, `src/services/leaderboard.ts`, `src/games/number-wheel/gameEngine.ts`,
-   `src/games/number-wheel/prizeCalculator.ts`, and `src/utils/persian.ts` are React-free and
-   DOM-free. Keep them that way — they are the testable core (no tests exist yet).
+3. **Purity**: `src/domain/`, `src/services/leaderboard.ts`, `src/services/stats.ts`,
+   `src/games/number-wheel/gameEngine.ts`, `src/games/number-wheel/prizeCalculator.ts`, and
+   `src/utils/persian.ts` are React-free and DOM-free. Keep them that way — they are the testable
+   core (no tests exist yet).
 4. **Animation ↔ React**: reel motion lives in refs and direct `style.transform` writes. React must not
    re-render per frame. The reducer only learns the digit that was showing at the instant STOP fired.
 5. **Styling**: platform primitives in `src/styles/app.css`; game-specific rules in the game's own

@@ -146,7 +146,7 @@ is `.ts` because it only holds types.
 | `try/catch` → silent no-op, with one `console.warn` exception | `gameExporter.exportGameResult` | Fire-and-forget by design — must never affect the kiosk flow. A missing bridge is fully silent (normal browser mode); a present-but-broken bridge (method missing / call rejected) emits a diagnostic `console.warn` |
 | `try/catch` → degrade to empty | `localResultRepository.loadAll` | Returns `[]` on any failure; corrupt entries filtered by a type guard |
 | `try/catch` → fail open | `RegistrationPage.handleSubmit` | If the anti-replay lookup throws, the user is registered anyway (documented intent) |
-| `try/catch` → degrade to empty | `RegistrationPage` leaderboard-panel load | `topEntries: []` → the panel renders its empty-state line (no retry UI) |
+| `try/catch` → degrade to empty | `RegistrationPage` leaderboard + stats panels load | `topEntries: []` + `stats: EMPTY_GAME_STATS` → the leaderboard renders its empty-state line and the stats panel shows zeros (no retry UI) |
 | `finally` for cleanup | `submitResult` (`savingRef = false`), `handleSubmit` (`checking = false`) | Always releases the guard |
 | Runtime validation | `isGameSessionResult` in `localResultRepository.ts` | `typeof` checks over 11 fields before trusting stored JSON |
 | Optional-call for optional APIs | `navigator.vibrate?.(ms)` | No feature-detection branch |

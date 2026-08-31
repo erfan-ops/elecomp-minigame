@@ -73,6 +73,7 @@ and the `backend/` directory (the Python pywebview wrapper).
         │       ├── NavButtons.tsx
         │       ├── PageShell.tsx
         │       ├── PhoneDisplay.tsx
+        │       ├── StatsPanel.tsx
         │       └── StepTracker.tsx
         ├── config/
         │   └── appConfig.ts
@@ -108,7 +109,8 @@ and the `backend/` directory (the Python pywebview wrapper).
         │   ├── gameExporter.ts
         │   ├── leaderboard.ts
         │   ├── localResultRepository.ts
-        │   └── resultRepository.ts
+        │   ├── resultRepository.ts
+        │   └── stats.ts
         ├── styles/
         │   ├── app.css
         │   ├── design-system.css

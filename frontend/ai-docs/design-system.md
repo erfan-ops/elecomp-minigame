@@ -12,6 +12,7 @@
 # - src/components/ui/PhoneDisplay.tsx
 # - src/components/ui/Keypad.tsx
 # - src/components/ui/LeaderboardPanel.tsx
+# - src/components/ui/StatsPanel.tsx
 # - src/components/ui/GameHeader.tsx
 # - src/components/ui/FloatingDecorations.tsx
 # - src/components/ui/ChoiceGrid.tsx
@@ -54,7 +55,8 @@ resolution:
 Every surface now lives in this language: registration (page 1), survey (page 2), category
 (page 4), and the game page (frames 5–8) are all rem-based. The last legacy surface — the
 standalone leaderboard page — was deleted on 2026-08-26; the leaderboard lives on registration as
-the rem-based `LeaderboardPanel` (see below).
+the rem-based `LeaderboardPanel` (see below), and since 2026-08-31 the «آمار مسابقه» `StatsPanel`
+fills page 1's bottom space below the registration grid.
 
 ## Design Tokens (single source of truth: `src/styles/design-tokens.css`)
 
@@ -95,10 +97,11 @@ tokens.
 | `Keypad` | `onDigit`, `onBackspace`, `onConfirm`, `confirmDisabled?` | 3×4 LTR grid (forced `direction: ltr`), 16px gaps, 96px glass keys, English digit labels in the static `IRANYekanXFaNum` face (Persian glyphs), order 1 2 3 / 4 5 6 / 7 8 9 / تایید 0 ⌫. «تایید» carries the primary gradient + shadow. |
 | `LeaderboardPanel` | `entries: { mobile: string; amount: number }[]` | «برترینهای امروز» panel (468 wide, 24 internal gap, ~25 padding-inline, dark card, radius 24, frosted glass — `backdrop-filter: blur(12px)` since 2026-08-29 so decos behind it blur through): trophy 🏆 (−2.76°) + title/subtitle on the right, `LiveBadge` on the left; 5 rows (radius 16, gap 10, padding 12×16, gap 16), content right→left: rank medal | avatar circle (44px, emoji) | masked phone (19/24 w581 white) | amount + «ت». Row 1: height 70, gold surface + gold top border, 🥇, 💰 avatar (−6°), gold gradient amount. Rows 2–5: height 68, 🥈 then plain Persian rank numbers (24/32 w400 white 40%), amounts in `#6FE4F2`. **Avatar bob (2026-08-26):** each avatar circle moves with its emoji — `leaderboard-bob` keyframes in design-system.css follow the `(1 − cos)` curve sampled at 8 segments (0 → −0.75rem → 0 per 3.2s cycle — dips below the centered rest position per the 2026-08-26 tuning; rest-start/rest-end with zero velocity), rotating clockwise with the same curve (0 → 15° at the extreme); animated on the `translate` + `rotate` properties so the first row's `transform` rotate(−6°) composes; rows are phase-offset by an inline negative `animation-delay` (`BOB_PERIOD_S`/`BOB_STAGGER_S` in the component, period ÷ 5) so they drift out of sync. Only the avatars move — the global reduced-motion rule in global.css disables this. |
 | `GameHeader` | — | Page header (every page): `public/smartis_logo.svg` (72px tall, native 172×122 keeps aspect) on the **right** (RTL row, `direction: rtl`) with the centered tagline «تجربه هیجان در غرفه اسمارتیز» (30/36 w600 Vazirmatn, letter-spacing 0, white 100%). The template star-badge + LTR LUCKY REELS wordmark are gone (2026-08-29). |
+| `StatsPanel` | `stats: GameStats` (`{ totalPrize, players, winnersByDigits: [n1, n2, n3] }`) | «آمار مسابقه» panel (2026-08-31), full width below the registration grid: the same frosted-glass recipe as the leaderboard (radius 24, 24 internal gap, blur 12) with a 📊 header (title «آمار مسابقه» + subtitle «برندگان بر اساس تعداد رقم درست») and a 5-tile grid (16 gaps, radius 16, `--ds-row-surface`, padding 20×16). Each tile: 48px badge circle (emoji badges on a subtle gold circle, digit badges on the primary gradient + `--ds-shadow-primary` with white text) → 24/31 w700 value (the money total in the gold gradient, with «تومان» under it; the others plain white) → 12/18 w500 label (جایزه پرداختی / شرکتکنندگان / برنده ۱ رقم / ۲ / ۳). Variable FaNum face throughout. `aria-label="آمار مسابقه"`. |
 | `FloatingDecorations` | — | The 8 page decorations — SVG files in `public/deco/` (`Star`, `Party popper`, `Game die`, `Gem stone`, `Sparkles`, `Video game`, `Wrapped gift`, `Bullseye`, replacing the ⭐🎉🎲💎✨🎮🎁🎯 emoji on 2026-08-31) rendered as `<img>` at the spec's design-px positions/sizes with slight rotations, a two-layer `drop-shadow` cyan/teal glow (`--ds-glow-deco`, brightened 2026-08-29 — the glow follows each item wherever it moves), `pointer-events: none`; positions are rem-based so they scale with `--s`. Both `width` and `height` are set inline because the files are `width="100%" height="100%"` over a 32×32 viewBox and so carry no intrinsic size. `src` is **relative** (`deco/Star.svg`, `encodeURI`-escaped for the spaces) — unlike the `/`-absolute logos it survives the pywebview `file://` load. The layer sits at z-index 1 — behind the content frame (z-2) since 2026-08-29, so the glass panels blur the decos. Each plays its own motion — Star gentle up/down bob, Party popper ±14° rocking sway, Game die 3D tumble around the vertical axis (container `perspective: 24rem`), Gem stone twinkle (fades to 25% while swelling 1.1×), Sparkles left/right drift, Video game hover combo (rises + tilts ±8° + mid-cycle blink to 60%), Wrapped gift springy scale pop with a settling wiggle, Bullseye slow continuous spin — `deco-*` keyframes below, staggered by inline negative `animation-delay`s (0.7s per item) so they never move in sync. The animations target the individual translate/rotate/scale/opacity properties so the static inline `transform: rotate(...)` tilt still composes; the global reduced-motion rule in global.css disables them all. |
 | `ChoiceGrid` | `options: readonly O[]`, `selected: O \| null`, `onSelect: (o: O) => void`, `wideLastOption?` | 2-column grid of 398×160 glass cards (radius 24, glass gradient, 1px cyan border, backdrop blur 12 — visible since 2026-08-29 because the decos sit behind the frame; 36/32 w600 white text). RTL flow: first option top-right, second top-left. Selected card: cyan border `rgba(111,228,242,0.65)` + primary glow + `#d6fbff` w700. `wideLastOption` gives the last card `grid-column: 1 / -1` so an odd trailing option fills its row (survey step 1's skip card). |
 | `NavButtons` | `onBack`, `onContinue`, `continueDisabled?`, `backLabel?`, `continueLabel?`, `className?` | بازگشت (141×64 glass, radius 16) + ادامه (154×64 primary gradient + strong glow), 18/28 text, 24 gap, RTL row (بازگشت right). Disabled ادامه sits at 35% opacity (spec §13). The optional `className` lands on the row for page-specific widths — the category page passes `nav-buttons--category` (138 + 16 + 189 = 343, Figma frame-4 spec). |
-| (page composition) | — | `welcome` (eyebrow 14/22 w600 `#6FE4F2`, heading 60/66 — white w581 part + gradient w800 part, subtitle white 55%; all in the variable FaNum face except the gradient «وارد کنید» which uses the static face) and `registration-content` (2-column grid, 32 gaps, phone panel on the RIGHT in RTL, leaderboard on the LEFT, 40 design px below the welcome block). |
+| (page composition) | — | `welcome` (eyebrow 14/22 w600 `#6FE4F2`, heading 60/66 — white w581 part + gradient w800 part, subtitle white 55%; all in the variable FaNum face except the gradient «وارد کنید» which uses the static face) and `registration-content` (2-column grid, 32 gaps, phone panel on the RIGHT in RTL, leaderboard on the LEFT, 40 design px below the welcome block). Below the grid (in the frame's 32px gap flow) sits the full-width `StatsPanel` — page 1's bottom section. |
 
 `LeaderboardPanel` binds to real data: `RegistrationPage` loads `buildLeaderboard(getResults())`,
 takes the top 5, and maps `{ mobile, amount: winAmount }` (the stored prize). Rows come
@@ -107,6 +110,12 @@ shows a single empty-state line («هنوز نتیجه‌ای ثبت نشده ا
 texts use the variable face (`--ds-font-fanum-vf`) — there is no separate leaderboard page
 anymore (deleted 2026-08-26); the static face (`--ds-font-fanum`) remains only for the keypad
 labels, the phone display, «وارد کنید», and the page-4 card names/heading.
+
+`StatsPanel` binds to real data the same way: `RegistrationPage` loads `buildGameStats(getResults())`
+(one fetch shared with the leaderboard) and passes the result — `totalPrize` (sum of stored
+`winAmount`s), `players` (distinct `userId`s), and `winnersByDigits` (distinct users whose winning
+result carries `metadata.correctDigits` 1/2/3 — a win ends the retry chain, so each user lands in
+at most one bucket). No results (or a load failure) → all-zero tiles, never placeholder data.
 
 Mobile masking for the panel: `formatPanelMobile(mobile)` in `src/domain/user.ts` → the stored
 09-form with the 4 middle digits hidden (`09108086113` → `0910****113`), rendered as Persian

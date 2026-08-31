@@ -90,13 +90,15 @@ npm. Evidence: `package-lock.json` present at root; no `yarn.lock`, no `pnpm-loc
 - Prize-budget tracking: every win is deducted from the organizer's prize pool (`BUDGET` = 100M, recorded via `src/services/budget.ts`, localStorage `smartis-game.budget.v1`); the number-wheel game scales its reel speeds up as the consumed share crosses `DIFFICULTY_THRESHOLDS` percentages (see `05_MINIGAME.md`).
 - Save-status UI with an explicit retry-save action on persistence failure.
 - Leaderboard panel on the registration page, computed purely from stored results (top 5, gold first row).
+- «آمار مسابقه» stats panel on the registration page (since 2026-08-31): total prize paid out,
+  distinct players, and winners per exact-match count — same stored-results source, one fetch.
 - Masked mobile display on public screens (`0910****113`); the entered 09-form stored unmasked.
 - Persian numeral rendering at the display layer only.
 - A redesign covers every page and the result screens: a fixed 1080×1800 design canvas
   (`src/app/designScale.ts` + the `--ds-canvas-*` tokens) scaled by `--s`, centered in the viewport
   by `.app` with the dark background extending into the letterbox; a `--ds-*` token set; and shared
   `src/components/ui/` components (PageShell, StepTracker, Keypad, PhoneDisplay, LeaderboardPanel,
-  GameHeader, FloatingDecorations, ChoiceGrid, NavButtons). Every page carries the Smartis header
+  StatsPanel, GameHeader, FloatingDecorations, ChoiceGrid, NavButtons). Every page carries the Smartis header
   (logo + «تجربه هیجان در غرفه اسمارتیز») and the Almas credit footer (logo + «کاری از شرکت داده
   پردازی الماس شهر», 45% white). Documented in `ai-docs/design-system.md`.
 - `prefers-reduced-motion` support (see the caveat in `12_KNOWN_GAPS_AND_RISKS.md`).

@@ -11,5 +11,7 @@ export const resultRepository: GameResultRepository = localResultRepository;
 
 export type { GameResultRepository } from "./resultRepository";
 export { buildLeaderboard } from "./leaderboard";
+export { buildGameStats, EMPTY_GAME_STATS } from "./stats";
+export type { GameStats } from "./stats";
 export { getBudgetState, recordPrize } from "./budget";
 export { exportGameResult } from "./gameExporter";

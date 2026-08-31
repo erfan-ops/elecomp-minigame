@@ -266,6 +266,7 @@
 
 .keypad__key--backspace {
   font-family: var(--ds-font-body);
+  font-weight: 400;
   padding-top: 10px;
 }
 
@@ -528,6 +529,126 @@
   font-size: var(--ds-fs-small);
   line-height: var(--ds-lh-small);
   color: var(--ds-danger);
+}
+
+/* --- StatsPanel (page 1) ---------------------------------------------------- */
+
+.stats-panel {
+  width: 100%;
+  padding: 1.5rem; /* 24 internal */
+  border-radius: var(--ds-radius);
+  background: linear-gradient(180deg, rgba(120, 210, 225, 0.08) 0%, rgba(147, 219, 231, 0.05) 50%, rgba(255, 255, 255, 0.02) 100%);
+  /* Frosted glass: same recipe as the leaderboard panel / choice cards. */
+  backdrop-filter: var(--ds-glass-blur-soft);
+  -webkit-backdrop-filter: var(--ds-glass-blur-soft);
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem; /* 24 */
+  /* Panel texts (title, subtitle, tile values/labels) use the variable FaNum
+     face (Latin digits drawn Persian). */
+  font-family: var(--ds-font-fanum-vf);
+}
+
+.stats-panel__header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem; /* 12 */
+}
+
+.stats-panel__icon {
+  font-size: 2rem; /* ~32×32 emoji */
+  line-height: 1;
+  transform: rotate(-3deg);
+}
+
+.stats-panel__title-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem; /* 4 */
+}
+
+.stats-panel__title {
+  font-size: var(--ds-fs-section);
+  line-height: var(--ds-lh-section);
+  font-weight: 581;
+  color: var(--ds-text-100);
+}
+
+.stats-panel__subtitle {
+  font-size: var(--ds-fs-small);
+  line-height: var(--ds-lh-small);
+  font-weight: 500;
+  color: var(--ds-text-45);
+}
+
+.stats-panel__grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 1rem; /* 16 */
+}
+
+.stats-panel__tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.5rem; /* 8 */
+  padding: 1.25rem 1rem; /* 20 × 16 */
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-row-surface);
+}
+
+.stats-panel__badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3rem; /* 48 */
+  height: 3rem; /* 48 */
+  border-radius: 50%;
+  font-size: 1.5rem; /* 24 */
+  line-height: 1;
+  font-weight: 700;
+}
+
+/* Emoji badges sit on a subtle gold circle; digit badges get the primary
+   gradient (same treatment as the active step-tracker circle). */
+.stats-panel__badge--emoji {
+  background: var(--ds-row-surface-gold);
+}
+
+.stats-panel__badge--digit {
+  background: var(--ds-gradient-primary);
+  box-shadow: var(--ds-shadow-primary);
+  color: #fff;
+}
+
+.stats-panel__value {
+  font-size: var(--ds-fs-rank); /* 24 */
+  line-height: 1.3;
+  font-weight: 700;
+  color: var(--ds-text-100);
+}
+
+/* The money total wears the gold gradient, like the leaderboard's first row. */
+.stats-panel__value--gold {
+  background-image: var(--ds-gradient-gold);
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+}
+
+.stats-panel__unit {
+  font-size: var(--ds-fs-small);
+  line-height: var(--ds-lh-small);
+  font-weight: 500;
+  color: var(--ds-text-45);
+}
+
+.stats-panel__label {
+  font-size: var(--ds-fs-small);
+  line-height: var(--ds-lh-small);
+  font-weight: 500;
+  color: var(--ds-text-45);
 }
 
 /* --- Page shell lighting ---------------------------------------------------- */

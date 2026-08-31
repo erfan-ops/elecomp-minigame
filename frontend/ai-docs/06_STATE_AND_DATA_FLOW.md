@@ -13,6 +13,7 @@
 # - src/games/number-wheel/components/NumberWheel.tsx
 # - src/services/localResultRepository.ts
 # - src/services/leaderboard.ts
+# - src/services/stats.ts
 # - src/services/gameExporter.ts
 # - src/domain/*.ts
 # - <repo-root>/backend/main.py
@@ -28,7 +29,7 @@
 | Persistent state | YES | `localStorage` key `smartis-game.results.v1` via `localResultRepository` |
 | Server state | NO | Zero network calls in `src/`. The only out-of-page call is the pywebview host bridge (`src/services/gameExporter.ts`) — an in-process function call, fire-and-forget |
 | Host (pywebview) export | YES (optional) | Each completed `GameSessionResult` is pushed to `window.pywebview.api.export_game_result`; the Python host writes it to `backend/output`. Silent no-op in a plain browser |
-| Derived state | YES | `useMemo` (`context`, `speeds`, `result`, `confettiPieces`, context value) + pure functions (`rollingFlags`, `buildLeaderboard`, `calculatePrizeResult`, `canRetry`) |
+| Derived state | YES | `useMemo` (`context`, `speeds`, `result`, `confettiPieces`, context value) + pure functions (`rollingFlags`, `buildLeaderboard`, `buildGameStats`, `calculatePrizeResult`, `canRetry`) |
 | Temporary / transient state | YES | Refs: `pendingResultRef`, `savingRef`, `submittedRef`, `completedRef`, `lastStopAt`, `positionRef`, `wasRollingRef`, `stripRef`, `wheelRefs` |
 | URL state | NO | No router, no `history`, no query params |
 | Cache | NO | No memo cache, no query cache, no service worker |
@@ -50,6 +51,7 @@
 | `error` | `RegistrationPage` | same | `string \| null` | Cleared on any digit edit; set to `MOBILE_ERROR` or `ALREADY_PLAYED_MESSAGE` | none | Rendered in `.registration-error` with `role="alert"` |
 | `checking` | `RegistrationPage` | same | `boolean` | `true` before the anti-replay lookup, `false` in `finally` | none | Disables the keypad's «تایید» key while true |
 | `topEntries` | `RegistrationPage` | same | `LeaderboardPanelEntry[]` = `{ mobile: string; amount: number }[]` | Set from `buildLeaderboard(getResults()).slice(0, 5)` (amount = `entry.winAmount`) in a mount effect; `[]` on failure | none | Fed to `LeaderboardPanel`; the panel shows an empty-state line when empty |
+| `stats` | `RegistrationPage` | same | `GameStats` = `{ totalPrize: number; players: number; winnersByDigits: [number, number, number] }` | Set from `buildGameStats(getResults())` in the same mount effect as `topEntries` (one fetch, both panels); `EMPTY_GAME_STATS` on failure | none | Fed to `StatsPanel` — fresh kiosk shows zeros, never placeholder data |
 | `step` | `SurveyPage` | `src/pages/SurveyPage.tsx` | `1 \| 2` | ادامه advances 1→2; بازگشت returns 2→1 (step 1 بازگشت calls `startNewUser`) | none | The two local survey steps inside the single SURVEY phase (page-2 redesign) |
 | `countChoice` | `SurveyPage` | same | `(typeof COUNT_OPTIONS)[number] \| null` | `chooseStepOne(option)`; cleared when the skip card is picked | none | Mapped via `COUNT_TO_EMPLOYEES` → stored `employeeCount` (10/50/300/301) |
 | `hasBenefits` | `SurveyPage` | same | `boolean \| null` | بله/خیر card tap on step 2 | none | `null` until answered; gates ادامه on step 2 |
@@ -212,6 +214,7 @@ A second, one-way persistence path runs alongside the repository:
 | Budget state | `localStorage` `smartis-game.budget.v1` + `BUDGET` (game config) | `getBudgetState()` → `{ budget, consumed, remaining, consumedRatio }`; mutated by `recordPrize()` (GamePage, on win) |
 | `canRetry` | `saveStatus`, `savedResult.winAmount`, `attempt` | Inline expression in `GamePage` |
 | Leaderboard entries | stored results | `buildLeaderboard()` |
+| Page-1 stats (prize total, players, winners per digit count) | stored results | `buildGameStats()` |
 | Displayed mobile (input) | `mobileDigits` | `PhoneDisplay` → Persian numerals (page-1 redesign) |
 | Displayed mobile (public) | stored mobile | `formatPanelMobile()` → `0910****113` |
 | Persian numerals | any number/string | `toPersianDigits()`, `formatPersianNumber()` |
@@ -222,6 +225,14 @@ A second, one-way persistence path runs alongside the repository:
 1. Reduce to best-score-per-`userId` via a `Map` (`result.score > existing.score` — first record wins ties).
 2. Sort: `score` descending → earlier `playedAt` → `userId` lexicographic.
 3. Map to `{ rank: index + 1, userId, mobile, score }` (dense sequential ranks; tied scores get distinct ranks).
+
+`buildGameStats` (`src/services/stats.ts`) is pure and total — same stored-results input, same
+`Map`-of-`Set`s idiom:
+1. Sum every `winAmount` → `totalPrize`; collect distinct `userId`s → `players`.
+2. Per exact-match bucket (1/2/3), collect distinct `userId`s of results that won money
+   (`winAmount > 0`) AND carry `metadata.correctDigits === N` (the number-wheel game stores it).
+   Results without that metadata never enter a bucket. A win ends the retry chain, so a user can
+   land in at most one bucket.
 
 ## Flow: Registration → Persisted Result
 
@@ -290,8 +301,10 @@ saveStatus "saved"
 Every exit and «ادامه» routes to startNewUser() → phase REGISTRATION (the registration page embeds
 the «برترینهای امروز» panel — there is no leaderboard phase).
 
-RegistrationPage leaderboard panel (mount effect) → resultRepository.getResults() → buildLeaderboard
-  → top 5 entries → ui/LeaderboardPanel rows; failure → `topEntries: []` (empty-state line)
+RegistrationPage panels (mount effect) → resultRepository.getResults()
+  → buildLeaderboard → top 5 entries → ui/LeaderboardPanel rows
+  → buildGameStats   → tiles (total prize, players, winners per digit count) → ui/StatsPanel
+  failure → `topEntries: []` + `stats: EMPTY_GAME_STATS` (empty-state line / zeros)
 ```
 
 ## State Update Rules (MUST follow)

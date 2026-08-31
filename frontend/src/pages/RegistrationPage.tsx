@@ -8,10 +8,12 @@ import { LeaderboardPanel } from "../components/ui/LeaderboardPanel";
 import type { LeaderboardPanelEntry } from "../components/ui/LeaderboardPanel";
 import { PageShell } from "../components/ui/PageShell";
 import { PhoneDisplay } from "../components/ui/PhoneDisplay";
+import { StatsPanel } from "../components/ui/StatsPanel";
 import { JOURNEY_STEPS, StepTracker } from "../components/ui/StepTracker";
 import { isValidMobileDigits, makeUserId } from "../domain/user";
 import type { User } from "../domain/user";
-import { buildLeaderboard, resultRepository } from "../services";
+import { buildGameStats, buildLeaderboard, EMPTY_GAME_STATS, resultRepository } from "../services";
+import type { GameStats } from "../services/stats";
 
 const MOBILE_ERROR = "لطفا یک شماره معتبر وارد کنید";
 const ALREADY_PLAYED_MESSAGE = "شما قبلاً در این مسابقه شرکت کرده‌اید.";
@@ -30,9 +32,11 @@ export function RegistrationPage() {
   const [error, setError] = useState<string | null>(null);
   const [checking, setChecking] = useState(false);
   const [topEntries, setTopEntries] = useState<LeaderboardPanelEntry[]>([]);
+  const [stats, setStats] = useState<GameStats>(EMPTY_GAME_STATS);
 
-  // Leaderboard panel data: top 5 by score, for social proof. Failures
-  // degrade to an empty list — the panel then shows its mock rows.
+  // Panel data: leaderboard (top 5 by score, for social proof) and the
+  // cumulative stats — both from the same stored results, one fetch.
+  // Failures degrade to the empty states (no mock data).
   useEffect(() => {
     void (async () => {
       try {
@@ -41,8 +45,10 @@ export function RegistrationPage() {
           .slice(0, 5)
           .map((entry) => ({ mobile: entry.mobile, amount: entry.winAmount }));
         setTopEntries(entries);
+        setStats(buildGameStats(results));
       } catch {
         setTopEntries([]);
+        setStats(EMPTY_GAME_STATS);
       }
     })();
   }, []);
@@ -116,6 +122,8 @@ export function RegistrationPage() {
         </section>
         <LeaderboardPanel entries={topEntries} />
       </div>
+
+      <StatsPanel stats={stats} />
     </PageShell>
   );
 }

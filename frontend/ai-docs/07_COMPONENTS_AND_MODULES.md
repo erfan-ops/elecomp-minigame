@@ -61,14 +61,15 @@ Values: `ACTIVE_GAME_ID = "number-wheel"`, `MAX_GAME_ATTEMPTS = 3`, `CATEGORIES`
 | `src/services/resultRepository.ts` | Persistence **interface** | `GameResultRepository` | `src/domain/gameResult` (type) | none | NO — the seam the whole platform codes against | `CRITICAL` |
 | `src/services/localResultRepository.ts` | localStorage implementation | `localResultRepository` | `src/domain/gameResult` (type) | Reads/writes `localStorage["smartis-game.results.v1"]` | YES as long as it satisfies the interface | `CRITICAL` |
 | `src/services/leaderboard.ts` | Pure ranking builder | `buildLeaderboard` | `src/domain/gameResult` (types) | none | YES | `IMPORTANT` |
+| `src/services/stats.ts` | Pure cumulative stats for the page-1 panel | `buildGameStats`, `EMPTY_GAME_STATS`, type `GameStats` | `src/domain/gameResult` (type) | none | YES | `IMPORTANT` |
 | `src/services/gameExporter.ts` | pywebview host bridge: pushes each completed `GameSessionResult` to `window.pywebview.api.export_game_result` — the verbatim name of `Api.export_game_result` in `backend/main.py` (pywebview 6 does no camelCase conversion), which writes `backend/output/game_data_*.json` and logs to `backend/pywebview.log`. Silent no-op when the bridge is absent; `console.warn` when the bridge is present but the method is missing or the call throws — never affects the game flow | `exportGameResult` | `src/domain/gameResult` (type) | Calls the pywebview bridge (the only `window.pywebview` access in `src/`) | YES — removal only drops the disk export | `IMPORTANT` |
-| `src/services/index.ts` | Implementation selector + barrel | `resultRepository`, `buildLeaderboard`, `exportGameResult`, type `GameResultRepository` | the files above | none | YES — **the single line to change for a backend implementation** | `CRITICAL` |
+| `src/services/index.ts` | Implementation selector + barrel | `resultRepository`, `buildLeaderboard`, `buildGameStats`, `EMPTY_GAME_STATS`, `exportGameResult`, types `GameResultRepository`, `GameStats` | the files above | none | YES — **the single line to change for a backend implementation** | `CRITICAL` |
 
 ## Pages
 
 | Path | Responsibility | Main exports | Imports (significant) | Side effects | Safe in isolation | Importance |
 |---|---|---|---|---|---|---|
-| `src/pages/RegistrationPage.tsx` | Mobile entry, validation, anti-replay, `register` | `RegistrationPage` | `src/app/AppSession`, `src/components/ui/*`, `src/domain/user`, `src/services` | `await resultRepository.getResults()`; **fails open** on throw | YES | `IMPORTANT` |
+| `src/pages/RegistrationPage.tsx` | Mobile entry, validation, anti-replay, `register`; feeds the leaderboard + stats panels | `RegistrationPage` | `src/app/AppSession`, `src/components/ui/*`, `src/domain/user`, `src/services` | `await resultRepository.getResults()` (panels on mount, anti-replay on submit); **fails open** on throw | YES | `IMPORTANT` |
 | `src/pages/SurveyPage.tsx` | Two survey questions (two local steps) + skip path | `SurveyPage` | `src/app/AppSession`, `src/components/ui/*` | none | YES | `IMPORTANT` |
 | `src/pages/CategorySelectionPage.tsx` | Sector grid, single selection (redesigned page 4) | `CategorySelectionPage` | `src/app/AppSession`, `src/config/appConfig`, `src/components/ui/*` (PageShell, StepTracker, GameHeader, FloatingDecorations, NavButtons) | none | YES | `IMPORTANT` |
 | `src/pages/GamePage.tsx` | **The game↔platform adapter**: builds `GameContext`, widens `GameResult` → `GameSessionResult`, persists (localStorage + pywebview disk export), retry/continue chrome; renders the game or `GameResultScreen` | `GamePage` | `src/app/AppSession`, `src/config/appConfig`, `src/games/registry` (`getActiveGame`), `src/domain/*`, `src/components/ui/*` (PageShell, GameHeader, FloatingDecorations, StepTracker), `./GameResult` | `new Date().toISOString()`; `session.submitResult` → repository; `exportGameResult` → pywebview bridge (fire-and-forget) | NO — it is the contract adapter; changes here affect every game and every stored record | `CRITICAL` |
@@ -76,7 +77,9 @@ Values: `ACTIVE_GAME_ID = "number-wheel"`, `MAX_GAME_ATTEMPTS = 3`, `CATEGORIES`
 
 All four pages take **no props** and render inside `PageShell` (the game page with
 `variant="survey"`). There is no leaderboard page — the leaderboard lives on registration
-(`ui/LeaderboardPanel`); `.page` and its modifier classes were deleted with the old page.
+(`ui/LeaderboardPanel`), as does the «آمار مسابقه» cumulative stats panel (`ui/StatsPanel`, below
+the registration grid since 2026-08-31); `.page` and its modifier classes were deleted with the
+old page.
 
 ## Shared Components
 
@@ -99,6 +102,7 @@ Full detail in `design-system.md`. All are stateless presentation components con
 | `src/components/ui/PhoneDisplay.tsx` | 468×96 glass mobile display | `PhoneDisplay` | `react`, `src/utils/persian` | none | `IMPORTANT` |
 | `src/components/ui/Keypad.tsx` | Redesigned LTR numeric keypad | `Keypad` | `react`, `src/utils/persian` | none | `IMPORTANT` |
 | `src/components/ui/LeaderboardPanel.tsx` | «برترینهای امروز» panel | `LeaderboardPanel`, type `LeaderboardPanelEntry` | `react`, `src/domain/user`, `src/utils/persian`, `./LiveBadge` | none | `IMPORTANT` |
+| `src/components/ui/StatsPanel.tsx` | «آمار مسابقه» panel (page 1 bottom): total prize, players, winners per digit count | `StatsPanel` | `react` (types), `src/services/stats` (type), `src/utils/persian` | none | `IMPORTANT` |
 | `src/components/ui/GameHeader.tsx` | Shared page header (every page): Smartis logo (`public/smartis_logo.svg`) on the right (RTL) + centered tagline «تجربه هیجان در غرفه اسمارتیز» (Vazirmatn 600, letter-spacing 0) | `GameHeader` | `react` | none | `IMPORTANT` |
 | `src/components/ui/FloatingDecorations.tsx` | Atmospheric decoration layer (every page; `public/deco/*.svg` with per-item CSS motions) | `FloatingDecorations` | `react` (types) | none | `SUPPORTING` |
 | `src/components/ui/ChoiceGrid.tsx` | 2-column glass answer cards, optional full-width last card (generic over option type) | `ChoiceGrid` | `react` only | none | `IMPORTANT` |
