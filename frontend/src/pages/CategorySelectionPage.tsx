@@ -93,11 +93,11 @@ export function CategorySelectionPage() {
         <p className="category-screen__subtitle">فقط یک گزینه قابل انتخاب است</p>
 
         <div className="category-grid" role="group" aria-label="انتخاب دسته‌بندی">
-          {CATEGORIES.map((category, index) => (
+          {CATEGORIES.map((category) => (
             <button
               key={category.id}
               type="button"
-              className={`category-card${category.id === selectedId ? " category-card--selected" : ""}${index === CATEGORIES.length - 1 ? " category-card--wide" : ""}`}
+              className={`category-card${category.id === selectedId ? " category-card--selected" : ""}`}
               onClick={() => setSelectedId(category.id)}
               aria-pressed={category.id === selectedId}
               aria-label={`انتخاب دسته‌بندی ${category.name}`}

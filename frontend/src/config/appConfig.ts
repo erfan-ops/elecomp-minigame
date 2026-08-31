@@ -25,7 +25,6 @@ export const MAX_GAME_ATTEMPTS = 3;
  */
 export const CATEGORIES: readonly Category[] = [
   { id: "clothing", name: "پوشاک" },
-  { id: "daily-shopping", name: "خرید روزانه" },
   { id: "jewelry", name: "طلا و زیورآلات" },
   { id: "travel", name: "سفر و گردشگری" },
   { id: "beauty", name: "زیبایی و سلامت" },
