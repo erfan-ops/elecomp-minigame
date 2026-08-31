@@ -619,11 +619,12 @@
   user-select: none;
 }
 
-.floating-deco span {
+.floating-deco__item {
   position: absolute;
-  line-height: 1;
-  /* The glow follows the span wherever it sits/aninmates — the token holds
-     the full filter list (a two-layer halo: tight cyan + wide teal). */
+  /* Width/height arrive from the inline style — the SVGs are `100%`-sized over
+     a 32×32 viewBox, so neither axis has an intrinsic value to fall back on.
+     The glow follows the item wherever it sits/animates; the token holds the
+     full filter list (a two-layer halo: tight cyan + wide teal). */
   filter: var(--ds-glow-deco);
 }
 
@@ -633,6 +634,7 @@
    properties so the inline `transform: rotate(...)` tilt still composes
    (translate → rotate → scale → transform order). The global reduced-motion
    rule in global.css disables them all. */
+
 .floating-deco__item--bob {
   animation: deco-bob 4.2s ease-in-out infinite;
 }
