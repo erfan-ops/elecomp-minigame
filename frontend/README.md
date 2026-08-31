@@ -41,17 +41,27 @@ or the wrapper keeps running the old bundle.
 
 ### Packaging a standalone .exe
 
-From `backend/`, after the sync above:
+One command from the repo root does all three steps — frontend build, mirror
+sync, PyInstaller:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\build.ps1
+```
+
+Or by hand, from `backend/` after the sync above:
 
 ```powershell
 .\.venv\Scripts\pyinstaller.exe -y -D -w -n smartis-game --add-data "frontend;frontend" .\main.py
 ```
 
-The result is `dist/smartis-game/smartis-game.exe`. Onedir (`-D`), not onefile:
-`output/` has to outlive the process. Exports and `pywebview.log` are written
-next to the .exe; the frontend is bundled inside it, and a `frontend/` folder
-placed beside the .exe overrides that copy — so a fresh `npm run build` can be
-dropped in without re-running PyInstaller.
+The result is `backend/dist/smartis-game/smartis-game.exe`. Onedir (`-D`), not
+onefile: `output/` has to outlive the process. Exports and `pywebview.log` are
+written next to the .exe; the frontend is bundled inside it, and a `frontend/`
+folder placed beside the .exe overrides that copy — so a fresh `npm run build`
+can be dropped in without re-running PyInstaller.
+
+`-y` wipes `dist/smartis-game/`, exported game data included; `build.ps1` moves
+an existing `output/` aside and restores it after the build.
 
 ## Pluggable games — the core contract
 

@@ -1,12 +1,26 @@
+# Frontend (npm + Vite)
 frontend/node_modules
 frontend/dist
 frontend/*.local
 frontend/*.tsbuildinfo
 frontend/.*.cjs
 frontend/flow
+
+# Backend (uv + pywebview)
 backend/.venv
-backend/output
-backend/dist
-backend/build
 backend/__pycache__
+backend/output
 backend/pywebview.log
+# mirror copy of frontend/dist, rebuilt by build.ps1
+backend/frontend
+
+# Backend packaging (PyInstaller) — the .spec is regenerated from the CLI
+# flags on every build, and .output-preserved-* is build.ps1 parking exported
+# game data while -y wipes dist/
+backend/build
+backend/dist
+backend/*.spec
+backend/.output-preserved-*
+
+# Local tooling
+.claude/settings.local.json
