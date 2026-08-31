@@ -758,17 +758,11 @@
 
 /* --- ChoiceGrid --------------------------------------------------------------- */
 
-/* 2×2 cards; RTL row flow puts the first option top-right. */
+/* 2 columns of cards; RTL row flow puts the first option top-right. */
 .choice-grid {
   display: grid;
   grid-template-columns: repeat(2, 24.875rem); /* 398 */
   gap: 1.5rem; /* 24 */
-}
-
-/* Skip-checkbox state: dimmed and inert. */
-.choice-grid--disabled {
-  opacity: 0.35;
-  pointer-events: none;
 }
 
 .choice-card {
@@ -806,72 +800,9 @@
   background: linear-gradient(180deg, rgba(54, 174, 191, 0.32) 0%, rgba(54, 174, 191, 0.08) 100%);
 }
 
-/* --- Survey skip checkbox ------------------------------------------------------ */
-
-.survey-checkbox {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem; /* 12 */
-  padding: 0.75rem 1.25rem; /* 12 × 20 */
-  border: 1px solid var(--ds-glass-border-top);
-  border-radius: 999px;
-  background: var(--ds-glass-bg);
-  backdrop-filter: var(--ds-glass-blur-soft);
-  -webkit-backdrop-filter: var(--ds-glass-blur-soft);
-  cursor: pointer;
-  touch-action: manipulation;
-  user-select: none;
-  -webkit-tap-highlight-color: transparent;
-  transition: transform 0.12s ease, border-color 0.2s ease;
-}
-
-.survey-checkbox:active {
-  transform: scale(0.97);
-}
-
-.survey-checkbox--checked {
-  border-color: rgba(111, 228, 242, 0.65);
-}
-
-.survey-checkbox__box {
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.75rem; /* 28 */
-  height: 1.75rem; /* 28 */
-  border-radius: 0.5rem; /* 8 */
-  border: 1px solid var(--ds-glass-border-top);
-  background: rgba(255, 255, 255, 0.06);
-  transition: background 0.2s ease, border-color 0.2s ease;
-}
-
-.survey-checkbox--checked .survey-checkbox__box {
-  background: var(--ds-gradient-primary);
-  border-color: transparent;
-  box-shadow: var(--ds-shadow-primary);
-}
-
-.survey-checkbox__check {
-  font-size: 1rem; /* 16 */
-  font-weight: 800;
-  color: #fff;
-  opacity: 0;
-  transform: scale(0.5);
-  transition: opacity 0.2s ease, transform 0.2s ease;
-}
-
-.survey-checkbox--checked .survey-checkbox__check {
-  opacity: 1;
-  transform: scale(1);
-}
-
-.survey-checkbox__label {
-  font-size: 1.125rem; /* 18 */
-  line-height: 1.75rem; /* 28 */
-  font-weight: 500;
-  color: var(--ds-text-100);
-  text-align: start;
+/* An odd trailing option (survey step 1's «کار نمی‌کنم») fills the row. */
+.choice-card--wide {
+  grid-column: 1 / -1;
 }
 
 /* --- NavButtons ----------------------------------------------------------------- */

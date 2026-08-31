@@ -105,8 +105,9 @@ npm. Evidence: `package-lock.json` present at root; no `yarn.lock`, no `pnpm-loc
 - Automatic on-disk export: after every completed game iteration, `GamePage.handleComplete` pushes the
   combined `GameSessionResult` through the pywebview JS API bridge (`src/services/gameExporter.ts`).
   The Python host (`<repo-root>/backend/main.py`) writes two files under `backend/output`:
-  `game_data_YYYY-MM-DD_NNN.json` (permanent record; `NNN` is the next unused sequence number for that
-  day) and `game_data_YYYY-MM-DD.json` (always the latest iteration of the day, replaced atomically).
+  `game_data_YYYY-MM-DD_NNN.json` (permanent record of that one iteration; `NNN` is the next unused
+  sequence number for that day) and `game_data_YYYY-MM-DD.json` (a JSON array of every iteration
+  recorded that day — all users — rebuilt from the sequential files and replaced atomically).
   Outside pywebview the export silently no-ops and the app is unaffected.
 
 ## Major Constraints Visible From The Code

@@ -211,19 +211,6 @@ export function NumberWheelGame({ context, onComplete }: GameProps) {
             ))}
           </span>
         </div>
-        <div className="status-pill">
-          <span className="status-pill__label">
-            شلیک برای رقم {toPersianDigits(Math.min(stoppedCount + 1, 3))}
-          </span>
-          <span className="status-pill__dots" aria-hidden="true">
-            {Array.from({ length: 3 }, (_, index) => (
-              <span
-                key={index}
-                className={`status-pill__dot status-pill__dot--green${index < shotsTaken ? " status-pill__dot--live" : ""}`}
-              />
-            ))}
-          </span>
-        </div>
       </div>
 
       <div className="reel-machine">

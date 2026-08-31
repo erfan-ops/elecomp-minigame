@@ -191,8 +191,9 @@ any `result.mobile === mobileDigits` show `ALREADY_PLAYED_MESSAGE` and stop; on 
 `SURVEY`.
 
 **Survey** (two local steps; the phase itself is unchanged)
-Step 1: a `ChoiceGrid` range card → `countChoice` (continued disabled until chosen); the skip
-checkbox → `notEmployed`, which dims the grid and enables ادامه.
+Step 1: one `ChoiceGrid` over `STEP_ONE_OPTIONS` (the four ranges + the skip label as a full-width
+fifth card) → `chooseStepOne` sets either `countChoice` or `notEmployed` (they exclude each other);
+ادامه stays disabled until one of the five is selected.
 Step 2: `بله`/`خیر` card → `hasBenefits`.
 ادامه → `completeSurvey(notEmployed ? { employeeCount: 0, hasBenefits: false } : { employeeCount:
 COUNT_TO_EMPLOYEES[countChoice], hasBenefits })` → phase `CATEGORY`. بازگشت goes step 2 → step 1,

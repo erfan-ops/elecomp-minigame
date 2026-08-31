@@ -113,7 +113,7 @@ BEM-ish: `block`, `block__element`, `block--modifier`. Lowercase, hyphen-separat
 hashing, no utility classes, no `is-`/`has-` state prefixes.
 
 Examples: `.number-wheel`, `.number-wheel__strip`, `.number-wheel--rolling`,
-`.leaderboard-row--first`, `.choice-card--selected`, `.choice-grid--disabled`,
+`.leaderboard-row--first`, `.choice-card--selected`, `.choice-card--wide`,
 `.nav-button--primary`.
 
 The `.btn*` and `.page*` families were deleted with the leaderboard page (2026-08-26). The
@@ -134,7 +134,7 @@ None in the Tailwind sense. The closest things to reusable primitives, all in `s
 
 | Class | Purpose |
 |---|---|
-| `.phone-display`, `.choice-card`, `.nav-button`, `.survey-checkbox` | The redesigned fake-input/tappable surfaces (design-system.css) |
+| `.phone-display`, `.choice-card`, `.nav-button` | The redesigned fake-input/tappable surfaces (design-system.css) |
 | `.confetti`, `.confetti__piece` | Celebration overlay |
 
 (The `.page*` and `.btn*` primitives were deleted with the leaderboard page — no page-level button
@@ -179,7 +179,7 @@ Two sizing mechanisms coexist:
 | Spacing / padding / gap | `rem` (design-scale) |
 | Touch targets | Per-control `min-height` (e.g. `.slot-game__stop` is 288×128 rem); the `--btn-min-h` token died with `.btn` |
 | Reel dimensions | `--wheel-w`/`--wheel-h`/`--digit-font` (rem, see token table above) |
-| Grids | Fixed column counts: `.category-grid` (2 × 408px design-scale, LTR, last card full-width), `.keyboard` 3 columns, `.choice-grid` 2×2, `.rules-panel__prizes` 3 cards — they do not reflow |
+| Grids | Fixed column counts: `.category-grid` (2 × 408px design-scale, LTR, last card full-width), `.keyboard` 3 columns, `.choice-grid` 2 columns (survey step 1's fifth card is full-width via `.choice-card--wide`), `.rules-panel__prizes` 3 cards — they do not reflow |
 | Page height | `height: 100%` chain from `html` → `body` → `#root` → `.app`; the `PageShell` is the fixed 1080×1800 canvas (67.5rem × 112.5rem), scaled by `--s` and centered by `.app`. The Almas credit footer (`page-shell__footer`) is pinned to the canvas bottom — absolute, `pointer-events: none` — and the game page's `.rules-panel` margin-bottom (40px) clears it |
 
 Design orientation: **portrait / vertical touchscreen**. Nothing adapts to landscape.
@@ -233,7 +233,7 @@ Conventions:
 |---|---|
 | Full-height column flex, centered | `.slot-game` / `.game-result` (game + result screens, `flex: 1` inside `PageShell`) |
 | Bottom-docked actions | `.game-result__actions` (the `.page__actions` family died with the leaderboard page) |
-| Fixed-column CSS grid | `.category-grid` (2 × 408px, LTR, `--wide` last card), `.keyboard` (3 cols), `.choice-grid` (2×2 answer cards), `.rules-panel__prizes` (3 cards) |
+| Fixed-column CSS grid | `.category-grid` (2 × 408px, LTR, `--wide` last card), `.keyboard` (3 cols), `.choice-grid` (2 cols of answer cards, `.choice-card--wide` last card on survey step 1), `.rules-panel__prizes` (3 cards) |
 | Glass chrome box | `.reel-machine` — 864×518 design px (54×32.375rem), `border-radius: 2.5rem`, dark translucent surface, holds the reel labels + `WheelGroup` |
 | Row flex with gaps | `.wheel-group`, `.status-pill__dots`, `.nav-buttons`, `.game-header`, `.slot-game__status`, `.game-result__digits` |
 | Layered stack for the reel | `.number-wheel__window` with absolutely positioned `__fade--top` / `__fade--bottom` gradient masks over the transformed `__strip` (no `__center` band anymore) |
@@ -255,7 +255,7 @@ full-page sections, not overlays.
 - Reduced-motion support at two levels: the global CSS override for decorative animation and the
   `usePrefersReducedMotion` hook for JS-driven motion (confetti suppression, blur suppression, speed
   factor).
-- Semantics carried in markup, not CSS: `aria-pressed`, `role="checkbox"` + `aria-checked`,
+- Semantics carried in markup, not CSS: `aria-pressed` (category/answer cards, keypad),
   `role="textbox"` + `aria-label` on fake inputs, `role="alert"` on error text, `role="img"` +
   dynamic Persian labels on reels, `role="group"` with labels (status pills, digit cards),
   `aria-hidden="true"` on all decorative nodes. The result screens are a `<section aria-label>`, not
@@ -273,7 +273,7 @@ No icon library and no icon components. All glyphs are literal Unicode character
 | Glyph | Where |
 |---|---|
 | `⌫` | Keyboard backspace key |
-| `✓` | Keypad confirm key, skip checkbox check |
+| `✓` | Keypad confirm key |
 | `▲` | `button.slot-game__target-digit::after` — the "tap to change" affordance, shown only at IDLE |
 
 Vector assets: `public/favicon.svg`, `public/smartis_logo.svg` (page header), `public/almas_logo.svg` (page footer).

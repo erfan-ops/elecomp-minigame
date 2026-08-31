@@ -6,5 +6,7 @@ frontend/.*.cjs
 frontend/flow
 backend/.venv
 backend/output
-__pycache__
+backend/dist
+backend/build
+backend/__pycache__
 backend/pywebview.log

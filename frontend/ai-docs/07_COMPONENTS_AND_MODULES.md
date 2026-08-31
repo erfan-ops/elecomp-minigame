@@ -101,7 +101,7 @@ Full detail in `design-system.md`. All are stateless presentation components con
 | `src/components/ui/LeaderboardPanel.tsx` | «برترینهای امروز» panel | `LeaderboardPanel`, type `LeaderboardPanelEntry` | `react`, `src/domain/user`, `src/utils/persian`, `./LiveBadge` | none | `IMPORTANT` |
 | `src/components/ui/GameHeader.tsx` | Shared page header (every page): Smartis logo (`public/smartis_logo.svg`) on the right (RTL) + centered tagline «تجربه هیجان در غرفه اسمارتیز» (Vazirmatn 600, letter-spacing 0) | `GameHeader` | `react` | none | `IMPORTANT` |
 | `src/components/ui/FloatingDecorations.tsx` | Atmospheric emoji layer (every page; per-emoji CSS motions) | `FloatingDecorations` | `react` (types) | none | `SUPPORTING` |
-| `src/components/ui/ChoiceGrid.tsx` | 2×2 glass answer cards (generic over option type) | `ChoiceGrid` | `react` only | none | `IMPORTANT` |
+| `src/components/ui/ChoiceGrid.tsx` | 2-column glass answer cards, optional full-width last card (generic over option type) | `ChoiceGrid` | `react` only | none | `IMPORTANT` |
 | `src/components/ui/NavButtons.tsx` | بازگشت / ادامه pair | `NavButtons` | `react` only | none | `IMPORTANT` |
 
 `VirtualNumericKeyboard` props: `onDigit(digit: string)`, `onBackspace()`, `onConfirm()`.

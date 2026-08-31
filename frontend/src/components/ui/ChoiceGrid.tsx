@@ -2,32 +2,39 @@ interface ChoiceGridProps<O extends string> {
   options: readonly O[];
   selected: O | null;
   onSelect: (option: O) => void;
-  /** Dims and disables the whole grid (the skip checkbox on survey step 1). */
-  disabled?: boolean;
+  /**
+   * Renders the last option as a card spanning both columns — used when an
+   * odd trailing option (the survey's «کار نمی‌کنم») completes the set.
+   */
+  wideLastOption?: boolean;
 }
 
 /**
- * A 2×2 grid of large glass answer cards. RTL grid order: the first option
- * renders top-right, the second top-left, and so on. Generic over the
+ * A 2-column grid of large glass answer cards. RTL grid order: the first
+ * option renders top-right, the second top-left, and so on. Generic over the
  * option type so literal-union options keep their types at the call site.
  */
 export function ChoiceGrid<O extends string>({
   options,
   selected,
   onSelect,
-  disabled = false,
+  wideLastOption = false,
 }: ChoiceGridProps<O>) {
+  const lastIndex = options.length - 1;
+
   return (
-    <div
-      className={`choice-grid${disabled ? " choice-grid--disabled" : ""}`}
-      role="group"
-      aria-disabled={disabled}
-    >
-      {options.map((option) => (
+    <div className="choice-grid" role="group">
+      {options.map((option, index) => (
         <button
           key={option}
           type="button"
-          className={`choice-card${option === selected ? " choice-card--selected" : ""}`}
+          className={[
+            "choice-card",
+            option === selected ? "choice-card--selected" : "",
+            wideLastOption && index === lastIndex ? "choice-card--wide" : "",
+          ]
+            .filter(Boolean)
+            .join(" ")}
           aria-pressed={option === selected}
           onClick={() => onSelect(option)}
         >

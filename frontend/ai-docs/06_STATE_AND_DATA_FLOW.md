@@ -51,9 +51,9 @@
 | `checking` | `RegistrationPage` | same | `boolean` | `true` before the anti-replay lookup, `false` in `finally` | none | Disables the keypad's «تایید» key while true |
 | `topEntries` | `RegistrationPage` | same | `LeaderboardPanelEntry[]` = `{ mobile: string; amount: number }[]` | Set from `buildLeaderboard(getResults()).slice(0, 5)` (amount = `entry.winAmount`) in a mount effect; `[]` on failure | none | Fed to `LeaderboardPanel`; the panel shows an empty-state line when empty |
 | `step` | `SurveyPage` | `src/pages/SurveyPage.tsx` | `1 \| 2` | ادامه advances 1→2; بازگشت returns 2→1 (step 1 بازگشت calls `startNewUser`) | none | The two local survey steps inside the single SURVEY phase (page-2 redesign) |
-| `countChoice` | `SurveyPage` | same | `(typeof COUNT_OPTIONS)[number] \| null` | `chooseCount(option)`; cleared by the skip toggle | none | Mapped via `COUNT_TO_EMPLOYEES` → stored `employeeCount` (10/50/300/301) |
+| `countChoice` | `SurveyPage` | same | `(typeof COUNT_OPTIONS)[number] \| null` | `chooseStepOne(option)`; cleared when the skip card is picked | none | Mapped via `COUNT_TO_EMPLOYEES` → stored `employeeCount` (10/50/300/301) |
 | `hasBenefits` | `SurveyPage` | same | `boolean \| null` | بله/خیر card tap on step 2 | none | `null` until answered; gates ادامه on step 2 |
-| `notEmployed` | `SurveyPage` | same | `boolean` | Skip checkbox toggle | none | When true, dims the `ChoiceGrid` (`--disabled`), clears `countChoice`, and enables ادامه; continue stores `{ employeeCount: 0, hasBenefits: false }` |
+| `notEmployed` | `SurveyPage` | same | `boolean` | `chooseStepOne` — true for the skip card, false for any range card | none | When true, clears `countChoice` and enables ادامه; continue stores `{ employeeCount: 0, hasBenefits: false }`. Radio semantics: picking it again keeps it selected (only a range card clears it) |
 | `selectedId` | `CategorySelectionPage` | `src/pages/CategorySelectionPage.tsx` | `string \| null` | Card tap | none | «شروع بازی» disabled while `null` |
 | `submittedRef` | `GamePage` | `src/pages/GamePage.tsx` | `boolean` | Set true in `handleComplete`; reset to false in `handleRetry` | none | Second guard against double persistence |
 | `context` (derived) | `GamePage` | same | `GameContext` | `useMemo(..., [user, category, attempt])` | none | `attemptsRemaining = Math.max(0, MAX_GAME_ATTEMPTS - attempt)`; also `attemptsTotal = MAX_GAME_ATTEMPTS` (added in the redesign for the game's status dots/rules); `budgetConsumedRatio = getBudgetState(BUDGET).consumedRatio` (budget-driven difficulty, 2026-08-29) |
@@ -194,7 +194,7 @@ A second, one-way persistence path runs alongside the repository:
 | Frontend module | `src/services/gameExporter.ts` — `exportGameResult(result)`; reads `window.pywebview.api.export_game_result`, catches everything, **never** affects the game flow or `saveStatus` |
 | Bridge | pywebview JS API: the Python method `Api.export_game_result` is exposed **under its verbatim name** `window.pywebview.api.export_game_result` — pywebview 6 does no camelCase conversion |
 | Output dir | `<repo-root>/backend/output/`, created automatically by Python (`mkdir(parents=True, exist_ok=True)`) |
-| Files written | `game_data_YYYY-MM-DD_NNN.json` — permanent record; `NNN` is the next unused sequence number for that day (the number is reserved with an exclusive create, so concurrent iterations never collide). `game_data_YYYY-MM-DD.json` — always the latest iteration of the day, replaced atomically (temp file + `os.replace`) |
+| Files written | `game_data_YYYY-MM-DD_NNN.json` — permanent record of one iteration; `NNN` is the next unused sequence number for that day (the number is reserved with an exclusive create, so concurrent iterations never collide). `game_data_YYYY-MM-DD.json` — a **JSON array of every iteration recorded that day** (all users, sequence order), rebuilt from the sequential files on each export and replaced atomically (temp file + `os.replace`) |
 | Date | Local kiosk date (`datetime.now()`), computed per call — midnight rollover needs no extra logic |
 | Failure behavior | Never affects the game flow or `saveStatus`. An absent bridge is fully silent (normal browser mode). A present-but-broken bridge (method missing / call rejected) fires a diagnostic `console.warn` — the only `console.*` call in `src/`. Python logs every request and failure to the console + `backend/pywebview.log` |
 | Outside pywebview | Dev server, nginx/Docker: `window.pywebview` is undefined, so the export is a silent no-op; localStorage remains the only persistence |
@@ -238,8 +238,8 @@ Keypad.onDigit
                          └─► phase SURVEY   (user set; category/survey/attempt/saveStatus/savedResult reset)
 
 SurveyPage (two local steps inside SURVEY):
-  step 1: ChoiceGrid range card → countChoice ──┤
-         skip checkbox → notEmployed            │ ادامه enabled when countChoice or notEmployed
+  step 1: ChoiceGrid (5 cards) range card → countChoice ──┤
+         same grid, wide skip card → notEmployed          │ ادامه enabled when countChoice or notEmployed
   step 2: بله/خیر card → hasBenefits ───────────┤
   ادامه → completeSurvey(
     notEmployed ? { employeeCount: 0, hasBenefits: false }
@@ -268,7 +268,8 @@ GamePage renders (result ? <GameResultScreen …/> : <NumberWheelGame key={user.
                     finally savingRef = false
               └─► void exportGameResult(record)          (pywebview disk export, fire-and-forget)
                     window.pywebview.api.export_game_result(record)
-                      ├─ present → Python writes game_data_YYYY-MM-DD_NNN.json + game_data_YYYY-MM-DD.json
+                      ├─ present → Python writes game_data_YYYY-MM-DD_NNN.json (this iteration)
+                      │            + game_data_YYYY-MM-DD.json (array of all of the day's iterations)
                       ├─ absent → silent no-op (plain browser — game flow unaffected)
                       └─ present but broken (method missing / throws) → console.warn, game flow unaffected
 ```

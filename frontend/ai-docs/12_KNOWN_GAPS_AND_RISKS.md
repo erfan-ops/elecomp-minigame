@@ -114,7 +114,7 @@ repository.
 | T8 | `toPersianDigits` / `formatPersianNumber` (`persian.ts`) | All numeric display, including the `٬` separator substitution |
 | T9 | The anti-replay branch in `RegistrationPage.handleSubmit` | Business rule (one play per mobile) plus its fail-open path |
 | T10 | `submitResult` / `retrySave` concurrency guard (`AppSession.tsx`) | Prevents double persistence |
-| T11 | `Api.export_game_result` sequence numbering + collision handling (`<repo-root>/backend/main.py`) | Filename generation for real data; only exercised manually via the venv, not by any automated check |
+| T11 | `Api.export_game_result` sequence numbering, collision handling, and daily-file accumulation (`<repo-root>/backend/main.py`) | Filename generation for real data plus the rebuild of `game_data_YYYY-MM-DD.json` from the sequential records; only exercised manually via the venv, not by any automated check |
 
 Note: `randomTargetNumber`, `randomDigits`, and `createNewGame` all accept an injectable
 `rng: () => number = Math.random`, so the whole engine is deterministically testable with zero mocking.
@@ -162,7 +162,7 @@ are invisible to the compiler.
 |---|---|---|
 | E1 | **The export is fire-and-forget with no retry UI** | There is no save-status line and no retry (mirrors A7). A failed export is not re-attempted. Diagnostics exist: the exporter `console.warn`s when the bridge is present but broken, and Python logs every request/failure to `backend/pywebview.log` — but a fully absent bridge (browser-mode deployment) is silent by design and nothing checks whether exports actually landed |
 | E2 | **`backend/frontend` must be re-synced from `dist/` manually** | No script performs the copy. A rebuilt frontend with a stale `backend/frontend` ships the old JS — the export silently never happens |
-| E3 | **`backend/output` is never pruned** | One sequential file per iteration accumulates unbounded across an event; the daily file is overwritten but the `_NNN` files are permanent by design |
+| E3 | **`backend/output` is never pruned** | One sequential file per iteration accumulates unbounded across an event; the `_NNN` files are permanent by design and the daily file grows with every iteration (it is rebuilt from them on each export, so a long event re-reads and re-writes an ever-larger file — negligible at kiosk volumes, unbounded in principle) |
 | E4 | **The pywebview bridge has no automated end-to-end check** | The bridge was verified via the temporary-harness workflow (headless Chrome with an injected fake `window.pywebview`), not against a real webview window; a real pywebview-specific failure mode would only surface on the kiosk |
 
 ## Possible Inconsistencies Within The Code Itself

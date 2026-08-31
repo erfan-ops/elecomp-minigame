@@ -39,6 +39,20 @@ python main.py     # fullscreen webview; completed games are exported to backend
 `backend/frontend/` is a mirror copy of `dist/` — re-sync it after every build,
 or the wrapper keeps running the old bundle.
 
+### Packaging a standalone .exe
+
+From `backend/`, after the sync above:
+
+```powershell
+.\.venv\Scripts\pyinstaller.exe -y -D -w -n smartis-game --add-data "frontend;frontend" .\main.py
+```
+
+The result is `dist/smartis-game/smartis-game.exe`. Onedir (`-D`), not onefile:
+`output/` has to outlive the process. Exports and `pywebview.log` are written
+next to the .exe; the frontend is bundled inside it, and a `frontend/` folder
+placed beside the .exe overrides that copy — so a fresh `npm run build` can be
+dropped in without re-running PyInstaller.
+
 ## Pluggable games — the core contract
 
 A game is a self-contained React component receiving a `GameContext` and
@@ -119,9 +133,10 @@ combined record through the pywebview JS API bridge
 (`window.pywebview.api.export_game_result`), and the Python side owns the
 directory (`backend/output/`, created automatically), the date, and the
 sequence numbers — writing `game_data_YYYY-MM-DD_NNN.json` (one permanent
-file per iteration) plus `game_data_YYYY-MM-DD.json` (always the latest
-iteration of the day). In a plain browser the bridge does not exist and the
-export silently does nothing; the game flow never depends on it.
+file per iteration) plus `game_data_YYYY-MM-DD.json` (a JSON array holding
+every iteration recorded that day, all users included). In a plain browser the
+bridge does not exist and the export silently does nothing; the game flow never
+depends on it.
 
 ## Kiosk mode
 

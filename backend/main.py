@@ -3,12 +3,34 @@ from pathlib import Path
 import json
 import logging
 import os
+import sys
 
 import webview
 
 
-BASE_DIR = Path(__file__).resolve().parent
-FRONTEND_DIR = BASE_DIR / "frontend"
+def _base_dirs() -> tuple[Path, Path]:
+    """(writable dir, bundled-payload dir) — for both source and frozen runs.
+
+    Frozen by PyInstaller, `__file__` points *inside* the bundle
+    (`smartis-game/_internal/`), which is the wrong home for `output/` and the
+    log: those belong next to the .exe where the operator can find them. So the
+    two roles split — the writable dir is the .exe's own folder, the payload dir
+    is the bundle. Running from source both are `backend/`.
+    """
+    if getattr(sys, "frozen", False):
+        return Path(sys.executable).resolve().parent, Path(sys._MEIPASS)
+    here = Path(__file__).resolve().parent
+    return here, here
+
+
+BASE_DIR, BUNDLE_DIR = _base_dirs()
+# A `frontend/` sitting next to the .exe wins over the bundled copy, so a fresh
+# `npm run build` can be dropped in without re-running PyInstaller.
+FRONTEND_DIR = (
+    BASE_DIR / "frontend"
+    if (BASE_DIR / "frontend" / "index.html").exists()
+    else BUNDLE_DIR / "frontend"
+)
 INDEX_FILE = FRONTEND_DIR / "index.html"
 OUTPUT_DIR = BASE_DIR / "output"
 LOG_FILE = BASE_DIR / "pywebview.log"
@@ -20,20 +42,49 @@ SEQUENCE_WIDTH = 3  # game_data_2026-08-29_001.json
 logger = logging.getLogger("smartis-game")
 logger.setLevel(logging.INFO)
 _FORMAT = logging.Formatter("%(asctime)s %(levelname)s %(message)s")
-for _handler in (logging.StreamHandler(), logging.FileHandler(LOG_FILE, encoding="utf-8")):
+_handlers: list[logging.Handler] = [logging.FileHandler(LOG_FILE, encoding="utf-8")]
+if sys.stderr is not None:
+    # A windowed (`-w`) PyInstaller build has no console stream to write to.
+    _handlers.append(logging.StreamHandler())
+for _handler in _handlers:
     _handler.setFormatter(_FORMAT)
     logger.addHandler(_handler)
 
 
-def _latest_sequence(output_dir: Path, date_str: str) -> int:
-    """The highest NNN used by date_str's sequential files (0 when none exist)."""
+def _sequence_files(output_dir: Path, date_str: str) -> list[tuple[int, Path]]:
+    """date_str's sequential export files as (NNN, path), ordered by NNN."""
     prefix = f"{EXPORT_PREFIX}_{date_str}_"
-    highest = 0
+    found: list[tuple[int, Path]] = []
     for path in output_dir.glob(f"{EXPORT_PREFIX}_{date_str}_*.json"):
         suffix = path.stem[len(prefix):]
         if suffix.isdigit():
-            highest = max(highest, int(suffix))
-    return highest
+            found.append((int(suffix), path))
+    return sorted(found)
+
+
+def _latest_sequence(output_dir: Path, date_str: str) -> int:
+    """The highest NNN used by date_str's sequential files (0 when none exist)."""
+    files = _sequence_files(output_dir, date_str)
+    return files[-1][0] if files else 0
+
+
+def _collect_daily_records(output_dir: Path, date_str: str) -> list:
+    """Every iteration recorded for date_str, in sequence order.
+
+    Rebuilt from the sequential files rather than appended to the previous
+    daily file: those files are the permanent records, so the daily file is
+    always consistent with them and self-heals if it is deleted or corrupted.
+    An unreadable sequential file is skipped (and logged) instead of aborting
+    the whole export.
+    """
+    records = []
+    for sequence, path in _sequence_files(output_dir, date_str):
+        try:
+            with open(path, encoding="utf-8") as f:
+                records.append(json.load(f))
+        except (OSError, json.JSONDecodeError):
+            logger.exception("skipping unreadable export file %s (sequence %s)", path, sequence)
+    return records
 
 
 def _write_json(path: Path, data) -> None:
@@ -71,12 +122,13 @@ class Api:
         """Persist one completed game iteration to disk.
 
         Writes two files under `output/`:
-        - `game_data_YYYY-MM-DD_NNN.json` — a permanent record; NNN is the
-          next unused sequence number for that day. The number is reserved
-          with an exclusive create, so concurrent iterations can never
-          collide.
-        - `game_data_YYYY-MM-DD.json` — the latest iteration of the day,
-          replaced atomically on every export.
+        - `game_data_YYYY-MM-DD_NNN.json` — a permanent record of this single
+          iteration; NNN is the next unused sequence number for that day. The
+          number is reserved with an exclusive create, so concurrent
+          iterations can never collide.
+        - `game_data_YYYY-MM-DD.json` — a JSON array of **every** iteration
+          recorded that day (all users, in sequence order), rebuilt from the
+          sequential files and replaced atomically on every export.
         """
         logger.info(
             "export_game_result request: mobile=%s attempt=%s gameId=%s",
@@ -99,16 +151,18 @@ class Api:
                     sequence += 1
 
             daily_path = self.output_dir / f"{EXPORT_PREFIX}_{today}.json"
-            _replace_json_atomic(daily_path, data)
+            daily_records = _collect_daily_records(self.output_dir, today)
+            _replace_json_atomic(daily_path, daily_records)
 
             logger.info(
-                "export_game_result written: %s and %s",
-                sequence_path, daily_path,
+                "export_game_result written: %s and %s (%s iteration(s) today)",
+                sequence_path, daily_path, len(daily_records),
             )
             return {
                 "success": True,
                 "sequenceFile": str(sequence_path),
                 "dailyFile": str(daily_path),
+                "dailyCount": len(daily_records),
             }
         except Exception:
             logger.exception("export_game_result failed")
@@ -130,6 +184,10 @@ def check_api_bridge() -> None:
 
 
 def main():
+    logger.info(
+        "starting: frozen=%s frontend=%s output=%s",
+        getattr(sys, "frozen", False), FRONTEND_DIR, OUTPUT_DIR,
+    )
     if not INDEX_FILE.exists():
         logger.error("frontend index not found at %s — run `npm run build` and sync dist/ first", INDEX_FILE)
 

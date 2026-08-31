@@ -34,11 +34,20 @@ const BENEFITS_QUESTION = "آیا سازمان شما خدمات رفاهی به
 const NOT_EMPLOYED_LABEL = "در سازمان یا شرکتی کار نمی‌کنم";
 
 /**
+ * Step 1 answers: the four ranges plus the skip option, which is a fifth card
+ * (full width) rather than a checkbox — the five choices are mutually
+ * exclusive, so they belong in one single-select grid.
+ */
+const STEP_ONE_OPTIONS = [...COUNT_OPTIONS, NOT_EMPLOYED_LABEL] as const;
+type StepOneOption = (typeof STEP_ONE_OPTIONS)[number];
+
+/**
  * Page 2 — the organization survey (redesigned). Two local steps:
- *  1. تعداد افراد سازمان — four range cards, mapped to a representative count
+ *  1. تعداد افراد سازمان — four range cards plus «در سازمان یا شرکتی کار
+ *     نمی‌کنم» as a fifth, full-width card; the ranges map to a
+ *     representative count, the fifth option skips both questions entirely
+ *     (stores { employeeCount: 0, hasBenefits: false })
  *  2. آیا خدمات رفاهی ارائه می‌دهد؟ — بله / خیر
- * «در سازمان یا شرکتی کار نمی‌کنم» skips both questions entirely
- * (stores { employeeCount: 0, hasBenefits: false }).
  * بازگشت on step 1 returns to registration via startNewUser (documented
  * session reset); on step 2 it returns to step 1. ادامه stays disabled
  * until the current step is answerable (spec §13).
@@ -53,15 +62,15 @@ export function SurveyPage() {
   /** Non-working users can skip both questions entirely. */
   const [notEmployed, setNotEmployed] = useState(false);
 
-  const chooseCount = (option: (typeof COUNT_OPTIONS)[number]) => {
-    setCountChoice(option);
+  /** Single-select across all five step-1 cards — they exclude each other. */
+  const chooseStepOne = (option: StepOneOption) => {
+    if (option === NOT_EMPLOYED_LABEL) {
+      setNotEmployed(true);
+      setCountChoice(null);
+      return;
+    }
     setNotEmployed(false);
-  };
-
-  const toggleNotEmployed = () => {
-    const next = !notEmployed;
-    setNotEmployed(next);
-    if (next) setCountChoice(null);
+    setCountChoice(option);
   };
 
   const handleBack = () => {
@@ -111,26 +120,12 @@ export function SurveyPage() {
         </h1>
 
         {step === 1 ? (
-          <>
-            <ChoiceGrid
-              options={COUNT_OPTIONS}
-              selected={countChoice}
-              onSelect={chooseCount}
-              disabled={notEmployed}
-            />
-            <button
-              type="button"
-              className={`survey-checkbox${notEmployed ? " survey-checkbox--checked" : ""}`}
-              role="checkbox"
-              aria-checked={notEmployed}
-              onClick={toggleNotEmployed}
-            >
-              <span className="survey-checkbox__box" aria-hidden="true">
-                <span className="survey-checkbox__check">✓</span>
-              </span>
-              <span className="survey-checkbox__label">{NOT_EMPLOYED_LABEL}</span>
-            </button>
-          </>
+          <ChoiceGrid
+            options={STEP_ONE_OPTIONS}
+            selected={notEmployed ? NOT_EMPLOYED_LABEL : countChoice}
+            onSelect={chooseStepOne}
+            wideLastOption
+          />
         ) : (
           <ChoiceGrid
             options={BENEFITS_OPTIONS}
