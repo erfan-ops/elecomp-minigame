@@ -69,8 +69,6 @@ export function NumberWheelGame({ context, onComplete }: GameProps) {
     0,
     Math.min(attemptsTotal, attemptsTotal - (context.attemptsRemaining ?? attemptsTotal - 1)),
   );
-  /** Shots already taken (a running round counts its own shot in progress). */
-  const shotsTaken = Math.min(3, stoppedCount + (state === "RUNNING" ? 1 : 0));
 
   // Report the outcome exactly once, the moment the game reaches RESULT.
   const completedRef = useRef(false);
