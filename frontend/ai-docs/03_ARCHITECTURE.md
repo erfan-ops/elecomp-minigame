@@ -153,7 +153,7 @@ The game never learns whether persistence succeeded.
 | `RegistrationPage` | `topEntries` | local; leaderboard panel rows, loaded once on mount |
 | `GamePage` ref | `submittedRef` | duplicate-submit guard, reset by `handleRetry` |
 | `useNumberGame` reducer | `GameSnapshot { phase, stoppedCount, target, digits }` | one mounted game instance |
-| `NumberWheelGame` refs | `wheelRefs[3]`, `lastStopAt`, `completedRef` | imperative reel access, debounce, once-only completion |
+| `NumberWheelGame` refs | `wheelRefs[3]`, `lastStopAt`, `assistTimer`, `completedRef` | imperative reel access, debounce, pending nudged stop, once-only completion |
 | `NumberWheel` refs | `positionRef`, `wasRollingRef`, `stripRef` | per-reel animation state, **outside React state** |
 | `NumberWheel` state | `justLocked` (boolean) | the only React state a reel owns |
 
@@ -211,6 +211,7 @@ Touch «شروع» or presenter key → `START` → reducer `phase: "RUNNING"` �
 `NumberWheel` starts its rAF spin loop.
 Presenter key (or any of the action keys) → `handleStop` → debounce via `MIN_STOP_INTERVAL_MS` →
 read the live digit from `wheelRefs[stoppedCount].current.getCurrentDigit()` → `navigator.vibrate` →
+`resolveStop` (`assist.ts`: a whitelisted mobile may wait for the target digit instead) →
 `STOP { lockedDigit }` → reducer writes `digits[stoppedCount]` and increments `stoppedCount`; the third
 STOP sets `phase: "RESULT"`.
 `RESULT` → ref-guarded effect → `calculatePrizeResult(target, digits)` →
@@ -234,7 +235,8 @@ everything cleared — the panels re-mount and re-fetch, so they refresh on ever
    `GameContext` in `src/domain/game.ts` and have `GamePage` populate it.
 2. **Persistence**: only `GameResultRepository`. UI code must never touch `localStorage`.
 3. **Purity**: `src/domain/`, `src/services/leaderboard.ts`, `src/services/stats.ts`,
-   `src/games/number-wheel/gameEngine.ts`, `src/games/number-wheel/prizeCalculator.ts`, and
+   `src/games/number-wheel/gameEngine.ts`, `src/games/number-wheel/prizeCalculator.ts`,
+   `src/games/number-wheel/difficulty.ts`, `src/games/number-wheel/assist.ts`, and
    `src/utils/persian.ts` are React-free and DOM-free. Keep them that way — they are the testable
    core (no tests exist yet).
 4. **Animation ↔ React**: reel motion lives in refs and direct `style.transform` writes. React must not

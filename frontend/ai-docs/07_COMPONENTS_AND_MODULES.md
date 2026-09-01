@@ -150,11 +150,13 @@ Games are statically imported ⇒ every registered game ships in the main bundle
 
 | Path | Responsibility | Main exports | Imports (significant) | Side effects | Safe in isolation | Importance |
 |---|---|---|---|---|---|---|
-| `src/games/number-wheel/NumberWheelGame.tsx` | Game shell: implements `GameProps`, input model, once-only `onComplete`, play-screen layout (`slot-game`: heading with tappable target, status pills, stop button, rules panel) | `NumberWheelGame` | `./config`, `./gameEngine`, `./prizeCalculator`, `./useNumberGame`, `./components/*`, `src/domain/game` (type), `src/hooks/usePrefersReducedMotion`, `src/utils/persian`, `./number-wheel.css` | `window` `keydown` listener (added/removed with the component); `performance.now()`; `navigator.vibrate?.()`; calls `onComplete` | NO — owns the contract and the input model | `CRITICAL` |
+| `src/games/number-wheel/NumberWheelGame.tsx` | Game shell: implements `GameProps`, input model, once-only `onComplete`, play-screen layout (`slot-game`: heading with tappable target, status pills, stop button, rules panel) | `NumberWheelGame` | `./config`, `./gameEngine`, `./prizeCalculator`, `./difficulty`, `./assist`, `./useNumberGame`, `./components/*`, `src/domain/game` (type), `src/hooks/usePrefersReducedMotion`, `src/utils/persian`, `./number-wheel.css` | `window` `keydown` listener (added/removed with the component); `performance.now()`; `navigator.vibrate?.()`; `window.setTimeout` (assisted stop, cleared on unmount); calls `onComplete` | NO — owns the contract and the input model | `CRITICAL` |
 | `src/games/number-wheel/gameEngine.ts` | **Pure** state machine + digit/target helpers | `randomTargetNumber`, `numberToDigits`, `digitsToNumber`, `formatDigits`, `randomDigits`, `createNewGame`, `GameAction`, `createInitialSnapshot`, `gameReducer`, `rollingFlags` | `./types` (types), `./config` (none at runtime) | `Math.random` only as a **default parameter** (`rng`) | YES | `CRITICAL` |
 | `src/games/number-wheel/useNumberGame.ts` | Reducer wiring + stable action creators | `useNumberGame`; re-exports `usePrefersReducedMotion` | `react`, `./gameEngine`, `./types`, `src/hooks/usePrefersReducedMotion` | none | YES | `IMPORTANT` |
 | `src/games/number-wheel/prizeCalculator.ts` | **Pure** scoring + prize string | `countExactMatches`, `calculatePrizeResult`, `formatPrize` (currently unused — the redesigned UI formats amounts via `formatPersianNumber` in the host) | `./config`, `./types`, `src/utils/persian` | none | YES | `CRITICAL` |
-| `src/games/number-wheel/config.ts` | All game tuning constants | 13 named constants (see `05_MINIGAME.md`) | — | none | YES | `CRITICAL` |
+| `src/games/number-wheel/difficulty.ts` | **Pure** budget → reel-speed scaling | `difficultyLevel`, `effectiveWheelSpeeds` | `./config` | none | YES | `IMPORTANT` |
+| `src/games/number-wheel/assist.ts` | **Pure** whitelisted-mobile favours: slowed reels + the nudged-stop decision | `normalizeMobile`, `isSlowMobile`, `isPerfectMobile`, `mobileSpeedFactor`, `assistStopDelayMs`, `resolveStop`, `StopDecisionInput`, `StopDecision` | `./config` | none (the whitelist `Set`s are built once at module scope) | YES | `IMPORTANT` |
+| `src/games/number-wheel/config.ts` | All game tuning constants | the named constants listed in `05_MINIGAME.md` (prizes, speeds, budget/difficulty, spring, timings, whitelists) | — | none | YES | `CRITICAL` |
 | `src/games/number-wheel/types.ts` | Internal type vocabulary | `Digit`, `Digits`, `GameState`, `StoppedCount`, `GameSnapshot`, `WheelPrizeResult` | — | none | YES | `IMPORTANT` |
 | `src/games/number-wheel/number-wheel.css` | All game-specific styles + game-scoped `:root` tokens | — | consumes tokens from `src/styles/global.css` | none | YES (class names are game-local) | `IMPORTANT` |
 | `src/games/number-wheel/components/WheelGroup.tsx` | Lay out three reels; compute active index and locked flags | `WheelGroup` | `./NumberWheel`, `../types` | none | YES | `IMPORTANT` |
@@ -165,7 +167,8 @@ live in the host at `src/pages/GameResult.tsx`.)
 
 `NumberWheel` props: `ref?: Ref<NumberWheelHandle>` (React 19 ref-as-prop, no `forwardRef`), `digit`,
 `rolling`, `speed`, `locked?`, `active?`, `reducedMotion?`, `ariaLabel?`.
-Handle: `{ getCurrentDigit(): number }`.
+Handle: `{ getCurrentDigit(): number; getPosition(): number }` — the rounded digit and the raw
+continuous strip position (the latter times an assisted stop, `assist.ts`).
 
 `WheelGroup` renders the three reels; the «رقم ۱/۲/۳» labels are hard-coded in `NumberWheelGame`
 (`reel-labels` row, LTR).

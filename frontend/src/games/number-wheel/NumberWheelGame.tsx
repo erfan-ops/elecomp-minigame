@@ -4,6 +4,7 @@ import { usePrefersReducedMotion } from "../../hooks/usePrefersReducedMotion";
 import { formatPersianNumber, toPersianDigits } from "../../utils/persian";
 import { WheelGroup } from "./components/WheelGroup";
 import type { NumberWheelHandle } from "./components/NumberWheel";
+import { mobileSpeedFactor, resolveStop } from "./assist";
 import {
   CURRENCY_SYMBOL,
   MIN_STOP_INTERVAL_MS,
@@ -50,17 +51,20 @@ export function NumberWheelGame({ context, onComplete }: GameProps) {
     useRef<NumberWheelHandle>(null),
   ];
   const lastStopAt = useRef(0);
+  /** Pending assisted stop (a whitelisted player's nudged wheel), if any. */
+  const assistTimer = useRef<number | undefined>(undefined);
 
   const rolling = rollingFlags({ phase: state, stoppedCount });
   // Base speeds × the difficulty row for the budget's current consumption
-  // (the game gets faster — harder — as more prize money is paid out).
-  const speeds = useMemo(
-    () =>
-      effectiveWheelSpeeds(context.budgetConsumedRatio ?? 0).map(
-        (speed) => speed * (reducedMotion ? REDUCED_MOTION_SPEED_FACTOR : 1),
-      ) as [number, number, number],
-    [context.budgetConsumedRatio, reducedMotion],
-  );
+  // (the game gets faster — harder — as more prize money is paid out), then ×
+  // this player's whitelist factor (slower wheels for a whitelisted mobile).
+  const speeds = useMemo(() => {
+    const factor =
+      mobileSpeedFactor(context.mobile) * (reducedMotion ? REDUCED_MOTION_SPEED_FACTOR : 1);
+    return effectiveWheelSpeeds(context.budgetConsumedRatio ?? 0).map(
+      (speed) => speed * factor,
+    ) as [number, number, number];
+  }, [context.budgetConsumedRatio, context.mobile, reducedMotion]);
 
   /** Total attempts the platform grants — used for the rules line and status dots. */
   const attemptsTotal = context.attemptsTotal ?? (context.attemptsRemaining ?? 0) + 1;
@@ -110,6 +114,10 @@ export function NumberWheelGame({ context, onComplete }: GameProps) {
 
   const handleStop = useCallback(() => {
     if (state !== "RUNNING") return;
+    // A nudged wheel is still spinning toward its digit — ignore presses until
+    // it locks, otherwise the next wheel would be stopped too (the assist
+    // window is longer than MIN_STOP_INTERVAL_MS).
+    if (assistTimer.current !== undefined) return;
 
     // Guard against accidental double presses registering as two stops.
     const now = performance.now();
@@ -117,12 +125,44 @@ export function NumberWheelGame({ context, onComplete }: GameProps) {
     lastStopAt.current = now;
 
     const wheelIndex = stoppedCount;
-    if (wheelIndex >= 3) return;
-    const lockedDigit = wheelRefs[wheelIndex].current?.getCurrentDigit() ?? 0;
+    // All three wheels are already locked. Compared against the literal (not
+    // `>= 3`) so StoppedCount narrows to 0 | 1 | 2 — the only valid indices
+    // into the three targets and speeds below.
+    if (wheelIndex === 3) return;
+    const wheel = wheelRefs[wheelIndex].current;
+    const currentDigit = wheel?.getCurrentDigit() ?? 0;
 
     navigator.vibrate?.(wheelIndex === 2 ? 45 : 15);
-    stop(lockedDigit);
-  }, [state, stoppedCount, stop]);
+
+    // Whitelisted players get the target digit if it is close enough to reach;
+    // everyone else locks the digit that was showing. `delayMs` is how long
+    // the wheel keeps spinning first (0 for an unassisted press).
+    const { digit, delayMs } = resolveStop({
+      mobile: context.mobile,
+      position: wheel?.getPosition() ?? currentDigit,
+      currentDigit,
+      targetDigit: target[wheelIndex],
+      speed: speeds[wheelIndex],
+    });
+
+    if (delayMs <= 0) {
+      stop(digit);
+      return;
+    }
+    assistTimer.current = window.setTimeout(() => {
+      assistTimer.current = undefined;
+      stop(digit);
+    }, delayMs);
+  }, [state, stoppedCount, stop, context.mobile, target, speeds]);
+
+  // Never leave an assisted stop's timer running past unmount (the platform
+  // remounts the game for a retry or the next player).
+  useEffect(
+    () => () => {
+      if (assistTimer.current !== undefined) window.clearTimeout(assistTimer.current);
+    },
+    [],
+  );
 
   /** The big touchscreen button: START while idle, STOP while running. */
   const handlePrimaryPress = useCallback(() => {
@@ -211,7 +251,7 @@ export function NumberWheelGame({ context, onComplete }: GameProps) {
         </div>
       </div>
 
-      <div className="reel-machine">
+      <div className="reel-machine" onClick={handlePrimaryPress}>
         {/* LTR row so رقم ۱ (the first wheel to stop, the hundreds) is leftmost. */}
         <WheelGroup
           digits={digits}

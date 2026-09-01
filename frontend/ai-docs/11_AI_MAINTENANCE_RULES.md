@@ -104,7 +104,8 @@ These are enforced by code review and by the contracts documented in `03_ARCHITE
 3. `phase` MUST only change through a session action in `src/app/AppSession.tsx`.
 4. Persistence MUST go through `GameResultRepository`; no component may touch `localStorage`.
 5. `src/domain/`, `src/services/leaderboard.ts`, `src/services/stats.ts`, `src/utils/persian.ts`,
-   `src/games/number-wheel/gameEngine.ts`, and `src/games/number-wheel/prizeCalculator.ts` MUST stay
+   `src/games/number-wheel/gameEngine.ts`, `src/games/number-wheel/prizeCalculator.ts`,
+   `src/games/number-wheel/difficulty.ts`, and `src/games/number-wheel/assist.ts` MUST stay
    React-free, DOM-free, and side-effect-free.
 6. Per-frame animation values MUST live in refs written straight to the DOM — no React state per frame.
 7. No real `<input>` elements. The on-screen numeric keyboard is the only text-entry mechanism.

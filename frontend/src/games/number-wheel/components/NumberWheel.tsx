@@ -77,6 +77,12 @@ function nearestTarget(position: number, digit: number): number {
 export interface NumberWheelHandle {
   /** The digit currently centered in the wheel, 0–9. */
   getCurrentDigit(): number;
+  /**
+   * The live continuous strip position in item heights, kept in [0, 10) while
+   * rolling — the fractional detail `getCurrentDigit()` rounds away. Used to
+   * time an assisted stop (see ../assist.ts).
+   */
+  getPosition(): number;
 }
 
 export interface NumberWheelProps {
@@ -124,6 +130,7 @@ export function NumberWheel({
     ref,
     () => ({
       getCurrentDigit: () => digitFromPosition(positionRef.current),
+      getPosition: () => positionRef.current,
     }),
     [],
   );

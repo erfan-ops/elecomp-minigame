@@ -134,8 +134,9 @@ is `.ts` because it only holds types.
   transition is invalid.
 - Pure reducer: `gameReducer` returns the *same object* for invalid actions rather than a new one.
 - The pure-core / imperative-shell split (`INFERRED` as an intentional pattern): `domain/`,
-  `services/leaderboard.ts`, `utils/persian.ts`, `gameEngine.ts`, `prizeCalculator.ts` contain no React
-  and no DOM; components hold all effects.
+  `services/leaderboard.ts`, `services/stats.ts`, `utils/persian.ts`, `gameEngine.ts`,
+  `prizeCalculator.ts`, `difficulty.ts`, `assist.ts` contain no React and no DOM; components hold all
+  effects.
 
 ## Error Handling Patterns
 

@@ -66,6 +66,7 @@ labeled `INFERRED`, `UNVERIFIED`, or `UNKNOWN`.
 | A6 | **`BUDGET` and the difficulty constants live in the number-wheel game config but are consumed by the platform** (`GamePage` imports `BUDGET`; `difficulty.ts` is game-local). If `ACTIVE_GAME_ID` switches to another game, wins still drain the number-wheel budget constant and the wheel game's difficulty semantics apply to that game's payouts |
 | A7 | **Budget recording is fire-and-forget** (`recordPrize` in `GamePage.handleComplete`) with no save-status UI like the result save. A localStorage failure silently loses the accounting; a crash between `recordPrize` and the result save desyncs the two stores |
 | A8 | **No payout cap and no organizer reset for the budget.** A win larger than `remaining` pushes `consumed` past `BUDGET` (difficulty stays maxed). Resetting the budget means clearing the `smartis-game.budget.v1` key — there is no in-app control |
+| A9 | **The game can be rigged per mobile number, deliberately** (`SLOW_MOBILES` / `PERFECT_MOBILES` in the number-wheel config, implemented in `assist.ts`). Both lists are empty by default. Nothing in the UI, the stored `GameSessionResult`, or the on-disk export records that a round was assisted, so a rigged win is indistinguishable from a fair one after the fact — and the leaderboard/stats panels count it as fair. A whitelisted win also drains the shared prize budget like any other |
 
 ## Fragile Game-Loop Code
 
@@ -75,7 +76,7 @@ visually — nothing here is covered by an automated check.
 | # | Area | Failure mode |
 |---|---|---|
 | R1 | `wasRollingRef` is read **and cleared** inside the settle effect body | Momentum inheritance and the lock pulse apply only to the FIRST run of that effect after a rolling→stopped transition. Adding any dependency that changes on lock silently removes the deceleration feel and the pulse |
-| R2 | Spin effect deps `[rolling, speed]` | A `speed` identity change mid-spin tears down and rebuilds the loop. Safe today only because `speeds` is `useMemo`'d on `[reducedMotion]` |
+| R2 | Spin effect deps `[rolling, speed]` | A `speed` identity change mid-spin tears down and rebuilds the loop. Safe today only because `speeds` is `useMemo`'d on `[context.budgetConsumedRatio, context.mobile, reducedMotion]` — all fixed for a mounted game |
 | R3 | Settle loop has no iteration or time cap | Retuning `SPRING_STIFFNESS` / `SPRING_DAMPING` can produce oscillation that never satisfies both `SETTLE_EPSILON` and `SETTLE_MIN_VELOCITY`, leaving a rAF loop running indefinitely |
 | R4 | The centering offset is measured from the rendered reel at mount (first `.number-wheel__digit` + `.number-wheel__window`) and kept in sync by a `ResizeObserver` | If a reel mounts with no layout (`display: none`), `writeTransform` early-returns until the observer fires and the digit briefly shows from the untransformed position. `STRIP_REPEATS` ↔ `STRIP_LENGTH` remain coupled by definition (`10 ×`) |
 | R5 | `getCurrentDigit() ?? 0` in `NumberWheelGame.handleStop` | A null reel ref silently locks digit `0` instead of failing |
@@ -83,6 +84,7 @@ visually — nothing here is covered by an automated check.
 | R7 | `attemptsRemaining` is computed by `GamePage` as `MAX_GAME_ATTEMPTS - attempt` and passed to `GameResultScreen` | If a future host forgets to pass it, a zero-win round would claim «هنوز ۰ فرصت دیگر دارید!» (game-over layout) even when retries remain |
 | R8 | `dt` clamp of `0.05 s` in both loops | Reel position is not a function of elapsed wall-clock time after a tab stall. Acceptable visually; do not rely on position for timing |
 | R9 | No `document.visibilitychange` handling | Backgrounding the kiosk browser freezes a spinning reel mid-round. On return it resumes from where it stopped. There is no pause UI and no recovery path |
+| R10 | Assisted stop (`assistTimer` in `NumberWheelGame.handleStop`, `resolveStop` in `assist.ts`) | A nudged reel keeps spinning up to `PERFECT_ASSIST_WINDOW_MS` after the press, and **every press in that window is ignored with no feedback** — longer than the 200 ms debounce the presenter is used to. Timer jitter is tolerated by the settle spring only while lateness stays under half a digit (0.42 digits at the maximum difficulty speed, so a long stall can visibly pull the reel back — never onto the wrong digit). The nudge reads `target[wheelIndex]`, so it depends on invariant 5 (reel index ↔ target index) and on `SET_TARGET` staying IDLE-only |
 
 ## Performance-Sensitive Code
 

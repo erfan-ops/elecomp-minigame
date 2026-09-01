@@ -30,7 +30,7 @@
 | Server state | NO | Zero network calls in `src/`. The only out-of-page call is the pywebview host bridge (`src/services/gameExporter.ts`) — an in-process function call, fire-and-forget |
 | Host (pywebview) export | YES (optional) | Each completed `GameSessionResult` is pushed to `window.pywebview.api.export_game_result`; the Python host writes it to `backend/output`. Silent no-op in a plain browser |
 | Derived state | YES | `useMemo` (`context`, `speeds`, `result`, `confettiPieces`, context value) + pure functions (`rollingFlags`, `buildLeaderboard`, `buildGameStats`, `calculatePrizeResult`, `canRetry`) |
-| Temporary / transient state | YES | Refs: `pendingResultRef`, `savingRef`, `submittedRef`, `completedRef`, `lastStopAt`, `positionRef`, `wasRollingRef`, `stripRef`, `wheelRefs` |
+| Temporary / transient state | YES | Refs: `pendingResultRef`, `savingRef`, `submittedRef`, `completedRef`, `lastStopAt`, `assistTimer`, `positionRef`, `wasRollingRef`, `stripRef`, `wheelRefs` |
 | URL state | NO | No router, no `history`, no query params |
 | Cache | NO | No memo cache, no query cache, no service worker |
 
@@ -61,8 +61,9 @@
 | `context` (derived) | `GamePage` | same | `GameContext` | `useMemo(..., [user, category, attempt])` | none | `attemptsRemaining = Math.max(0, MAX_GAME_ATTEMPTS - attempt)`; also `attemptsTotal = MAX_GAME_ATTEMPTS` (added in the redesign for the game's status dots/rules); `budgetConsumedRatio = getBudgetState(BUDGET).consumedRatio` (budget-driven difficulty, 2026-08-29) |
 | `canRetry` (derived) | `GamePage` | same | `boolean` | Recomputed each render | none | `saveStatus === "saved" && (savedResult?.winAmount ?? 0) === 0 && attempt < MAX_GAME_ATTEMPTS` |
 | `GameSnapshot` | `useNumberGame` reducer | `src/games/number-wheel/useNumberGame.ts` | `{ phase: GameState; stoppedCount: StoppedCount; target: Digits; digits: Digits }` | `dispatch` of `START` / `STOP` / `SET_TARGET` through `gameReducer` | none | Authoritative game state; initialized lazily from `createNewGame()` |
-| `wheelRefs[0..2]` | `NumberWheelGame` | `src/games/number-wheel/NumberWheelGame.tsx` | `RefObject<NumberWheelHandle \| null>` ×3 | Assigned by React on mount | none | Only use: `getCurrentDigit()` at STOP time |
+| `wheelRefs[0..2]` | `NumberWheelGame` | `src/games/number-wheel/NumberWheelGame.tsx` | `RefObject<NumberWheelHandle \| null>` ×3 | Assigned by React on mount | none | Only uses: `getCurrentDigit()` and `getPosition()` at STOP time |
 | `lastStopAt` | `NumberWheelGame` | same | `number` (ms from `performance.now()`) | Written in `handleStop` | none | `MIN_STOP_INTERVAL_MS` debounce |
+| `assistTimer` | `NumberWheelGame` | same | `number \| undefined` (`setTimeout` id) | Armed in `handleStop` for a whitelisted nudged stop, cleared when it fires and on unmount | none | Also the "a nudged reel is still spinning — ignore presses" flag (`assist.ts`) |
 | `completedRef` | `NumberWheelGame` | same | `boolean` | Set true in the `RESULT` effect | none | Guarantees `onComplete` fires once per mount |
 | `positionRef` | `NumberWheel` | `src/games/number-wheel/components/NumberWheel.tsx` | `number` — continuous strip position in item units, `[0, 10)` while rolling | Mutated every rAF frame by the spin and settle loops | none | **Outside React state by design.** Never triggers a render |
 | `wasRollingRef` | `NumberWheel` | same | `boolean` | Set true when the spin effect starts; read-and-cleared at the top of the settle effect | none | Supplies settle momentum and gates the lock pulse |
@@ -209,7 +210,8 @@ A second, one-way persistence path runs alongside the repository:
 | Active (next-to-stop) reel index | `rolling[]`, `state` | `WheelGroup`: `state === "RUNNING" ? rolling.findIndex(Boolean) : -1` |
 | Reel `locked` prop | `state`, `rolling[i]` | `state !== "IDLE" && !rolling[index]` |
 | Prize result | `target`, `digits` | `calculatePrizeResult()` → `{ correctDigits, prize, perfect }`, `useMemo` on `RESULT` |
-| Reel speeds | `effectiveWheelSpeeds(context.budgetConsumedRatio ?? 0)`, `reducedMotion` | `difficulty.ts` → `WHEEL_SPEEDS × DIFFICULTY_MULTIPLIERS[level]`; `useMemo(..., [budgetConsumedRatio, reducedMotion])` |
+| Reel speeds | `effectiveWheelSpeeds(context.budgetConsumedRatio ?? 0)`, `mobileSpeedFactor(context.mobile)`, `reducedMotion` | `difficulty.ts` → `WHEEL_SPEEDS × DIFFICULTY_MULTIPLIERS[level]`, then × the whitelist factor from `assist.ts` (`SLOW_SPEED_FACTOR` or 1); `useMemo(..., [budgetConsumedRatio, mobile, reducedMotion])` |
+| Locked digit on STOP | `context.mobile`, live reel position, `target[wheelIndex]`, `speeds[wheelIndex]` | `resolveStop()` (`assist.ts`) → `{ digit, delayMs }`; `delayMs > 0` only for a `PERFECT_MOBILES` player, dispatched by `assistTimer` |
 | `GameContext` | `user`, `category`, `attempt` (+ `attemptsTotal`, `budgetConsumedRatio`) | `useMemo` in `GamePage` |
 | Budget state | `localStorage` `smartis-game.budget.v1` + `BUDGET` (game config) | `getBudgetState()` → `{ budget, consumed, remaining, consumedRatio }`; mutated by `recordPrize()` (GamePage, on win) |
 | `canRetry` | `saveStatus`, `savedResult.winAmount`, `attempt` | Inline expression in `GamePage` |

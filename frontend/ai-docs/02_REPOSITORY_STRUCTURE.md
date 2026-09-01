@@ -88,7 +88,9 @@ and the `backend/` directory (the Python pywebview wrapper).
         │   ├── registry.ts
         │   └── number-wheel/
         │       ├── NumberWheelGame.tsx
+        │       ├── assist.ts
         │       ├── config.ts
+        │       ├── difficulty.ts
         │       ├── gameEngine.ts
         │       ├── number-wheel.css
         │       ├── prizeCalculator.ts

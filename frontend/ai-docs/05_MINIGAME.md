@@ -6,6 +6,8 @@
 # - src/games/number-wheel/gameEngine.ts
 # - src/games/number-wheel/useNumberGame.ts
 # - src/games/number-wheel/prizeCalculator.ts
+# - src/games/number-wheel/difficulty.ts
+# - src/games/number-wheel/assist.ts
 # - src/games/number-wheel/config.ts
 # - src/games/number-wheel/types.ts
 # - src/games/number-wheel/number-wheel.css
@@ -37,6 +39,8 @@ src/games/number-wheel/
 ├── useNumberGame.ts        reducer wiring + action creators
 ├── gameEngine.ts           PURE state machine + digit/target helpers
 ├── prizeCalculator.ts      PURE scoring + prize formatting
+├── difficulty.ts           PURE budget → wheel-speed scaling
+├── assist.ts               PURE whitelisted-mobile favours (slow wheels / nudged stop)
 ├── config.ts               ALL tuning constants
 ├── types.ts                internal types
 ├── number-wheel.css        all play-screen styles + game-scoped :root tokens (rem-based)
@@ -174,6 +178,9 @@ Input rules enforced in code:
 - In `RESULT`, an action key calls `handleStop()`, which returns immediately because
   `state !== "RUNNING"`. Effectively a no-op.
 - `handleStop` calls `navigator.vibrate(15)` (45 ms for the final reel) before dispatching `STOP`.
+- For a **whitelisted mobile** the press may not dispatch `STOP` immediately — see "Whitelisted Mobiles"
+  below. While such a nudged wheel is still spinning (`assistTimer` set) every further press is ignored,
+  ahead of the `MIN_STOP_INTERVAL_MS` check, because the assist window is longer than that debounce.
 
 ## Update Loop
 
@@ -299,6 +306,8 @@ Reel `locked` prop: `state !== "IDLE" && !rolling[index]`.
 | Reel visual position | `positionRef` (mutable, **outside React**) | never triggers a render |
 | Reel DOM transform | `stripRef.current.style.transform` | direct DOM write, once per frame |
 | Digit captured on STOP | imperative read | `wheelRefs[i].current.getCurrentDigit()` via `useImperativeHandle` |
+| Live reel position for a nudged stop | imperative read | `wheelRefs[i].current.getPosition()` (same handle) |
+| Pending nudged stop | `assistTimer` ref | `window.setTimeout`; also the "ignore further presses" flag |
 | Lock pulse | `useState` `justLocked` in `NumberWheel` | one render on lock, one when the pulse ends |
 | Momentum carry-over | `wasRollingRef` | read-and-cleared inside the settle effect |
 | STOP debounce | `lastStopAt` ref | `performance.now()` comparison |
@@ -395,6 +404,53 @@ The game gets harder as the organizer's prize budget drains:
   `smartis-game.budget.v1` — the budget constant itself stays in config, so retuning `BUDGET` takes
   effect immediately and corrupt storage degrades to zero consumed.
 
+## Whitelisted Mobiles (Rigged Assistance)
+
+`src/games/number-wheel/assist.ts` — pure over the config constants, keyed on `GameContext.mobile`.
+Two independent whitelists; a mobile may be on both. Both are **empty by default** (commented-out
+placeholders), so an untouched config behaves exactly as before.
+
+| List | Constant | Effect |
+|---|---|---|
+| slow | `SLOW_MOBILES` | All three reel speeds × `SLOW_SPEED_FACTOR` (0.55) — applied **after** the difficulty row, so a whitelisted player still speeds up as the budget drains, from a lower base |
+| perfect | `PERFECT_MOBILES` | A STOP press keeps the reel spinning until the **target** digit reaches the window, then locks that digit instead of the one that was showing |
+
+Matching is on `normalizeMobile(mobile)` — digits only, reduced to the 11-digit 09-form: a 12-digit
+`98…` and a 10-digit `9…` are rewritten to `0…`, so `"0912 345 6789"`, `"+98 912 345 6789"`,
+`"989123456789"` and `"9123456789"` all match the same player. Blank config entries are skipped.
+
+The nudge decision is one pure function, `resolveStop({ mobile, position, currentDigit, targetDigit,
+speed })` → `{ digit, delayMs }`:
+
+```
+delayMs = ((targetDigit − position) mod 10) / speed × 1000     // reels only move forward
+
+lock immediately at currentDigit when:
+  the mobile is not on PERFECT_MOBILES
+  currentDigit === targetDigit      ← must short-circuit: the forward distance to a digit already
+                                      showing is ~0 or ~10, and the modulo would ask for a whole
+                                      extra revolution
+  speed <= 0                        ← pathological config
+  delayMs > PERFECT_ASSIST_WINDOW_MS
+otherwise: lock targetDigit after delayMs
+```
+
+`NumberWheelGame.handleStop` reads the live `position` through the reel handle's `getPosition()` (the
+fractional detail `getCurrentDigit()` rounds away), vibrates at press time either way, then either
+dispatches `STOP` at once or arms `assistTimer` (`window.setTimeout`) and dispatches when it fires. An
+unmount-cleanup effect clears a pending timer.
+
+Why the delay lands on the right digit: the settle spring targets `nearestTarget(q, digit)`, which
+tolerates up to half a digit of timer jitter. One frame of lateness is 0.14 digits at the slowed base
+speed and 0.42 digits at the maximum difficulty speed (26.45 digits/s), so the intended digit still
+wins; a larger stall only makes the spring pull back slightly further, never to the wrong digit.
+
+**Consequence of the 500 ms window** — a full revolution takes `10 / speed` seconds (≈ 1176 ms at the
+base 8.5 digits/s), so 500 ms reaches only ~4.25 of the 10 digits: the nudge helps on roughly 45% of
+presses, and all three digits landing correct stays uncommon (~9%). `PERFECT_ASSIST_WINDOW_MS` is the
+knob — raising it to ~1200 makes the nudge land on nearly every press at the cost of a visibly longer
+gap between the press and the lock.
+
 ## Pause / Resume / Reset Behavior
 
 - **No pause.** No pause action, no visibility-change handling. If the tab is backgrounded, `rAF` stops
@@ -454,6 +510,10 @@ The game gets harder as the organizer's prize budget drains:
 | `LOCK_PULSE_MS` | `700` | Duration `justLocked` stays true |
 | `MIN_STOP_INTERVAL_MS` | `200` | STOP debounce window |
 | `REDUCED_MOTION_SPEED_FACTOR` | `1` | Multiplier applied to every speed when reduced motion is on. **`1` = no change** (see `12_KNOWN_GAPS_AND_RISKS.md`) |
+| `SLOW_MOBILES` | `[]` | Mobiles that play with slowed reels (any digit format; see "Whitelisted Mobiles") |
+| `SLOW_SPEED_FACTOR` | `0.55` | Speed multiplier for a `SLOW_MOBILES` player (< 1 = slower) |
+| `PERFECT_MOBILES` | `[]` | Mobiles whose STOP press is nudged onto the target digit |
+| `PERFECT_ASSIST_WINDOW_MS` | `500` | How long a nudged reel may keep spinning past the press; a target digit farther away locks normally |
 | `STRIP_REPEATS` | `3` | Copies of 0–9 in each strip; drives `STRIP_LENGTH` |
 
 Module-local constants NOT in `config.ts` (change these in `NumberWheel.tsx`):
@@ -491,7 +551,9 @@ Platform constants that affect the game: `MAX_GAME_ATTEMPTS = 3` and `ACTIVE_GAM
    page; `.game-result__digits`, `.game-result__target-value`, and `.prize-card__value` do the same
    on the result screens.
 6. The locked digit comes from the reel's live position (`getCurrentDigit()`), never from
-   `snapshot.digits` — `digits` for a rolling reel is only a fallback.
+   `snapshot.digits` — `digits` for a rolling reel is only a fallback. The one exception is a nudged
+   stop for a `PERFECT_MOBILES` player, which locks `target[wheelIndex]` after waiting for that digit
+   to arrive (`resolveStop` in `assist.ts`).
 7. `positionRef` stays within `[0, 10)` while rolling (modulo) and is snapped exactly to `digit` when a
    settle completes.
 8. React must not re-render while a reel spins. Only `justLocked` may cause a reel render.
@@ -508,11 +570,13 @@ Platform constants that affect the game: `MAX_GAME_ATTEMPTS = 3` and `ACTIVE_GAM
 | Area | Risk |
 |---|---|
 | `wasRollingRef` read-and-clear inside the settle effect | Momentum inheritance and the lock pulse apply only to the **first** run of that effect after a rolling→stopped transition. Any change that causes the settle effect to re-run (e.g. adding a dep that changes on lock) silently drops the deceleration feel. |
-| Spin effect deps `[rolling, speed]` | A `speed` change mid-spin tears down and rebuilds the loop. `speeds` is `useMemo`'d on `[reducedMotion]`, so this only happens if the OS setting flips mid-round. Adding an unstable dep here would restart the loop every render. |
+| Spin effect deps `[rolling, speed]` | A `speed` change mid-spin tears down and rebuilds the loop. `speeds` is `useMemo`'d on `[context.budgetConsumedRatio, context.mobile, reducedMotion]` — all constant for a mounted game — so this only happens if the OS reduced-motion setting flips mid-round. Adding an unstable dep here would restart the loop every render. |
 | `window`-scoped `keydown` listener | Active for the whole game lifetime. `PageUp`/`PageDown`/`b` are not `preventDefault()`-ed, so they retain their default browser behavior. Any future focusable text surface inside the game would receive `b` as well as triggering a STOP. |
 | Under-damped spring | `SPRING_STIFFNESS`/`SPRING_DAMPING` tuning changes can make the settle oscillate long enough that `SETTLE_MIN_VELOCITY` is never satisfied on slow frames. The loop has no iteration/time cap. |
 | `dt` clamp of `0.05` | Long stalls (backgrounded tab) advance the reel far less than wall-clock time. Acceptable visually; it means position is not a function of elapsed real time. |
 | Centering depends on runtime measurement | The offset is measured from the rendered reel (first `.number-wheel__digit` + `.number-wheel__window`). If a reel ever mounts without layout (`display: none`), `writeTransform` early-returns until the `ResizeObserver` fires — the digit briefly shows from the untransformed position. `STRIP_REPEATS` ↔ `STRIP_LENGTH` stay coupled by definition (`10 ×`). |
 | `getCurrentDigit()` returning `?? 0` | If a reel ref were ever null at STOP time, digit `0` is silently locked instead of erroring. |
 | `MIN_STOP_INTERVAL_MS = 200` vs presenter speed | A presenter pressing faster than 200 ms apart loses stops with no feedback. |
+| Nudged stop swallows presses | While `assistTimer` is armed (up to `PERFECT_ASSIST_WINDOW_MS`, longer than the 200 ms debounce) every press is ignored with no on-screen feedback. Raising `PERFECT_ASSIST_WINDOW_MS` widens that dead window — a presenter drumming the remote will feel it. |
+| `PERFECT_MOBILES` reads `target[wheelIndex]` at press time | The nudge assumes reel index ↔ target index alignment (invariant 5) and that the target cannot change while `RUNNING` (`SET_TARGET` is IDLE-only). Breaking either silently rigs the wrong digit. |
 | Space badge on the remote hint | Decorative — no Space keydown handler exists. If a presenter presses Space it scrolls the page; do not assume Space stops the wheels. |
