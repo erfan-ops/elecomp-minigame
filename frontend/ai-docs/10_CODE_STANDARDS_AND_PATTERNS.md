@@ -144,7 +144,7 @@ is `.ts` because it only holds types.
 |---|---|---|
 | Throw on programmer error | `src/main.tsx` (missing `#root`), `useAppSession` (used outside provider) | Fail loudly, immediately |
 | `try/catch` → status state | `AppSession.submitResult` / `retrySave` | **Bare `catch { }`** — the error object is not bound and not logged; state becomes `saveStatus: "error"` |
-| `try/catch` → silent no-op, with one `console.warn` exception | `gameExporter.exportGameResult` | Fire-and-forget by design — must never affect the kiosk flow. A missing bridge is fully silent (normal browser mode); a present-but-broken bridge (method missing / call rejected) emits a diagnostic `console.warn` |
+| `try/catch` → silent no-op, with one `console.warn` exception | `gameExporter.exportGameResult` | Fire-and-forget by design — must never affect the kiosk flow. Two transports are tried in order (pywebview bridge, then an HTTP POST to the admin panel); an unreachable host is fully silent, while a present-but-broken bridge (method missing / call rejected) emits a diagnostic `console.warn` before falling through to HTTP |
 | `try/catch` → degrade to empty | `localResultRepository.loadAll` | Returns `[]` on any failure; corrupt entries filtered by a type guard |
 | `try/catch` → fail open | `RegistrationPage.handleSubmit` | If the anti-replay lookup throws, the user is registered anyway (documented intent) |
 | `try/catch` → degrade to empty | `RegistrationPage` leaderboard + stats panels load | `topEntries: []` + `stats: EMPTY_GAME_STATS` → the leaderboard renders its empty-state line and the stats panel shows zeros (no retry UI) |
@@ -161,14 +161,17 @@ call, no logger, and no telemetry in `src/`; failures are surfaced only through 
 ## Async Patterns
 
 - `async`/`await` only. There is no `.then()` chain in `src/`.
-- Only three async functions exist: `localResultRepository.save`, `localResultRepository.getResults`
-  (both `async` wrappers over synchronous `localStorage`), and `exportGameResult`
-  (`src/services/gameExporter.ts`, awaiting the pywebview bridge), plus the callers that `await` them
-  (`AppSession.submitResult` / `retrySave`, `RegistrationPage.handleSubmit` + its panel load).
+- Only four async functions exist: `localResultRepository.save`, `localResultRepository.getResults`
+  (both `async` wrappers over synchronous `localStorage`), and `exportGameResult` + its private
+  `postToAdmin` (`src/services/gameExporter.ts` — the pywebview bridge, then the admin panel's HTTP
+  ingest endpoint), plus the callers that `await` them (`AppSession.submitResult` / `retrySave`,
+  `RegistrationPage.handleSubmit` + its panel load).
 - The repository interface is `Promise`-based specifically so a network implementation can drop in
   unchanged.
 - Concurrency control is a boolean ref (`savingRef`), not a queue or `AbortController`.
-- No `AbortController`, no cancellation, no `Promise.all`, no race handling. RegistrationPage's panel
+- The only request timeout/cancellation in `src/` is `AbortSignal.timeout(3000)` on the exporter's
+  POST, so a stalled local request cannot outlive the result screen. No `AbortController` instance,
+  no `Promise.all`, no race handling. RegistrationPage's panel
   load does not guard against setting state after unmount (`INFERRED` acceptable: a late
   `setTopEntries` after the phase moved on is a harmless no-op warning at most).
 - Async work is triggered from event handlers and one `useEffect`; effects themselves are never `async`

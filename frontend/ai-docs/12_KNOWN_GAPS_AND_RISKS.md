@@ -10,6 +10,9 @@
 # - src/styles/global.css
 # - src/games/number-wheel/number-wheel.css
 # - <repo-root>/backend/main.py
+# - <repo-root>/backend/store.py
+# - <repo-root>/backend/admin_server.py
+# - <repo-root>/backend/admin/index.html
 
 Every item below was confirmed by reading the referenced file. Nothing here is speculation unless it is
 labeled `INFERRED`, `UNVERIFIED`, or `UNKNOWN`.
@@ -32,10 +35,10 @@ labeled `INFERRED`, `UNVERIFIED`, or `UNKNOWN`.
 | # | Gap |
 |---|---|
 | M1 | **Which runtime arrangement boots the kiosk is `UNKNOWN`.** No CI config and no launch automation. The repo holds two runtimes — the Docker nginx arrangement (`docker-compose*.yml`, `exhibition.sh`, `frontend/Dockerfile*`, `frontend/nginx.conf`) and the pywebview wrapper (`backend/main.py`) — but which one exhibition day uses, and whether the `backend/frontend` sync step runs anywhere, is undocumented |
-| M2 | **How the organizer retrieves and consolidates the exported data is undocumented.** Each completed iteration lands as JSON in `backend/output` (per machine); there is no documented collection/consolidation procedure |
+| M2 | **Consolidating data across machines is undocumented.** On one machine it is solved: the admin dashboard (`http://localhost:8239`) lists every stored iteration and exports all of them as CSV (`13_ADMIN_PANEL.md`). What is undocumented is how an organizer merges the `backend/output` directories of **several** kiosks into one dataset (M5) |
 | M3 | **Prize fulfilment is undocumented.** The app computes `winAmount` but has no redemption, voucher, or audit trail |
 | M4 | **No stated browser/OS baseline** beyond "Chrome in kiosk mode". `crypto.randomUUID` requires a secure context (HTTPS or `localhost`) — over plain HTTP on a LAN IP it is `undefined` and the `Math.random` fallback silently takes over. Whether the kiosk is served over HTTPS is `UNKNOWN` |
-| M5 | **Multi-kiosk operation is undefined.** `localStorage` is per-device, so several kiosks produce several disjoint leaderboards and the anti-replay check does not span devices; the disk exports are equally per-device (each kiosk writes its own `backend/output`). Whether that is acceptable is `UNKNOWN` |
+| M5 | **Multi-kiosk operation is undefined.** `localStorage` is per-device, so several kiosks produce several disjoint leaderboards and the anti-replay check does not span devices; the disk exports and therefore the admin dashboard are equally per-device (each kiosk writes and reads its own `backend/output`). The dashboard's `0.0.0.0` bind already makes one kiosk's panel LAN-reachable, so pointing several kiosks at one dashboard needs only a matching `ADMIN_INGEST_URL` in each kiosk's `gameExporter.ts` — which nothing in the repo ships. Whether any of that is acceptable is `UNKNOWN` |
 | M6 | **`src/config/appConfig.ts` `CATEGORIES` has no stated source.** Whether the 8 sectors are fixed by the client or arbitrary is `UNKNOWN` |
 | M7 | **Prize amounts have no stated authority.** Whether `5_000_000` / `1_000_000` / `500_000` تومان are final and who approves changes is `UNKNOWN` |
 | M8 | **No accessibility target** (WCAG level or contrast requirement) is stated; contrast is `UNVERIFIED` |
@@ -66,7 +69,7 @@ labeled `INFERRED`, `UNVERIFIED`, or `UNKNOWN`.
 | A6 | **`BUDGET` and the difficulty constants live in the number-wheel game config but are consumed by the platform** (`GamePage` imports `BUDGET`; `difficulty.ts` is game-local). If `ACTIVE_GAME_ID` switches to another game, wins still drain the number-wheel budget constant and the wheel game's difficulty semantics apply to that game's payouts |
 | A7 | **Budget recording is fire-and-forget** (`recordPrize` in `GamePage.handleComplete`) with no save-status UI like the result save. A localStorage failure silently loses the accounting; a crash between `recordPrize` and the result save desyncs the two stores |
 | A8 | **No payout cap and no organizer reset for the budget.** A win larger than `remaining` pushes `consumed` past `BUDGET` (difficulty stays maxed). Resetting the budget means clearing the `smartis-game.budget.v1` key — there is no in-app control |
-| A9 | **The game can be rigged per mobile number, deliberately** (`SLOW_MOBILES` / `PERFECT_MOBILES` in the number-wheel config, implemented in `assist.ts`). Both lists are empty by default. Nothing in the UI, the stored `GameSessionResult`, or the on-disk export records that a round was assisted, so a rigged win is indistinguishable from a fair one after the fact — and the leaderboard/stats panels count it as fair. A whitelisted win also drains the shared prize budget like any other |
+| A9 | **The game can be rigged per mobile number, deliberately** (`SLOW_MOBILES` / `PERFECT_MOBILES` in the number-wheel config, implemented in `assist.ts`). Each list is populated with three real mobile numbers. Nothing in the UI, the stored `GameSessionResult`, or the on-disk export records that a round was assisted, so a rigged win is indistinguishable from a fair one after the fact — the leaderboard, the kiosk stats panel, **and the admin dashboard** all count it as fair (the dashboard's `perfect` field means "all three digits matched", not "assisted"). A whitelisted win also drains the shared prize budget like any other |
 
 ## Fragile Game-Loop Code
 
@@ -116,7 +119,7 @@ repository.
 | T8 | `toPersianDigits` / `formatPersianNumber` (`persian.ts`) | All numeric display, including the `٬` separator substitution |
 | T9 | The anti-replay branch in `RegistrationPage.handleSubmit` | Business rule (one play per mobile) plus its fail-open path |
 | T10 | `submitResult` / `retrySave` concurrency guard (`AppSession.tsx`) | Prevents double persistence |
-| T11 | `Api.export_game_result` sequence numbering, collision handling, and daily-file accumulation (`<repo-root>/backend/main.py`) | Filename generation for real data plus the rebuild of `game_data_YYYY-MM-DD.json` from the sequential records; only exercised manually via the venv, not by any automated check |
+| T11 | `GameStore` sequence numbering, duplicate rejection, daily-file rebuild, and `_compute_stats` (`<repo-root>/backend/store.py`) | Filename generation for real data, the rebuild of `game_data_YYYY-MM-DD.json` from the sequential records, the `playerKey|attempt|playedAt` dedup that stops a prize being counted twice, and every number the organizer reads off the dashboard. Python has no type-check gate either, so this is only ever exercised by running the host |
 
 Note: `randomTargetNumber`, `randomDigits`, and `createNewGame` all accept an injectable
 `rng: () => number = Math.random`, so the whole engine is deterministically testable with zero mocking.
@@ -150,7 +153,7 @@ are invisible to the compiler.
 | B4 | **Bare `catch { }` blocks discard errors** | `AppSession.submitResult` / `retrySave` and `localResultRepository.loadAll` swallow the error object entirely. Outside the exporter's diagnostic `console.warn` (`gameExporter.ts`), there is no `console.*` call, no logging, and no telemetry in `src/`, so a persistence failure at an event is diagnosable only from the result screen's save-status line (the error variant with «تلاش مجدد» / «ادامه») |
 | B5 | **`localResultRepository.save` has no `try/catch`** | Deliberate (the rejection becomes `saveStatus: "error"`), but a `QuotaExceededError` is indistinguishable from any other failure and the record is lost unless the operator taps «تلاش مجدد» |
 | B6 | **Session state is not persisted** | A reload or crash mid-session loses the user, survey, category, and attempt, and returns to `REGISTRATION` |
-| B7 | **`localStorage` is the system of record for the app's own features** | The leaderboard, anti-replay, and budget live only in `localStorage`; clearing browser data wipes them and resets the app. The pywebview disk export (`backend/output`) preserves the raw iteration records, but only when the app runs inside the wrapper — a Docker/nginx deployment exports nothing |
+| B7 | **`localStorage` is the system of record for the app's own features** | The leaderboard, anti-replay, and budget live only in `localStorage`; clearing browser data wipes them and resets the app. The raw iteration records survive separately in `backend/output` (the admin panel's system of record) whenever either export transport reached the host — the pywebview bridge in the desktop build, or the `POST /api/results` fallback when the panel is running alongside a browser/Docker deployment. Nothing reconciles the two: a wiped `localStorage` does not rebuild the in-app leaderboard from the export files |
 | B8 | **No storage pruning or schema migration** | The `.v1` key suffix is the only versioning affordance; there is no migration code |
 | B9 | **`aria-modal="true"` on `.result` without focus management** | **RESOLVED** — the `.result` dialog overlay was deleted with the redesign; `GameResultScreen` is a plain `<section>` with no dialog semantics |
 | B10 | **Legacy font has a single weight** | `BYekan+.ttf` is Regular (400) only; 600–800 weights in the legacy styles are browser-synthesized. The redesigned faces are covered by real weights (Vazirmatn 400–700 bundled, IRANYekanXFaNum statics 400–900 + a variable face). The legacy leaderboard page was deleted on 2026-08-26, so `BYekan+` remains only as the last-resort fallback in the font stacks. Rendering quality is `UNVERIFIED` on the target device |
@@ -158,15 +161,21 @@ are invisible to the compiler.
 | B12 | **Registration validates Iranian mobiles only** (`^9\d{9}$`) | Correct for the intended audience; there is no path for any other number format |
 | B13 | **`RegistrationPage`'s leaderboard-panel load sets state without an unmount guard** | Would warn/no-op if registration unmounted mid-load (the user can submit before the panel load resolves). `INFERRED` acceptable — the lost update is at most a stale panel on the next registration |
 
-## On-Disk Export Risks (pywebview wrapper)
+## On-Disk Export And Admin Panel Risks (Python host)
 
 | # | Item | Impact |
 |---|---|---|
-| E1 | **The export is fire-and-forget with no retry UI** | There is no save-status line and no retry (mirrors A7). A failed export is not re-attempted. Diagnostics exist: the exporter `console.warn`s when the bridge is present but broken, and Python logs every request/failure to `backend/pywebview.log` — but a fully absent bridge (browser-mode deployment) is silent by design and nothing checks whether exports actually landed |
-| E2 | **`backend/frontend` must be re-synced from `dist/`** | `build.ps1` (repo root) does the whole chain — build, wipe-and-mirror, package — but a manual `npm run build` does not: a rebuilt frontend with a stale `backend/frontend` ships the old JS, and the export silently never happens |
-| E3 | **`backend/output` is never pruned** | One sequential file per iteration accumulates unbounded across an event; the `_NNN` files are permanent by design and the daily file grows with every iteration (it is rebuilt from them on each export, so a long event re-reads and re-writes an ever-larger file — negligible at kiosk volumes, unbounded in principle) |
+| E1 | **The export is fire-and-forget with no retry UI** | There is no save-status line and no retry (mirrors A7). A failed export is not re-attempted on either transport. Diagnostics exist: the exporter `console.warn`s when the pywebview bridge is present but broken, and Python logs every request, written file, and failure to `backend/pywebview.log` — but a fully absent bridge **and** an unreachable `POST /api/results` is silent by design, and nothing checks whether exports actually landed |
+| E2 | **`backend/frontend` must be re-synced from `dist/`** | `build.ps1` (repo root) does the whole chain — build, wipe-and-mirror, package — but a manual `npm run build` does not: a rebuilt frontend with a stale `backend/frontend` ships the old JS, and the export silently never happens. `build.ps1` must also keep both `--add-data` payloads (`frontend`, `admin`); dropping the second one packages an .exe whose dashboard 404s |
+| E3 | **`backend/output` is never pruned** | One sequential file per iteration accumulates unbounded across an event; the `_NNN` files are permanent by design and the daily file grows with every iteration (it is rebuilt from them on each export, so a long event re-reads and re-writes an ever-larger file — negligible at kiosk volumes, unbounded in principle). Startup cost grows the same way: `GameStore.load()` opens every file in the directory, across every date |
 | E4 | **The pywebview bridge has no automated end-to-end check** | The bridge was verified via the temporary-harness workflow (headless Chrome with an injected fake `window.pywebview`), not against a real webview window; a real pywebview-specific failure mode would only surface on the kiosk |
 | E5 | **Root-absolute `public/` asset URLs cannot resolve in the desktop build** | `main.py` passes an absolute file path to `create_window`, so the page loads over `file://` — where `/BYekan+.ttf`, `/fonts/…` (design-tokens.css), `/smartis_logo.svg` (GameHeader) and `/almas_logo.svg` (PageShell) resolve against the filesystem root and 404. The fonts silently fall back and both logos render broken; the browser/Docker deployments are unaffected. `FloatingDecorations` uses a **relative** `deco/*.svg` src for this reason. Fixes: make the other references relative too, or start pywebview's internal HTTP server (`webview.start(http_server=True)`) so `/` means the app root again. `UNVERIFIED` on the kiosk — deduced from the URL scheme |
+| E6 | **The dashboard's prize consumption and the game's budget are two independent accountings** | The panel sums `winAmount` over the disk records; the game's difficulty scaling reads `smartis-game.budget.v1` in `localStorage` (A7, A8). They agree only as long as both received every win. Clearing browser data resets the game's budget while the dashboard still shows the full consumed amount — and `PRIZE_POOL_TOTAL` in `store.py` duplicates `BUDGET` from the game's `config.ts`, so changing one alone makes the two disagree permanently |
+| E7 | **The admin panel is unauthenticated and LAN-reachable by default** | It binds to `0.0.0.0` by default, so **any device on the venue LAN** can reach it and see every player's **unmasked** mobile number, read the live stream, and download the whole CSV — no credentials, no CSRF protection on `POST /api/results`, and `Access-Control-Allow-Origin: *`, so any page open in a browser on that machine could inject a fabricated game record. `--host 127.0.0.1` restores loopback-only exposure; there is no auth to replace the default |
+| E8 | **A dashboard record can be forged or duplicated across a date boundary** | `POST /api/results` accepts any well-formed JSON object; `normalize_record` coerces types but validates nothing semantically (a `winAmount` of any size is accepted and immediately counts against the pool). The dedup key includes `playedAt`, so a client that re-sends with a **new** timestamp is stored as a second iteration |
+| E9 | **The record filename's date and the record's own `playedAt` can disagree** | The sequence file is named from the host's `datetime.now()` at write time, while `playedAt` comes from the browser. A record produced just before midnight and delivered just after lands in the next day's file, and the dashboard's `today` figures follow `playedAt`, not the filename |
+| E10 | **Nothing tells the operator that the panel failed to start** | A port clash logs to `backend/pywebview.log` and the game opens normally; the kiosk screen shows nothing, so the failure is only visible to someone who tries the URL or reads the log |
+| E11 | **`admin/index.html` has no automated check of any kind** | No type system, no build step, no linter, no test. A typo in the page is only discoverable by loading it, and the dashboard is the one place the organizer's numbers are read from |
 
 ## Possible Inconsistencies Within The Code Itself
 
@@ -186,16 +195,19 @@ are invisible to the compiler.
 Ranked by how much a wrong assumption would cost:
 
 1. **`index.html` `<title>` (D1).** What should the kiosk window title be?
-2. **Data retrieval (M2, B7).** How does the organizer collect and consolidate the per-device
-   `backend/output` JSON files, and what happens if localStorage is cleared (the app features reset,
-   the export files survive)?
-3. **Multi-kiosk operation (M5).** One device or several? Whether the disjoint leaderboards,
-   anti-replay scopes, and per-device export directories are acceptable.
-4. **Deployment (M1).** Which runtime boots the kiosk — Docker nginx or the pywebview wrapper — and
+2. **Data retrieval (M2, B7).** On one machine the dashboard's CSV export answers this; how the
+   organizer merges several kiosks' `backend/output` directories, and what happens if localStorage is
+   cleared (the app features reset, the export files and the dashboard survive), is still open.
+3. **Admin panel exposure (E7).** The panel binds to `0.0.0.0` by default — LAN-reachable, no
+   credentials, unmasked mobiles. Is that exposure acceptable at the venue, or should it be locked to
+   loopback (`--host 127.0.0.1`) and/or given some form of authentication?
+4. **Multi-kiosk operation (M5).** One device or several? Whether the disjoint leaderboards,
+   anti-replay scopes, per-device export directories, and per-device dashboards are acceptable.
+5. **Deployment (M1).** Which runtime boots the kiosk — Docker nginx or the pywebview wrapper — and
    over HTTPS or HTTP (M4)?
-5. **`score` vs `winAmount` semantics (Q1, Q2, C2).**
-6. **Retry rule (Q4)** and **stop-debounce behavior (Q8)**.
-7. **Whether tests should be introduced (B1)** — the pure core is ready for them.
+6. **`score` vs `winAmount` semantics (Q1, Q2, C2).**
+7. **Retry rule (Q4)** and **stop-debounce behavior (Q8)**.
+8. **Whether tests should be introduced (B1)** — the pure core is ready for them.
 
 ## Documents In This Package With Non-VERIFIED Status
 

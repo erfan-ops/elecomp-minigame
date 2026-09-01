@@ -29,6 +29,8 @@ export function WheelGroup({
   const activeIndex = state === "RUNNING" ? rolling.findIndex(Boolean) : -1;
   return (
     <div className="wheel-group" role="group" aria-label="چرخ‌های عدد">
+      {/* Single stop-line pointer shared by all three wheels (decorative). */}
+      <span className="wheel-group__pointer" aria-hidden="true" />
       {digits.map((digit, index) => (
         <NumberWheel
           key={index}

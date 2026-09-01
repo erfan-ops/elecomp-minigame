@@ -1,11 +1,30 @@
-from datetime import datetime
+"""Desktop host for the exhibition kiosk.
+
+Two things run in this one process:
+
+1. A fullscreen pywebview window rendering the built React game. The game
+   reports each completed iteration through `window.pywebview.api`.
+2. The admin dashboard's HTTP server on http://localhost:8239 (background
+   daemon thread), reading and writing the same `GameStore`.
+
+Sharing one process (and therefore one store) is what makes the dashboard
+update the instant a game finishes, with no polling and no second copy of the
+data. If the dashboard cannot start, the game still runs — the kiosk is the
+product, monitoring is not allowed to break it.
+
+This module is wiring only: the record/statistics logic lives in `store.py`,
+the HTTP layer in `admin_server.py`.
+"""
 from pathlib import Path
-import json
+import argparse
 import logging
-import os
 import sys
+import threading
 
 import webview
+
+from admin_server import DEFAULT_HOST, DEFAULT_PORT, start_admin_server
+from store import GameStore
 
 
 def _base_dirs() -> tuple[Path, Path]:
@@ -23,22 +42,26 @@ def _base_dirs() -> tuple[Path, Path]:
     return here, here
 
 
+def _payload_dir(name: str, marker: str) -> Path:
+    """Resolve a bundled asset directory, letting a local copy override it.
+
+    A `frontend/` or `admin/` sitting next to the .exe wins over the bundled
+    copy, so a fresh `npm run build` or an edited dashboard page can be dropped
+    in without re-running PyInstaller.
+    """
+    local = BASE_DIR / name
+    return local if (local / marker).exists() else BUNDLE_DIR / name
+
+
 BASE_DIR, BUNDLE_DIR = _base_dirs()
-# A `frontend/` sitting next to the .exe wins over the bundled copy, so a fresh
-# `npm run build` can be dropped in without re-running PyInstaller.
-FRONTEND_DIR = (
-    BASE_DIR / "frontend"
-    if (BASE_DIR / "frontend" / "index.html").exists()
-    else BUNDLE_DIR / "frontend"
-)
+FRONTEND_DIR = _payload_dir("frontend", "index.html")
+ADMIN_DIR = _payload_dir("admin", "index.html")
 INDEX_FILE = FRONTEND_DIR / "index.html"
 OUTPUT_DIR = BASE_DIR / "output"
 LOG_FILE = BASE_DIR / "pywebview.log"
 
-EXPORT_PREFIX = "game_data"
-DATE_FORMAT = "%Y-%m-%d"
-SEQUENCE_WIDTH = 3  # game_data_2026-08-29_001.json
-
+# The store and admin_server loggers are children of this one, so they share
+# these handlers.
 logger = logging.getLogger("smartis-game")
 logger.setLevel(logging.INFO)
 _FORMAT = logging.Formatter("%(asctime)s %(levelname)s %(message)s")
@@ -49,58 +72,6 @@ if sys.stderr is not None:
 for _handler in _handlers:
     _handler.setFormatter(_FORMAT)
     logger.addHandler(_handler)
-
-
-def _sequence_files(output_dir: Path, date_str: str) -> list[tuple[int, Path]]:
-    """date_str's sequential export files as (NNN, path), ordered by NNN."""
-    prefix = f"{EXPORT_PREFIX}_{date_str}_"
-    found: list[tuple[int, Path]] = []
-    for path in output_dir.glob(f"{EXPORT_PREFIX}_{date_str}_*.json"):
-        suffix = path.stem[len(prefix):]
-        if suffix.isdigit():
-            found.append((int(suffix), path))
-    return sorted(found)
-
-
-def _latest_sequence(output_dir: Path, date_str: str) -> int:
-    """The highest NNN used by date_str's sequential files (0 when none exist)."""
-    files = _sequence_files(output_dir, date_str)
-    return files[-1][0] if files else 0
-
-
-def _collect_daily_records(output_dir: Path, date_str: str) -> list:
-    """Every iteration recorded for date_str, in sequence order.
-
-    Rebuilt from the sequential files rather than appended to the previous
-    daily file: those files are the permanent records, so the daily file is
-    always consistent with them and self-heals if it is deleted or corrupted.
-    An unreadable sequential file is skipped (and logged) instead of aborting
-    the whole export.
-    """
-    records = []
-    for sequence, path in _sequence_files(output_dir, date_str):
-        try:
-            with open(path, encoding="utf-8") as f:
-                records.append(json.load(f))
-        except (OSError, json.JSONDecodeError):
-            logger.exception("skipping unreadable export file %s (sequence %s)", path, sequence)
-    return records
-
-
-def _write_json(path: Path, data) -> None:
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=4)
-
-
-def _replace_json_atomic(path: Path, data) -> None:
-    """Write to a temp file in the same directory, then swap it in.
-
-    Keeps the daily file either fully old or fully new — never a half-written
-    JSON document — even if the process dies mid-write.
-    """
-    tmp_path = path.with_name(path.name + ".tmp")
-    _write_json(tmp_path, data)
-    os.replace(tmp_path, path)
 
 
 class Api:
@@ -115,11 +86,11 @@ class Api:
     `window.pywebview.api.export_game_result` in JavaScript.
     """
 
-    def __init__(self, output_dir: Path = OUTPUT_DIR):
-        self.output_dir = output_dir
+    def __init__(self, store: GameStore):
+        self.store = store
 
     def export_game_result(self, data):
-        """Persist one completed game iteration to disk.
+        """Persist one completed game iteration and push it to the dashboard.
 
         Writes two files under `output/`:
         - `game_data_YYYY-MM-DD_NNN.json` — a permanent record of this single
@@ -129,41 +100,19 @@ class Api:
         - `game_data_YYYY-MM-DD.json` — a JSON array of **every** iteration
           recorded that day (all users, in sequence order), rebuilt from the
           sequential files and replaced atomically on every export.
+
+        A failure is logged and reported back as `{"success": False}`; it never
+        raises into the game.
         """
+        mobile = data.get("mobile") if isinstance(data, dict) else None
+        attempt = data.get("attempt") if isinstance(data, dict) else None
+        game_id = data.get("gameId") if isinstance(data, dict) else None
         logger.info(
             "export_game_result request: mobile=%s attempt=%s gameId=%s",
-            data.get("mobile"), data.get("attempt"), data.get("gameId"),
+            mobile, attempt, game_id,
         )
         try:
-            self.output_dir.mkdir(parents=True, exist_ok=True)
-            today = datetime.now().strftime(DATE_FORMAT)
-
-            sequence = _latest_sequence(self.output_dir, today) + 1
-            while True:
-                sequence_path = self.output_dir / (
-                    f"{EXPORT_PREFIX}_{today}_{sequence:0{SEQUENCE_WIDTH}d}.json"
-                )
-                try:
-                    with open(sequence_path, "x", encoding="utf-8") as f:
-                        json.dump(data, f, ensure_ascii=False, indent=4)
-                    break
-                except FileExistsError:
-                    sequence += 1
-
-            daily_path = self.output_dir / f"{EXPORT_PREFIX}_{today}.json"
-            daily_records = _collect_daily_records(self.output_dir, today)
-            _replace_json_atomic(daily_path, daily_records)
-
-            logger.info(
-                "export_game_result written: %s and %s (%s iteration(s) today)",
-                sequence_path, daily_path, len(daily_records),
-            )
-            return {
-                "success": True,
-                "sequenceFile": str(sequence_path),
-                "dailyFile": str(daily_path),
-                "dailyCount": len(daily_records),
-            }
+            return self.store.add_record(data)
         except Exception:
             logger.exception("export_game_result failed")
             return {"success": False}
@@ -183,13 +132,60 @@ def check_api_bridge() -> None:
         logger.exception("could not inspect the JS API bridge")
 
 
-def main():
-    logger.info(
-        "starting: frozen=%s frontend=%s output=%s",
-        getattr(sys, "frozen", False), FRONTEND_DIR, OUTPUT_DIR,
+def _parse_args(argv: list[str]) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        prog="smartis-game",
+        description="Exhibition kiosk host: game window + admin dashboard.",
     )
+    parser.add_argument(
+        "--no-window",
+        action="store_true",
+        help="run only the admin dashboard, without the game window",
+    )
+    parser.add_argument("--host", default=DEFAULT_HOST, help="admin panel bind address")
+    parser.add_argument("--port", type=int, default=DEFAULT_PORT, help="admin panel port")
+    parser.add_argument(
+        "--no-admin",
+        action="store_true",
+        help="run only the game window, without the admin dashboard",
+    )
+    # Unknown arguments are ignored rather than fatal: a mis-typed flag must not
+    # stop the kiosk from opening at the venue.
+    args, unknown = parser.parse_known_args(argv)
+    if unknown:
+        logger.warning("ignoring unrecognised arguments: %s", " ".join(unknown))
+    return args
+
+
+def main() -> None:
+    args = _parse_args(sys.argv[1:])
+
+    logger.info(
+        "starting: frozen=%s frontend=%s admin=%s output=%s",
+        getattr(sys, "frozen", False), FRONTEND_DIR, ADMIN_DIR, OUTPUT_DIR,
+    )
+
+    store = GameStore(OUTPUT_DIR)
+    store.load()
+
+    if not args.no_admin:
+        if not (ADMIN_DIR / "index.html").exists():
+            logger.error("admin page not found at %s", ADMIN_DIR / "index.html")
+        start_admin_server(store, ADMIN_DIR, host=args.host, port=args.port)
+
+    if args.no_window:
+        logger.info("running without the game window; Ctrl+C to stop")
+        try:
+            threading.Event().wait()
+        except KeyboardInterrupt:
+            logger.info("stopped")
+        return
+
     if not INDEX_FILE.exists():
-        logger.error("frontend index not found at %s — run `npm run build` and sync dist/ first", INDEX_FILE)
+        logger.error(
+            "frontend index not found at %s - run `npm run build` and sync dist/ first",
+            INDEX_FILE,
+        )
 
     webview.create_window(
         title="Exhibition Game",
@@ -197,7 +193,7 @@ def main():
         width=1280,
         height=720,
         fullscreen=True,
-        js_api=Api(),
+        js_api=Api(store),
     )
 
     webview.start(func=check_api_bridge)

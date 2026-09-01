@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>پنل مدیریت مسابقه | Smartis</title>
+<!--
+  The exhibition monitoring dashboard.
+
+  Deliberately one self-contained file: no build step, no CDN, no framework.
+  The kiosk may be offline at the venue, and this page must keep working when
+  it is. It is completely separate from the game frontend (different server,
+  different port, different stylesheet) so it cannot affect the kiosk's UI.
+
+  Data arrives over Server-Sent Events from /api/events: a full snapshot on
+  every (re)connect, then one event per completed game. No polling.
+-->
+<style>
+  :root {
+    --bg: #070d18;
+    --panel: rgba(20, 33, 61, 0.82);
+    --panel-line: rgba(107, 149, 219, 0.18);
+    --text: #eaf1ff;
+    --muted: #8ea6cf;
+    --cyan: #34d3f5;
+    --emerald: #34d399;
+    --amber: #fbbf24;
+    --rose: #fb7185;
+    --violet: #a78bfa;
+    --radius: 16px;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Vazirmatn", "IRANYekanX", "Segoe UI", Tahoma, sans-serif;
+    font-size: 16px;
+  }
+
+  body {
+    background-image:
+      radial-gradient(1100px 620px at 85% -10%, rgba(52, 211, 245, 0.13), transparent 70%),
+      radial-gradient(900px 560px at 5% 0%, rgba(167, 139, 250, 0.12), transparent 70%);
+    min-height: 100vh;
+    padding: 24px clamp(16px, 3vw, 40px) 56px;
+  }
+
+  /* Data is read at a glance from across a stand: numbers stay Latin and LTR. */
+  .num { direction: ltr; unicode-bidi: isolate; font-variant-numeric: tabular-nums; }
+
+  /* ---------- header ---------- */
+  header.top {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 22px;
+  }
+  .brand { display: flex; align-items: center; gap: 14px; }
+  .brand__mark {
+    width: 52px; height: 52px;
+    border-radius: 14px;
+    display: grid; place-items: center;
+    font-size: 26px;
+    background: linear-gradient(140deg, rgba(52, 211, 245, 0.22), rgba(167, 139, 250, 0.22));
+    border: 1px solid var(--panel-line);
+  }
+  .brand__title { margin: 0; font-size: 26px; font-weight: 700; }
+  .brand__sub { margin: 2px 0 0; color: var(--muted); font-size: 14px; }
+
+  .top__meta { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+
+  .status {
+    display: inline-flex; align-items: center; gap: 9px;
+    padding: 9px 16px;
+    border-radius: 999px;
+    background: var(--panel);
+    border: 1px solid var(--panel-line);
+    font-size: 14px;
+  }
+  .status__dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: var(--muted);
+    box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.55);
+  }
+  .status--live .status__dot { background: var(--emerald); animation: pulse 2.2s infinite; }
+  .status--down .status__dot { background: var(--rose); }
+  @keyframes pulse {
+    0%   { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.5); }
+    70%  { box-shadow: 0 0 0 12px rgba(52, 211, 153, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0); }
+  }
+
+  .btn {
+    appearance: none;
+    border: 1px solid var(--panel-line);
+    background: var(--panel);
+    color: var(--text);
+    font: inherit;
+    font-size: 14px;
+    padding: 10px 18px;
+    border-radius: 12px;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-flex; align-items: center; gap: 8px;
+    transition: border-color .15s, transform .15s, background .15s;
+  }
+  .btn:hover { border-color: rgba(52, 211, 245, 0.55); transform: translateY(-1px); }
+  .btn--primary {
+    background: linear-gradient(135deg, rgba(52, 211, 245, 0.9), rgba(56, 189, 248, 0.75));
+    color: #04121f;
+    font-weight: 700;
+    border-color: transparent;
+  }
+
+  /* ---------- panels ---------- */
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--panel-line);
+    border-radius: var(--radius);
+    padding: 20px 22px;
+    backdrop-filter: blur(6px);
+  }
+  .panel + .panel, .grid + .panel, .panel + .grid, .grid + .grid { margin-top: 18px; }
+  .panel__title {
+    margin: 0 0 16px;
+    font-size: 17px;
+    font-weight: 700;
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  }
+  .panel__hint { color: var(--muted); font-size: 13px; font-weight: 400; }
+
+  /* ---------- summary cards ---------- */
+  .grid { display: grid; gap: 14px; }
+  .grid--cards { grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }
+  .grid--split { grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); }
+  @media (max-width: 1000px) { .grid--split { grid-template-columns: 1fr; } }
+
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--panel-line);
+    border-radius: var(--radius);
+    padding: 18px 20px;
+    position: relative;
+    overflow: hidden;
+  }
+  .card::after {
+    content: "";
+    position: absolute; inset: auto 0 0 0; height: 3px;
+    background: var(--accent, var(--cyan));
+    opacity: .75;
+  }
+  .card__label { color: var(--muted); font-size: 14px; margin: 0 0 8px; }
+  .card__value { font-size: 34px; font-weight: 800; line-height: 1.1; }
+  .card__foot { color: var(--muted); font-size: 13px; margin-top: 8px; }
+
+  /* ---------- prize pool ---------- */
+  .pool__figures { display: flex; flex-wrap: wrap; gap: 26px; margin-bottom: 18px; }
+  .pool__figure-label { color: var(--muted); font-size: 14px; margin-bottom: 6px; }
+  .pool__figure-value { font-size: 30px; font-weight: 800; }
+  .pool__figure-value small { font-size: 14px; font-weight: 500; color: var(--muted); }
+  .pool__bar {
+    position: relative;
+    height: 34px;
+    border-radius: 999px;
+    background: rgba(8, 15, 30, 0.85);
+    border: 1px solid var(--panel-line);
+    overflow: hidden;
+  }
+  .pool__fill {
+    height: 100%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, var(--emerald), var(--cyan) 55%, var(--amber));
+    transition: width .5s ease;
+    min-width: 2px;
+  }
+  .pool__percent {
+    position: absolute; inset: 0;
+    display: grid; place-items: center;
+    font-weight: 700;
+    text-shadow: 0 1px 6px rgba(0, 0, 0, .7);
+  }
+  .pool__scale {
+    display: flex; justify-content: space-between;
+    color: var(--muted); font-size: 12px; margin-top: 8px;
+  }
+
+  /* ---------- distribution bars ---------- */
+  .bars { display: flex; flex-direction: column; gap: 14px; }
+  .bar__head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+  .bar__label { font-size: 15px; }
+  .bar__value { font-weight: 700; }
+  .bar__value small { color: var(--muted); font-weight: 400; font-size: 12px; }
+  .bar__track {
+    height: 14px; border-radius: 999px;
+    background: rgba(8, 15, 30, 0.8);
+    border: 1px solid var(--panel-line);
+    overflow: hidden;
+  }
+  .bar__fill { height: 100%; border-radius: 999px; transition: width .5s ease; min-width: 2px; }
+
+  /* ---------- table ---------- */
+  .toolbar {
+    display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+    margin-bottom: 14px;
+  }
+  .field {
+    display: flex; align-items: center; gap: 8px;
+    background: rgba(8, 15, 30, 0.7);
+    border: 1px solid var(--panel-line);
+    border-radius: 12px;
+    padding: 8px 14px;
+  }
+  .field input, .field select {
+    background: transparent; border: 0; outline: 0;
+    color: var(--text); font: inherit; font-size: 14px;
+    min-width: 150px;
+  }
+  .field select option { background: #0e1830; color: var(--text); }
+  .spacer { flex: 1 1 auto; }
+
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 14.5px; }
+  thead th {
+    text-align: right;
+    padding: 12px 10px;
+    color: var(--muted);
+    font-weight: 600;
+    font-size: 13.5px;
+    white-space: nowrap;
+    border-bottom: 1px solid var(--panel-line);
+    cursor: pointer;
+    user-select: none;
+  }
+  thead th:hover { color: var(--text); }
+  thead th[data-sorted]::after { content: " ▾"; color: var(--cyan); }
+  thead th[data-sorted="asc"]::after { content: " ▴"; color: var(--cyan); }
+  tbody td {
+    padding: 12px 10px;
+    border-bottom: 1px solid rgba(107, 149, 219, 0.09);
+    white-space: nowrap;
+  }
+  tbody tr:hover { background: rgba(52, 211, 245, 0.05); }
+  tbody tr.is-new { animation: flash 5s ease-out; }
+  @keyframes flash {
+    0%   { background: rgba(52, 211, 153, 0.32); }
+    100% { background: transparent; }
+  }
+  .pill {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 12.5px;
+    border: 1px solid transparent;
+  }
+  .pill--win { background: rgba(52, 211, 153, 0.16); color: #6ee7b7; border-color: rgba(52, 211, 153, 0.35); }
+  .pill--none { background: rgba(148, 163, 184, 0.12); color: var(--muted); }
+  .pill--gold { background: rgba(251, 191, 36, 0.17); color: #fcd34d; border-color: rgba(251, 191, 36, 0.4); }
+  .win-amount { font-weight: 700; color: #6ee7b7; }
+  .empty { padding: 36px 10px; text-align: center; color: var(--muted); }
+
+  .pager { display: flex; align-items: center; gap: 12px; justify-content: center; margin-top: 16px; }
+  .pager__info { color: var(--muted); font-size: 14px; }
+  .btn:disabled { opacity: .4; cursor: default; transform: none; }
+
+  footer.foot { margin-top: 24px; color: var(--muted); font-size: 13px; text-align: center; }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="brand">
+    <div class="brand__mark" aria-hidden="true">📊</div>
+    <div>
+      <h1 class="brand__title">پنل مدیریت مسابقه</h1>
+      <p class="brand__sub">پایش زنده نمایشگاه — ماشین شانس</p>
+    </div>
+  </div>
+  <div class="top__meta">
+    <span class="status" id="status">
+      <span class="status__dot"></span>
+      <span id="status-text">در حال اتصال…</span>
+    </span>
+    <span class="status">
+      <span>آخرین بازی:</span>
+      <strong class="num" id="last-played">—</strong>
+    </span>
+    <a class="btn btn--primary" id="csv" href="/api/export.csv">
+      <span aria-hidden="true">⬇</span> دریافت خروجی CSV
+    </a>
+  </div>
+</header>
+
+<section class="grid grid--cards" id="cards"></section>
+
+<section class="grid grid--split">
+  <div class="panel">
+    <h2 class="panel__title">
+      بودجه جوایز
+      <span class="panel__hint">کل بودجه: <span class="num" id="pool-total">—</span> تومان</span>
+    </h2>
+    <div class="pool__figures">
+      <div>
+        <div class="pool__figure-label">پرداخت‌شده</div>
+        <div class="pool__figure-value num" id="pool-consumed" style="color: var(--amber)">—</div>
+      </div>
+      <div>
+        <div class="pool__figure-label">باقی‌مانده</div>
+        <div class="pool__figure-value num" id="pool-remaining" style="color: var(--emerald)">—</div>
+      </div>
+      <div>
+        <div class="pool__figure-label">میانگین جایزه هر بازیکن</div>
+        <div class="pool__figure-value num" id="pool-average">—</div>
+      </div>
+    </div>
+    <div class="pool__bar">
+      <div class="pool__fill" id="pool-fill" style="width: 0%"></div>
+      <div class="pool__percent num" id="pool-percent">0%</div>
+    </div>
+    <div class="pool__scale">
+      <span>0</span>
+      <span class="num" id="pool-scale-max">—</span>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2 class="panel__title">
+      توزیع برندگان
+      <span class="panel__hint">بازیکنان یکتا</span>
+    </h2>
+    <div class="bars" id="dist"></div>
+  </div>
+</section>
+
+<section class="grid grid--split">
+  <div class="panel">
+    <h2 class="panel__title">
+      نتیجه بازی‌ها
+      <span class="panel__hint">بر اساس تعداد رقم درست</span>
+    </h2>
+    <div class="bars" id="outcomes"></div>
+  </div>
+  <div class="panel">
+    <h2 class="panel__title">
+      دسته‌بندی‌ها
+      <span class="panel__hint">بازی / بازیکن / جایزه</span>
+    </h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th style="cursor:default">دسته‌بندی</th>
+            <th style="cursor:default">بازی</th>
+            <th style="cursor:default">بازیکن</th>
+            <th style="cursor:default">جایزه (تومان)</th>
+          </tr>
+        </thead>
+        <tbody id="sectors"></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section class="panel">
+  <h2 class="panel__title">
+    بازیکنان
+    <span class="panel__hint" id="table-count">—</span>
+  </h2>
+  <div class="toolbar">
+    <label class="field">
+      <span aria-hidden="true">🔍</span>
+      <input id="search" type="search" placeholder="جستجوی موبایل، دسته‌بندی، عدد…" autocomplete="off">
+    </label>
+    <label class="field">
+      <span>نمایش</span>
+      <select id="filter">
+        <option value="all">همه بازی‌ها</option>
+        <option value="winners">فقط برنده‌ها</option>
+        <option value="losers">فقط بدون جایزه</option>
+        <option value="perfect">فقط ۳ رقم درست</option>
+      </select>
+    </label>
+    <label class="field">
+      <span>در هر صفحه</span>
+      <select id="page-size">
+        <option value="25">25</option>
+        <option value="50">50</option>
+        <option value="100">100</option>
+      </select>
+    </label>
+    <span class="spacer"></span>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr id="head"></tr>
+      </thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </div>
+
+  <!-- RTL: the first button renders rightmost, so «قبل» precedes «بعد». -->
+  <div class="pager">
+    <button class="btn" id="page-prev" type="button">صفحه قبل ›</button>
+    <span class="pager__info" id="pager-info">—</span>
+    <button class="btn" id="page-next" type="button">‹ صفحه بعد</button>
+  </div>
+</section>
+
+<footer class="foot">
+  داده‌ها از پرونده‌های <span class="num">backend/output</span> خوانده می‌شوند و با هر بازی به‌صورت زنده به‌روز می‌شوند.
+</footer>
+
+<script>
+"use strict";
+
+/* ------------------------------------------------------------------ *
+ * State
+ * ------------------------------------------------------------------ */
+
+var state = {
+  records: [],
+  stats: null,
+  sortKey: "playedAt",
+  sortDir: "desc",
+  search: "",
+  filter: "all",
+  page: 1,
+  pageSize: 25,
+  newIds: {}
+};
+
+var COLUMNS = [
+  { key: "playedAt",      label: "زمان",          render: timeCell,      type: "text" },
+  { key: "mobile",        label: "موبایل",        render: mobileCell,    type: "text" },
+  { key: "sectorName",    label: "دسته‌بندی",     render: textCell,      type: "text" },
+  { key: "attempt",       label: "تلاش",          render: attemptCell,   type: "num" },
+  { key: "target",        label: "عدد هدف",       render: numberCell,    type: "num" },
+  { key: "finalNumber",   label: "عدد نهایی",     render: numberCell,    type: "num" },
+  { key: "correctDigits", label: "ارقام درست",    render: digitsCell,    type: "num" },
+  { key: "winAmount",     label: "جایزه (تومان)", render: prizeCell,     type: "num" },
+  { key: "employeeCount", label: "تعداد کارکنان", render: headcountCell, type: "num" },
+  { key: "hasBenefits",   label: "رفاهیات",       render: benefitsCell,  type: "num" }
+];
+
+var HEADCOUNT_LABELS = {
+  "0": "شاغل نیست",
+  "10": "1 تا 10 نفر",
+  "50": "11 تا 50 نفر",
+  "300": "51 تا 300 نفر",
+  "301": "بیش از 300 نفر"
+};
+
+/* ------------------------------------------------------------------ *
+ * Helpers
+ * ------------------------------------------------------------------ */
+
+function el(id) { return document.getElementById(id); }
+
+function esc(value) {
+  return String(value === null || value === undefined ? "" : value)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+
+/** Latin digits with thousands separators — money must be readable at a glance. */
+function group(value) {
+  var n = Number(value || 0);
+  return n.toLocaleString("en-US");
+}
+
+function pad(n) { return n < 10 ? "0" + n : String(n); }
+
+function localTime(iso) {
+  if (!iso) return "—";
+  var d = new Date(iso);
+  if (isNaN(d.getTime())) return iso;
+  return pad(d.getHours()) + ":" + pad(d.getMinutes()) + ":" + pad(d.getSeconds());
+}
+
+function localDateTime(iso) {
+  if (!iso) return "—";
+  var d = new Date(iso);
+  if (isNaN(d.getTime())) return iso;
+  return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate())
+    + " " + pad(d.getHours()) + ":" + pad(d.getMinutes()) + ":" + pad(d.getSeconds());
+}
+
+function threeDigits(value) {
+  if (value === null || value === undefined || value === "") return "—";
+  var text = String(value);
+  while (text.length < 3) text = "0" + text;
+  return text;
+}
+
+/* ------------------------------------------------------------------ *
+ * Cell renderers
+ * ------------------------------------------------------------------ */
+
+function timeCell(r)      { return '<span class="num" title="' + esc(r.playedAt) + '">' + esc(localDateTime(r.playedAt)) + "</span>"; }
+function mobileCell(r)    { return '<strong class="num">' + esc(r.mobile || "—") + "</strong>"; }
+function textCell(r, key) { return esc(r[key] || "—"); }
+function attemptCell(r)   { return '<span class="num">' + esc(r.attempt) + "</span>"; }
+function numberCell(r, key) { return '<span class="num">' + esc(threeDigits(r[key])) + "</span>"; }
+
+function digitsCell(r) {
+  var d = r.correctDigits;
+  if (d === null || d === undefined) return "—";
+  var cls = d === 3 ? "pill pill--gold" : d > 0 ? "pill pill--win" : "pill pill--none";
+  return '<span class="' + cls + '"><span class="num">' + esc(d) + "</span> رقم</span>";
+}
+
+function prizeCell(r) {
+  if (!r.winAmount) return '<span class="pill pill--none">بدون جایزه</span>';
+  return '<span class="win-amount num">' + esc(group(r.winAmount)) + "</span>";
+}
+
+function headcountCell(r) {
+  var key = String(r.employeeCount);
+  return esc(HEADCOUNT_LABELS[key] || key);
+}
+
+function benefitsCell(r) {
+  return r.hasBenefits
+    ? '<span class="pill pill--win">دارد</span>'
+    : '<span class="pill pill--none">ندارد</span>';
+}
+
+/* ------------------------------------------------------------------ *
+ * Summary cards
+ * ------------------------------------------------------------------ */
+
+function renderCards(s) {
+  var cards = [
+    { label: "بازیکنان", value: group(s.players), foot: "امروز: " + group(s.today.players), accent: "var(--cyan)" },
+    { label: "بازی‌های انجام‌شده", value: group(s.games), foot: "تلاش مجدد: " + group(s.retryGames) + " • میانگین تلاش: " + s.averageAttempts, accent: "var(--violet)" },
+    { label: "برندگان", value: group(s.winners), foot: "نرخ برد: " + s.winRatePercent + "%", accent: "var(--emerald)" },
+    { label: "جایزه پرداخت‌شده", value: group(s.prizePool.consumed), foot: "تومان • " + s.prizePool.consumedPercent + "% بودجه", accent: "var(--amber)" },
+    { label: "باقی‌مانده بودجه", value: group(s.prizePool.remaining), foot: "تومان", accent: "var(--emerald)" },
+    { label: "برد کامل (۳ رقم)", value: group(s.gamesByCorrectDigits["3"] || 0), foot: "بازیکنان: " + group(s.winnersByCorrectDigits["3"] || 0), accent: "var(--rose)" }
+  ];
+  el("cards").innerHTML = cards.map(function (c) {
+    return '<article class="card" style="--accent: ' + c.accent + '">'
+      + '<p class="card__label">' + esc(c.label) + "</p>"
+      + '<div class="card__value num">' + esc(c.value) + "</div>"
+      + '<div class="card__foot">' + esc(c.foot) + "</div>"
+      + "</article>";
+  }).join("");
+}
+
+function renderPool(s) {
+  var p = s.prizePool;
+  el("pool-total").textContent = group(p.total);
+  el("pool-scale-max").textContent = group(p.total);
+  el("pool-consumed").textContent = group(p.consumed);
+  el("pool-remaining").textContent = group(p.remaining);
+  el("pool-average").textContent = s.players ? group(Math.round(p.consumed / s.players)) : "0";
+  var percent = Math.max(0, Math.min(100, p.consumedPercent));
+  el("pool-fill").style.width = percent + "%";
+  el("pool-percent").textContent = p.consumedPercent + "%"
+    + (p.overspent > 0 ? "  (بیش از بودجه: " + group(p.overspent) + ")" : "");
+}
+
+function bar(label, value, total, color, note) {
+  var width = total > 0 ? (value / total) * 100 : 0;
+  return '<div class="bar">'
+    + '<div class="bar__head">'
+    + '<span class="bar__label">' + esc(label) + "</span>"
+    + '<span class="bar__value num">' + esc(group(value))
+    + (note ? ' <small>' + esc(note) + "</small>" : "")
+    + "</span></div>"
+    + '<div class="bar__track"><div class="bar__fill" style="width: ' + width.toFixed(1)
+    + "%; background: " + color + '"></div></div>'
+    + "</div>";
+}
+
+function renderDistribution(s) {
+  var w = s.winnersByCorrectDigits;
+  var max = Math.max(1, s.players, Number(w["1"]), Number(w["2"]), Number(w["3"]));
+  el("dist").innerHTML =
+    bar("۱ رقم درست", Number(w["1"]), max, "linear-gradient(90deg,#38bdf8,#34d3f5)", "بازیکن")
+    + bar("۲ رقم درست", Number(w["2"]), max, "linear-gradient(90deg,#a78bfa,#818cf8)", "بازیکن")
+    + bar("۳ رقم درست", Number(w["3"]), max, "linear-gradient(90deg,#fbbf24,#f59e0b)", "بازیکن")
+    + bar("مجموع برندگان", s.winners, max, "linear-gradient(90deg,#34d399,#10b981)", "از " + group(s.players) + " بازیکن");
+}
+
+function renderOutcomes(s) {
+  var g = s.gamesByCorrectDigits;
+  var max = Math.max(1, Number(g["0"]), Number(g["1"]), Number(g["2"]), Number(g["3"]));
+  el("outcomes").innerHTML =
+    bar("بدون رقم درست", Number(g["0"]), max, "rgba(148,163,184,.55)", "بازی")
+    + bar("۱ رقم درست", Number(g["1"]), max, "linear-gradient(90deg,#38bdf8,#34d3f5)", "بازی")
+    + bar("۲ رقم درست", Number(g["2"]), max, "linear-gradient(90deg,#a78bfa,#818cf8)", "بازی")
+    + bar("۳ رقم درست", Number(g["3"]), max, "linear-gradient(90deg,#fbbf24,#f59e0b)", "بازی");
+}
+
+function renderSectors(s) {
+  if (!s.sectors.length) {
+    el("sectors").innerHTML = '<tr><td colspan="4" class="empty">هنوز بازی‌ای ثبت نشده است</td></tr>';
+    return;
+  }
+  el("sectors").innerHTML = s.sectors.map(function (row) {
+    return "<tr><td>" + esc(row.sectorName) + "</td>"
+      + '<td class="num">' + esc(group(row.games)) + "</td>"
+      + '<td class="num">' + esc(group(row.players)) + "</td>"
+      + '<td class="num">' + esc(group(row.prize)) + "</td></tr>";
+  }).join("");
+}
+
+/* ------------------------------------------------------------------ *
+ * Player table
+ * ------------------------------------------------------------------ */
+
+function renderHead() {
+  el("head").innerHTML = COLUMNS.map(function (c) {
+    var sorted = state.sortKey === c.key ? ' data-sorted="' + state.sortDir + '"' : "";
+    return "<th data-key=" + '"' + c.key + '"' + sorted + ">" + esc(c.label) + "</th>";
+  }).join("");
+}
+
+function visibleRecords() {
+  var term = state.search.trim().toLowerCase();
+  var rows = state.records.filter(function (r) {
+    if (state.filter === "winners" && !(r.winAmount > 0)) return false;
+    if (state.filter === "losers" && r.winAmount > 0) return false;
+    if (state.filter === "perfect" && r.correctDigits !== 3) return false;
+    if (!term) return true;
+    return [r.mobile, r.sectorName, r.target, r.finalNumber, r.userId]
+      .join(" ").toLowerCase().indexOf(term) !== -1;
+  });
+
+  var column = COLUMNS.filter(function (c) { return c.key === state.sortKey; })[0];
+  var numeric = column && column.type === "num";
+  var dir = state.sortDir === "asc" ? 1 : -1;
+  rows.sort(function (a, b) {
+    var av = a[state.sortKey], bv = b[state.sortKey];
+    if (numeric) {
+      av = av === null || av === undefined ? -1 : Number(av);
+      bv = bv === null || bv === undefined ? -1 : Number(bv);
+      if (av !== bv) return (av - bv) * dir;
+    } else {
+      var cmp = String(av === null || av === undefined ? "" : av)
+        .localeCompare(String(bv === null || bv === undefined ? "" : bv), "fa");
+      if (cmp !== 0) return cmp * dir;
+    }
+    // Stable, meaningful tiebreak: most recent iteration first.
+    return String(b.playedAt).localeCompare(String(a.playedAt));
+  });
+  return rows;
+}
+
+function renderTable() {
+  var rows = visibleRecords();
+  var pages = Math.max(1, Math.ceil(rows.length / state.pageSize));
+  if (state.page > pages) state.page = pages;
+  var start = (state.page - 1) * state.pageSize;
+  var page = rows.slice(start, start + state.pageSize);
+
+  el("table-count").textContent = state.records.length === rows.length
+    ? group(rows.length) + " بازی"
+    : group(rows.length) + " از " + group(state.records.length) + " بازی";
+
+  if (!page.length) {
+    el("rows").innerHTML = '<tr><td colspan="' + COLUMNS.length + '" class="empty">'
+      + (state.records.length ? "نتیجه‌ای برای این جستجو نیست" : "هنوز بازی‌ای ثبت نشده است")
+      + "</td></tr>";
+  } else {
+    el("rows").innerHTML = page.map(function (r) {
+      var isNew = state.newIds[r.id] ? " class=" + '"is-new"' : "";
+      return "<tr" + isNew + ">" + COLUMNS.map(function (c) {
+        return "<td>" + c.render(r, c.key) + "</td>";
+      }).join("") + "</tr>";
+    }).join("");
+  }
+
+  el("pager-info").textContent = "صفحه " + state.page + " از " + pages;
+  el("page-prev").disabled = state.page <= 1;
+  el("page-next").disabled = state.page >= pages;
+}
+
+function renderStats() {
+  if (!state.stats) return;
+  renderCards(state.stats);
+  renderPool(state.stats);
+  renderDistribution(state.stats);
+  renderOutcomes(state.stats);
+  renderSectors(state.stats);
+  el("last-played").textContent = localTime(state.stats.lastPlayedAt);
+}
+
+function renderAll() {
+  renderStats();
+  renderHead();
+  renderTable();
+}
+
+/* ------------------------------------------------------------------ *
+ * Live connection
+ *
+ * A snapshot arrives on every connect, so a dropped connection needs no
+ * recovery logic beyond EventSource's own automatic reconnect: the next
+ * snapshot replaces local state wholesale and cannot be stale.
+ * ------------------------------------------------------------------ */
+
+function setStatus(kind, text) {
+  var node = el("status");
+  node.className = "status" + (kind ? " status--" + kind : "");
+  el("status-text").textContent = text;
+}
+
+function applySnapshot(payload) {
+  state.records = payload.records || [];
+  state.stats = payload.stats;
+  renderAll();
+}
+
+function applyRecord(payload) {
+  var record = payload.record;
+  if (record && !state.records.some(function (r) { return r.id === record.id; })) {
+    state.records.push(record);
+    state.newIds[record.id] = true;
+    window.setTimeout(function () {
+      delete state.newIds[record.id];
+    }, 5000);
+  }
+  state.stats = payload.stats;
+  renderAll();
+}
+
+function connect() {
+  var source = new EventSource("/api/events");
+
+  source.addEventListener("open", function () {
+    setStatus("live", "متصل — به‌روزرسانی زنده");
+  });
+
+  source.addEventListener("snapshot", function (event) {
+    setStatus("live", "متصل — به‌روزرسانی زنده");
+    applySnapshot(JSON.parse(event.data));
+  });
+
+  source.addEventListener("record", function (event) {
+    applyRecord(JSON.parse(event.data));
+  });
+
+  source.addEventListener("error", function () {
+    // EventSource retries on its own; just tell the operator what is happening.
+    setStatus("down", "قطع اتصال — تلاش برای اتصال مجدد…");
+  });
+}
+
+/* ------------------------------------------------------------------ *
+ * Wiring
+ * ------------------------------------------------------------------ */
+
+el("head").addEventListener("click", function (event) {
+  var key = event.target && event.target.getAttribute("data-key");
+  if (!key) return;
+  if (state.sortKey === key) {
+    state.sortDir = state.sortDir === "asc" ? "desc" : "asc";
+  } else {
+    state.sortKey = key;
+    state.sortDir = "desc";
+  }
+  renderHead();
+  renderTable();
+});
+
+el("search").addEventListener("input", function (event) {
+  state.search = event.target.value;
+  state.page = 1;
+  renderTable();
+});
+
+el("filter").addEventListener("change", function (event) {
+  state.filter = event.target.value;
+  state.page = 1;
+  renderTable();
+});
+
+el("page-size").addEventListener("change", function (event) {
+  state.pageSize = Number(event.target.value) || 25;
+  state.page = 1;
+  renderTable();
+});
+
+el("page-prev").addEventListener("click", function () {
+  if (state.page > 1) { state.page -= 1; renderTable(); }
+});
+el("page-next").addEventListener("click", function () {
+  state.page += 1; renderTable();
+});
+
+renderHead();
+renderTable();
+connect();
+</script>
+</body>
+</html>

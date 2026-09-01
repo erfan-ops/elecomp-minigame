@@ -97,7 +97,8 @@ engines) is allowed; do not read it wholesale.
 
 ### Rule 11 — Respect the architectural invariants
 These are enforced by code review and by the contracts documented in `03_ARCHITECTURE.md`,
-`05_MINIGAME.md`, and `06_STATE_AND_DATA_FLOW.md`. Breaking one is a defect even if it type-checks:
+`05_MINIGAME.md`, `06_STATE_AND_DATA_FLOW.md`, and `13_ADMIN_PANEL.md`. Breaking one is a defect even
+if it type-checks:
 
 1. Games MUST NOT import from `src/app/`, `src/pages/`, or `src/services/`.
 2. `onComplete` MUST be called exactly once per mounted game instance.
@@ -108,18 +109,29 @@ These are enforced by code review and by the contracts documented in `03_ARCHITE
    `src/games/number-wheel/difficulty.ts`, and `src/games/number-wheel/assist.ts` MUST stay
    React-free, DOM-free, and side-effect-free.
 6. Per-frame animation values MUST live in refs written straight to the DOM — no React state per frame.
-7. No real `<input>` elements. The on-screen numeric keyboard is the only text-entry mechanism.
+7. No real `<input>` elements **in `src/`**. The on-screen numeric keyboard is the only text-entry
+   mechanism on the kiosk. (The admin dashboard, `<repo-root>/backend/admin/index.html`, is a
+   mouse-and-keyboard desktop screen and deliberately does use real `<input>` / `<select>`.)
 8. Persian numerals are display-only; state and storage use Latin digits and ISO timestamps.
 9. Numeric sequences MUST set `direction: ltr`; Persian text MUST NOT get `letter-spacing`.
 10. No page scrolling anywhere — the registration leaderboard panel shows only the top 5.
 11. Adding a field to `GameSessionResult` REQUIRES updating `isGameSessionResult` in
     `src/services/localResultRepository.ts`.
+12. All writes to `backend/output/` MUST go through `GameStore.add_record`; the sequential
+    `game_data_<date>_NNN.json` files are append-only and are never rewritten.
+13. The admin dashboard MUST NOT mutate game state, and a dashboard failure MUST NOT stop the kiosk
+    (see `13_ADMIN_PANEL.md`).
 
 ### Rule 12 — Run the only gate before reporting completion
 `npm run build` (`tsc -b && vite build`) is the sole automated quality gate. Run it after any code change.
 There is no test suite and no linter — do not claim tests pass, and do not claim behavior is verified
 unless you actually exercised it. If you used the temporary-harness verification workflow documented in
 `09_BUILD_RUN_DEPLOY.md`, **delete the harness afterwards** so it does not ship in `dist/`.
+
+The Python host has no type-check gate at all. After changing anything under `<repo-root>/backend/`,
+launch it (`.venv/Scripts/python.exe main.py --no-window` is enough to exercise the store, the HTTP
+server, and the dashboard) and read `backend/pywebview.log`. An import error or a bad route is only
+discoverable by running it.
 
 ### Rule 13 — Keep `ai-docs/` non-redundant and navigable
 One fact lives in one place; cross-reference instead of duplicating. If you add a document, give it a
@@ -169,6 +181,10 @@ Work through this list. Every box MUST be true before you report the work as don
 | Change to game tuning constants (`config.ts`) | `05_MINIGAME.md` (constants table), `01_PROJECT_OVERVIEW.md` if prize amounts or the title changed |
 | Change to platform config (`src/config/appConfig.ts`) | `01_PROJECT_OVERVIEW.md`, `03_ARCHITECTURE.md`, `07_COMPONENTS_AND_MODULES.md` |
 | Change to persistence / repository implementation | `06_STATE_AND_DATA_FLOW.md` (persistence layer), `07_COMPONENTS_AND_MODULES.md`, `09_BUILD_RUN_DEPLOY.md` (external services), `03_ARCHITECTURE.md` (side-effect boundaries) |
+| Change to the Python host (`backend/main.py`, `store.py`, `admin_server.py`, `admin/`) | `13_ADMIN_PANEL.md`, `02_REPOSITORY_STRUCTURE.md`, `06_STATE_AND_DATA_FLOW.md` (host export), `09_BUILD_RUN_DEPLOY.md` (run + packaging + ports) |
+| Change to the export record shape, the stats shape, the SSE events, or the CSV columns | `13_ADMIN_PANEL.md` (record/stats/CSV tables), `06_STATE_AND_DATA_FLOW.md` |
+| Change to `src/services/gameExporter.ts` or the ingest transports | `13_ADMIN_PANEL.md` (transports), `03_ARCHITECTURE.md` (side-effect table), `10_CODE_STANDARDS_AND_PATTERNS.md` (error/async patterns), `09_BUILD_RUN_DEPLOY.md` |
+| Change to the admin port or bind address | `13_ADMIN_PANEL.md`, `09_BUILD_RUN_DEPLOY.md` (Ports Used) — and change `DEFAULT_PORT` in `admin_server.py` **and** `ADMIN_INGEST_URL` in `src/services/gameExporter.ts` together |
 | New page, component, or hook | `04_REACT_APPLICATION.md`, `07_COMPONENTS_AND_MODULES.md` |
 | Styling, token, or class-naming change | `08_STYLING_AND_UI_CONVENTIONS.md` |
 | New animation or motion behavior | `08_STYLING_AND_UI_CONVENTIONS.md`, `05_MINIGAME.md` if it is in the game loop, plus the reduced-motion notes |

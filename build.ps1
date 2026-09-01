@@ -97,8 +97,9 @@ try {
 
     try {
         # Onedir (-D), not onefile: output\ has to outlive the process.
-        # --add-data bundles the mirror as _internal\frontend.
-        & $pyinstaller -y -D -w -n smartis-game --add-data "frontend;frontend" .\main.py
+        # --add-data bundles the mirror as _internal\frontend, and the admin
+        # dashboard page as _internal\admin.
+        & $pyinstaller -y -D -w -n smartis-game --add-data "frontend;frontend" --add-data "admin;admin" .\main.py
         Assert-LastExitCode "pyinstaller"
     } finally {
         if ($preserved -and (Test-Path $preserved)) {
@@ -123,3 +124,4 @@ Write-Host ("Done in {0:n0}s" -f ((Get-Date) - $started).TotalSeconds) -Foregrou
 Write-Host "  $exe"
 Write-Host "  exports -> $OutputDir"
 Write-Host "  log     -> $logFile"
+Write-Host "  admin   -> http://localhost:8239 (starts with the .exe)"

@@ -15,8 +15,14 @@ import { DIFFICULTY_MULTIPLIERS, DIFFICULTY_THRESHOLDS, WHEEL_SPEEDS } from "./c
  * 0-based difficulty level for a consumed-budget ratio (0..1): the number of
  * thresholds the consumption percentage strictly exceeds — e.g. ≤ 25% is
  * level 0, 25% < c ≤ 50% is level 1, and so on — clamped to the last row.
+ *
+ * A fully exhausted budget (consumedRatio ≥ 1 — consumed ≥ BUDGET, so nothing
+ * remains to pay out) is pinned to the **last** row: once the pool is spent
+ * the game must stay at maximum difficulty, never drop back toward the base
+ * speeds.
  */
 export function difficultyLevel(consumedRatio: number): number {
+  if (consumedRatio >= 1) return DIFFICULTY_MULTIPLIERS.length - 1;
   let level = 0;
   for (const threshold of DIFFICULTY_THRESHOLDS) {
     if (consumedRatio * 100 > threshold) level++;

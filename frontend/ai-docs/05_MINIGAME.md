@@ -248,9 +248,12 @@ the exact resting digit depends on *when* the human pressed STOP, which is the i
 The play screen (`NumberWheelGame`) is one `.slot-game` column: exit pill, kicker «ماشین شانس»,
 heading «عدد NNN را پیدا کنید» (target digits gold, tappable at IDLE), «عدد تصادفی» pill (IDLE only),
 two status pills («فرصتهای بازی» cyan dots = attempts total/spent; «شلیک برای رقم N» green dots =
-shots taken), the `.reel-machine` (labels رقم ۱/۲/۳ over `WheelGroup`), the big stop button, the
-remote hint, and the glass rules panel (3 rules + 3 prize cards from config values — frosted:
-`backdrop-filter: blur(12px)`, blurs the floating decorations that sit behind the content frame).
+shots taken), the `.reel-machine` (labels رقم ۱/۲/۳ over `WheelGroup`, with a single cyan
+`.wheel-group__pointer` triangle at the stop-line height on the left of the three reels), the big stop
+button, the remote hint, and the glass rules panel (3 rules + 3 prize cards from config values —
+frosted: `backdrop-filter: blur(12px)`, blurs the floating decorations that sit behind the content
+frame). Each reel's digits are separated by a thin translucent divider (`.number-wheel__digit::after`,
+inset from the reel's side walls and horizontally centered).
 
 Per reel, DOM structure produced by `NumberWheel`:
 
@@ -259,9 +262,15 @@ div.number-wheel[role=img][aria-label=…]           ← class modifiers drive a
 └── div.number-wheel__window
     ├── div.number-wheel__strip  (ref=stripRef)    ← 30 spans; transform written per frame
     │   └── span.number-wheel__digit × 30          ← STRIP_ITEMS: Persian ۰–۹ repeated 3×
+    │        each digit carries a translucent ::after divider (2 px, inset left/right 14%,
+    │        bottom edge — lands exactly between two digits as the strip scrolls)
     ├── div.number-wheel__fade--top                ← top/bottom gradient fades (2 per reel)
     └── div.number-wheel__fade--bottom
 ```
+
+Outside the reels, `WheelGroup` renders one decorative `span.wheel-group__pointer` (a CSS triangle)
+anchored at the left of the reel row, vertically centred — it marks the shared stop line for all three
+wheels. There is deliberately **one** pointer, not one per reel.
 
 (The old `__next-badge` and `__center` band were removed in the redesign.)
 
@@ -279,8 +288,8 @@ strip.style.transform = `translate3d(0, ${percent}%, 0)`
   in sync by a `ResizeObserver` on both elements. No pixel constants appear in the math, so any
   rendered reel size (whatever `--s` or retuned tokens resolve to) centers the digit. Derivation:
   translating by −(offset + position) × itemH must center item (position + 10) on windowH / 2, so
-  offset = 10.5 − windowH / (2 × itemH) — with the default tokens that is 10.5 − 380/360 ≈ 9.4444.
-- At the default tokens (`--digit-font` 11.25rem = 180 px, `--wheel-h` 23.75rem = 380 px) the window
+  offset = 10.5 − windowH / (2 × itemH) — with the default tokens that is 10.5 − 420/360 ≈ 9.3333.
+- At the default tokens (`--digit-font` 11.25rem = 180 px, `--wheel-h` 26.25rem = 420 px) the window
   shows ~2 digits around the centered one. The digit at the window center is the one
   `digitFromPosition` reports and STOP locks.
 - `useLayoutEffect` measures and writes the initial transform before first paint (prevents a visible
@@ -394,9 +403,11 @@ The game gets harder as the organizer's prize budget drains:
   `src/services/budget.ts`) through `GameContext` — the game never touches storage.
 - `src/games/number-wheel/difficulty.ts` (`difficultyLevel`, `effectiveWheelSpeeds`) is pure over the
   config constants: level = number of `DIFFICULTY_THRESHOLDS` percentages the consumption strictly
-  exceeds (≤ 25% → level 0, 25% < c ≤ 50% → level 1, …, > 75% → level 3, clamped to the last row),
-  and the reel speeds become `WHEEL_SPEEDS × DIFFICULTY_MULTIPLIERS[level]` — e.g. 40% consumed →
-  `[8.5×1.2, 10×1.3, 11.5×1.4] = [10.2, 13, 16.1]`.
+  exceeds (≤ 25% → level 0, 25% < c ≤ 50% → level 1, …, > 95% → level 5, clamped to the last row),
+  and the reel speeds become `WHEEL_SPEEDS × DIFFICULTY_MULTIPLIERS[level]` — e.g. 60% consumed →
+  level 2, `[8.5×1.2, 10×1.3, 11.5×1.4] = [10.2, 13, 16.1]`. A fully exhausted budget
+  (`consumedRatio ≥ 1`, i.e. consumed ≥ `BUDGET`, nothing left to pay out) is pinned to the last row —
+  the game never drops back toward the base speeds once the pool is spent.
 - `NumberWheelGame` reads the ratio at mount (remounts per user/attempt, so it is always current);
   the reduced-motion factor applies on top of the difficulty multipliers.
 - Every win is recorded by `GamePage.handleComplete` (`recordPrize(winAmount, BUDGET)`); only
@@ -407,12 +418,13 @@ The game gets harder as the organizer's prize budget drains:
 ## Whitelisted Mobiles (Rigged Assistance)
 
 `src/games/number-wheel/assist.ts` — pure over the config constants, keyed on `GameContext.mobile`.
-Two independent whitelists; a mobile may be on both. Both are **empty by default** (commented-out
-placeholders), so an untouched config behaves exactly as before.
+Two independent whitelists; a mobile may be on both. Each list is currently populated with three real
+mobile numbers (the numbers themselves are organizer data and are deliberately not reproduced here);
+emptying a list disables that assist entirely.
 
 | List | Constant | Effect |
 |---|---|---|
-| slow | `SLOW_MOBILES` | All three reel speeds × `SLOW_SPEED_FACTOR` (0.55) — applied **after** the difficulty row, so a whitelisted player still speeds up as the budget drains, from a lower base |
+| slow | `SLOW_MOBILES` | All three reel speeds × `SLOW_SPEED_FACTOR` (0.9) — applied **after** the difficulty row, so a whitelisted player still speeds up as the budget drains, from a lower base |
 | perfect | `PERFECT_MOBILES` | A STOP press keeps the reel spinning until the **target** digit reaches the window, then locks that digit instead of the one that was showing |
 
 Matching is on `normalizeMobile(mobile)` — digits only, reduced to the 11-digit 09-form: a 12-digit
@@ -503,16 +515,16 @@ gap between the press and the lock.
 | `PRIZE_EXACT_0` | `0` | Prize for 0 |
 | `WHEEL_SPEEDS` | `[8.5, 10, 11.5]` | Base digits/second per reel, left→right |
 | `BUDGET` | `100_000_000` | Organizer prize pool (تومان). Every win is deducted from it by the platform (`recordPrize` in `src/services/budget.ts`); the difficulty levels below are ratios of this |
-| `DIFFICULTY_THRESHOLDS` | `[25, 50, 75, 100]` | Percent of `BUDGET` consumed that must be **exceeded** to reach the next difficulty level |
-| `DIFFICULTY_MULTIPLIERS` | `[[1,1,1],[1.2,1.3,1.4],[1.4,1.6,1.8],[1.7,2,2.3]]` | Per-wheel speed multipliers, one row per level (row index = level) |
+| `DIFFICULTY_THRESHOLDS` | `[25, 50, 67, 83, 95, 100]` | Percent of `BUDGET` consumed that must be **exceeded** to reach the next difficulty level |
+| `DIFFICULTY_MULTIPLIERS` | `[[1,1,1],[1.1,1.1,1.1],[1.2,1.3,1.4],[1.4,1.6,1.8],[1.7,2,2.3],[2.5,2.5,2.5]]` | Per-wheel speed multipliers, one row per level (row index = level) |
 | `SPRING_STIFFNESS` | `170` | Settle spring constant |
 | `SPRING_DAMPING` | `20` | Settle damping (under-damped ⇒ bounce) |
 | `LOCK_PULSE_MS` | `700` | Duration `justLocked` stays true |
 | `MIN_STOP_INTERVAL_MS` | `200` | STOP debounce window |
 | `REDUCED_MOTION_SPEED_FACTOR` | `1` | Multiplier applied to every speed when reduced motion is on. **`1` = no change** (see `12_KNOWN_GAPS_AND_RISKS.md`) |
-| `SLOW_MOBILES` | `[]` | Mobiles that play with slowed reels (any digit format; see "Whitelisted Mobiles") |
-| `SLOW_SPEED_FACTOR` | `0.55` | Speed multiplier for a `SLOW_MOBILES` player (< 1 = slower) |
-| `PERFECT_MOBILES` | `[]` | Mobiles whose STOP press is nudged onto the target digit |
+| `SLOW_MOBILES` | `[3 entries]` | Mobiles that play with slowed reels (any digit format; see "Whitelisted Mobiles") |
+| `SLOW_SPEED_FACTOR` | `0.9` | Speed multiplier for a `SLOW_MOBILES` player (< 1 = slower) |
+| `PERFECT_MOBILES` | `[3 entries]` | Mobiles whose STOP press is nudged onto the target digit |
 | `PERFECT_ASSIST_WINDOW_MS` | `500` | How long a nudged reel may keep spinning past the press; a target digit farther away locks normally |
 | `STRIP_REPEATS` | `3` | Copies of 0–9 in each strip; drives `STRIP_LENGTH` |
 
@@ -527,7 +539,7 @@ Module-local constants NOT in `config.ts` (change these in `NumberWheel.tsx`):
 
 CSS tuning tokens declared in `src/games/number-wheel/number-wheel.css` `:root` (rem-based; 1 rem =
 16 design px at the current `--s` scale):
-`--wheel-w: 15.625rem` (250 px), `--wheel-h: 23.75rem` (380 px),
+`--wheel-w: 15.625rem` (250 px), `--wheel-h: 26.25rem` (420 px),
 `--digit-font: 11.25rem` (180 px).
 
 Haptic durations are inline literals in `NumberWheelGame.handleStop`: `45` ms for the final reel,

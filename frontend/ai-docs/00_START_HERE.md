@@ -21,10 +21,15 @@ to `frontend/`** unless the `<repo-root>/` prefix is explicit. The repo root als
 orchestration (`docker-compose*.yml` / `exhibition.sh`) — see `02_REPOSITORY_STRUCTURE.md` and
 `09_BUILD_RUN_DEPLOY.md`.
 
-- No network calls anywhere: the app is fully client-side; persistence is browser `localStorage`.
-  When the built app runs inside the Python pywebview wrapper (`<repo-root>/backend/main.py`), each
-  completed game iteration is additionally exported to disk through `window.pywebview.api` — the
-  export silently no-ops in a plain browser. No router library. No test framework. No linter.
+- The app is fully client-side; persistence is browser `localStorage`. When the built app runs inside
+  the Python host (`<repo-root>/backend/main.py`), each completed game iteration is additionally
+  exported to disk through `window.pywebview.api`; when that bridge is absent the exporter falls back
+  to one fire-and-forget `POST http://localhost:8239/api/results` (the admin panel's ingest endpoint
+  on the same machine) and silently no-ops if that is unreachable too. That single POST in
+  `src/services/gameExporter.ts` is the **only** network request in `src/` — there is no remote
+  service anywhere. No router library. No test framework. No linter.
+- The Python host also serves a **separate admin dashboard** on `http://localhost:8239` (live stats,
+  player table, CSV export). It shares nothing with the React app's UI — see `13_ADMIN_PANEL.md`.
 - Runtime dependencies: `react` + `react-dom` only.
 - Kiosk journey is a 5-value phase switch, not URL routing.
 
@@ -42,8 +47,10 @@ orchestration (`docker-compose*.yml` / `exhibition.sh`) — see `02_REPOSITORY_S
 | 8 | `src/games/number-wheel/config.ts` | Game tuning (prizes, speeds, spring constants) |
 | 9 | `src/services/index.ts` | Persistence implementation selector |
 | 10 | `src/domain/gameResult.ts` | Persisted record shape |
-| 11 | `src/services/gameExporter.ts` | pywebview host bridge for the on-disk export |
-| 12 | `<repo-root>/backend/main.py` | The pywebview wrapper: renders the built app and owns the export files |
+| 11 | `src/services/gameExporter.ts` | The host bridge for the on-disk export (pywebview, then HTTP fallback) |
+| 12 | `<repo-root>/backend/main.py` | Host wiring: the pywebview window + the admin server thread, sharing one store |
+| 13 | `<repo-root>/backend/store.py` | `GameStore` — the on-disk records are the database; all statistics and the CSV |
+| 14 | `<repo-root>/backend/admin_server.py` | The admin panel's stdlib HTTP server (page, JSON, SSE, CSV, ingest) |
 
 ## Recommended Reading Order For These Docs
 
@@ -60,9 +67,11 @@ orchestration (`docker-compose*.yml` / `exhibition.sh`) — see `02_REPOSITORY_S
 11. `10_CODE_STANDARDS_AND_PATTERNS.md`
 12. `11_AI_MAINTENANCE_RULES.md`
 13. `12_KNOWN_GAPS_AND_RISKS.md`
-14. `design-system.md` (redesigned visual language: canvas, scaling, tokens, ui/ components)
+14. `13_ADMIN_PANEL.md` (the organizer's dashboard on `localhost:8239`: store, HTTP API, SSE, CSV)
+15. `design-system.md` (redesigned visual language: canvas, scaling, tokens, ui/ components)
 
 For a task touching only the minigame, the minimum set is `05_MINIGAME.md` + `06_STATE_AND_DATA_FLOW.md` + `10_CODE_STANDARDS_AND_PATTERNS.md`.
+For a task touching the Python host or the dashboard, it is `13_ADMIN_PANEL.md` + `06_STATE_AND_DATA_FLOW.md` + `09_BUILD_RUN_DEPLOY.md`.
 
 ## Mandatory AI Documentation Rule
 
@@ -97,3 +106,4 @@ Full rules and the change-type → doc mapping live in `11_AI_MAINTENANCE_RULES.
 | Mobile masked on public screens, stored unmasked | `formatPanelMobile` in `src/domain/user.ts` |
 | Context menu blocked | `src/app/App.tsx` `onContextMenu` |
 | Refresh keys suppressed during the game | `src/games/number-wheel/NumberWheelGame.tsx` keydown handler |
+| The admin dashboard is a wholly separate interface — the kiosk's appearance never changes for it | `<repo-root>/backend/admin/index.html` (own page, own server, port 8239); nothing in `src/` imports it |

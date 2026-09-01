@@ -25,13 +25,18 @@ and the `backend/` directory (the Python pywebview wrapper).
 ├── docker-compose.yml         (production: frontend nginx service, host port 3000)
 ├── docker-compose.dev.yml     (dev: frontend vite dev server with bind-mounted source)
 ├── exhibition.sh              (builds & starts docker-compose.yml, prints the frontend URL)
-├── backend/                   (THE PYTHON PYwebview WRAPPER)
-│   ├── main.py                (webview host; js_api=Api(); exports completed game iterations to output/; logs to pywebview.log)
-│   ├── pyproject.toml         (pywebview dependency; Python >=3.12)
+├── build.ps1                  (one-command desktop build: npm run build → mirror dist/ → PyInstaller)
+├── backend/                   (THE PYTHON HOST: game window + admin panel)
+│   ├── main.py                (wiring: GameStore, admin server thread, pywebview window, CLI flags)
+│   ├── store.py               (GameStore — the on-disk records, derived statistics, CSV, SSE pub/sub)
+│   ├── admin_server.py        (stdlib ThreadingHTTPServer on 0.0.0.0:8239 — page, JSON API, SSE, CSV)
+│   ├── admin/
+│   │   └── index.html         (the admin dashboard — one self-contained file, no build step, no CDN)
+│   ├── pyproject.toml         (pywebview + pyinstaller; Python >=3.12)
 │   ├── uv.lock                (uv lockfile)
 │   ├── .venv/                 (local virtualenv — git-ignored)
 │   ├── frontend/              (copy of the built frontend the webview renders; re-sync from dist/)
-│   └── output/                (runtime export files — created automatically, git-ignored)
+│   └── output/                (runtime export files = the admin panel's database — git-ignored)
 └── frontend/                  (THE REACT APP)
     ├── Dockerfile             (node:22 build stage → nginx serving dist/)
     ├── Dockerfile.dev         (vite dev server on port 3000)
@@ -139,8 +144,9 @@ There are NO directories named `tests`, `scripts`, `types`, `store`, `state`, `c
 | `src/components/` | app code | Shared platform UI primitives usable by pages and games | Currently `Confetti`, `VirtualNumericKeyboard` (retained, unused) |
 | `src/components/ui/` | app code | The redesigned visual language's shared components (page shell, tracker, keypad, panels, page-2 header/choices/nav) | Used by the redesigned pages (registration + survey); documented in `design-system.md` |
 | `src/domain/` | app code | Pure types + pure helpers. No React, no DOM, no side effects | The contract layer everything else agrees on |
-| `src/services/` | app code | Persistence boundary + pure leaderboard builder + the pywebview export bridge | `index.ts` is the implementation selector |
-| `<repo-root>/backend/` | host wrapper | Python pywebview desktop shell: renders the build in `backend/frontend`, exposes `window.pywebview.api.export_game_result` (verbatim method names — no camelCase), owns all export-file writes, and logs to the console + `backend/pywebview.log` | `backend/output` is created at runtime; `backend/frontend` must be re-synced from `dist/` after each rebuild |
+| `src/services/` | app code | Persistence boundary + pure leaderboard builder + the host export bridge | `index.ts` is the implementation selector |
+| `<repo-root>/backend/` | host | Python host for the kiosk: a pywebview desktop shell rendering the build in `backend/frontend`, plus the admin dashboard's HTTP server on `localhost:8239`. Exposes `window.pywebview.api.export_game_result` (verbatim method names — no camelCase), owns all export-file writes, and logs to the console + `backend/pywebview.log` | `backend/output` is created at runtime; `backend/frontend` must be re-synced from `dist/` after each rebuild |
+| `<repo-root>/backend/admin/` | host | The admin dashboard page, served by `admin_server.py` | One self-contained HTML file — no build step, no CDN, and no contact with the React app |
 | `src/games/` | game code | Registry types + registry + one subdirectory per pluggable game | `Game.ts` holds `GameDefinition` (platform side of the contract) |
 | `src/games/number-wheel/` | game code | The entire active minigame: shell, engine, tuning, components, stylesheet | Self-contained; must not import pages/services/session |
 | `src/games/number-wheel/components/` | game code | Presentational + animation components local to this game | `NumberWheel.tsx` writes to the DOM directly |
@@ -167,9 +173,12 @@ pywebview wrapper).
 - `frontend/tsconfig.app.tsbuildinfo`, `frontend/tsconfig.node.tsbuildinfo` — TypeScript incremental
   build state.
 - `frontend/flow/` — the organizer's `.docx` request/content files; git-ignored, not part of the app.
-- `backend/.venv/` — the wrapper's local virtualenv.
-- `backend/output/` — runtime export files (`game_data_*.json`), created automatically by `backend/main.py`.
-- `backend/pywebview.log` — the wrapper's runtime log (requests, written files, failures).
+- `backend/.venv/` — the host's local virtualenv.
+- `backend/output/` — runtime export files (`game_data_*.json`), created automatically by
+  `backend/store.py`. These files are the system of record for the admin panel: deleting them
+  deletes the dashboard's history.
+- `backend/pywebview.log` — the host's runtime log (export requests, written files, admin server
+  startup and failures).
 
 ## Important Files
 
@@ -179,8 +188,12 @@ pywebview wrapper).
 | `frontend/package.json` | Name `smartis-game`, `private: true`, `version: 1.0.0`, `type: module`. Scripts: `dev`, `build`, `preview`. |
 | `frontend/package-lock.json` | npm lockfile — the reason npm is the package manager. |
 | `frontend/vite.config.ts` | `defineConfig({ plugins: [react()], server: { host: true }, base: "./" })`. `base: "./"` makes all asset URLs relative so the build loads from `backend/frontend` over `file://`. No aliases, no proxy, no custom `build` options. |
-| `<repo-root>/backend/main.py` | The pywebview wrapper: `Api.export_game_result(data)` (exposed to JS as `window.pywebview.api.export_game_result` — verbatim names, no camelCase) writes `game_data_YYYY-MM-DD_NNN.json` (one iteration) + `game_data_YYYY-MM-DD.json` (array of all of the day's iterations) into `backend/output`; logs to the console + `backend/pywebview.log`, including a startup self-check of the exposed JS API methods; `main()` opens the window with `js_api=Api()`. |
-| `<repo-root>/backend/pyproject.toml` | Python >=3.12; sole dependency `pywebview>=6.2.1`. |
+| `<repo-root>/backend/main.py` | Host wiring: builds the `GameStore`, starts the admin server thread, opens the pywebview window with `js_api=Api(store)`. `Api.export_game_result(data)` (exposed to JS as `window.pywebview.api.export_game_result` — verbatim names, no camelCase) delegates to the store. Logs to the console + `backend/pywebview.log`, including a startup self-check of the exposed JS API methods. Flags: `--no-window`, `--no-admin`, `--host`, `--port`. |
+| `<repo-root>/backend/store.py` | `GameStore`: the on-disk records are the database. Scans every `game_data_<date>_NNN.json` at startup, writes new iterations (exclusive create + atomic daily rebuild) under a `threading.RLock`, derives every dashboard statistic, generates the CSV, and broadcasts each new record to SSE subscribers. `PRIZE_POOL_TOTAL = 100_000_000` must match the game's `BUDGET`. |
+| `<repo-root>/backend/admin_server.py` | Stdlib `ThreadingHTTPServer` on `0.0.0.0:8239` (LAN-reachable, no auth): `GET /` (page), `/api/state`, `/api/events` (SSE), `/api/export.csv`, `POST /api/results`, `OPTIONS`. A bind failure is logged and swallowed — the game runs regardless. |
+| `<repo-root>/backend/admin/index.html` | The dashboard: summary cards, prize-pool bar, win distribution, category table, player table (sort/search/filter/pagination), CSV button. Vanilla JS + `EventSource`, one file, no dependency. |
+| `<repo-root>/backend/pyproject.toml` | Python >=3.12; dependencies `pywebview>=6.2.1` and `pyinstaller>=6.22.2`. The store, HTTP server, and dashboard add **no** dependency — all stdlib. |
+| `<repo-root>/build.ps1` | One-command desktop build: `npm run build` → wipe-and-mirror `frontend/dist` into `backend/frontend` → PyInstaller onedir with `--add-data "frontend;frontend" --add-data "admin;admin"`. Preserves a previous build's `output/`. Must stay pure ASCII. |
 | `frontend/tsconfig.json` | Solution file: `files: []`, references `tsconfig.app.json` and `tsconfig.node.json`. |
 | `frontend/tsconfig.app.json` | Rules for `src`. `target: ES2022`, `lib: [ES2022, DOM, DOM.Iterable]`, `jsx: react-jsx`, `moduleResolution: bundler`, `strict`, `noUnusedLocals`, `noUnusedParameters`, `noFallthroughCasesInSwitch`, `verbatimModuleSyntax`, `noUncheckedSideEffectImports`, `noEmit`. |
 | `frontend/tsconfig.node.json` | Rules for `vite.config.ts` only. `target: ES2023`, `lib: [ES2023]` (no DOM). |

@@ -4,6 +4,8 @@
 # PRIMARY_SOURCE_PATHS:
 # - src/** (every file)
 # - <repo-root>/backend/main.py (the pywebview counterpart of the exporter)
+# - <repo-root>/backend/store.py (the writer behind both export transports)
+# - <repo-root>/backend/admin_server.py (the HTTP counterpart of the exporter's fallback)
 
 Legend for **Importance**:
 
@@ -62,7 +64,7 @@ Values: `ACTIVE_GAME_ID = "number-wheel"`, `MAX_GAME_ATTEMPTS = 3`, `CATEGORIES`
 | `src/services/localResultRepository.ts` | localStorage implementation | `localResultRepository` | `src/domain/gameResult` (type) | Reads/writes `localStorage["smartis-game.results.v1"]` | YES as long as it satisfies the interface | `CRITICAL` |
 | `src/services/leaderboard.ts` | Pure ranking builder | `buildLeaderboard` | `src/domain/gameResult` (types) | none | YES | `IMPORTANT` |
 | `src/services/stats.ts` | Pure cumulative stats for the page-1 panel | `buildGameStats`, `EMPTY_GAME_STATS`, type `GameStats` | `src/domain/gameResult` (type) | none | YES | `IMPORTANT` |
-| `src/services/gameExporter.ts` | pywebview host bridge: pushes each completed `GameSessionResult` to `window.pywebview.api.export_game_result` — the verbatim name of `Api.export_game_result` in `backend/main.py` (pywebview 6 does no camelCase conversion), which writes `backend/output/game_data_*.json` and logs to `backend/pywebview.log`. Silent no-op when the bridge is absent; `console.warn` when the bridge is present but the method is missing or the call throws — never affects the game flow | `exportGameResult` | `src/domain/gameResult` (type) | Calls the pywebview bridge (the only `window.pywebview` access in `src/`) | YES — removal only drops the disk export | `IMPORTANT` |
+| `src/services/gameExporter.ts` | Host export bridge, two transports tried in order: (1) `window.pywebview.api.export_game_result` — the verbatim name of `Api.export_game_result` in `backend/main.py` (pywebview 6 does no camelCase conversion); (2) `POST http://localhost:8239/api/results`, the admin panel's ingest endpoint, when the bridge is absent or its call failed. Either way `backend/store.py` writes `backend/output/game_data_*.json` and logs to `backend/pywebview.log`. Silent no-op when neither is reachable; `console.warn` when the bridge is present but the method is missing or the call throws — never affects the game flow | `exportGameResult` | `src/domain/gameResult` (type) | Calls the pywebview bridge (the only `window.pywebview` access in `src/`) and `fetch` (the only network call in `src/`) | YES — removal only drops the disk export | `IMPORTANT` |
 | `src/services/index.ts` | Implementation selector + barrel | `resultRepository`, `buildLeaderboard`, `buildGameStats`, `EMPTY_GAME_STATS`, `exportGameResult`, types `GameResultRepository`, `GameStats` | the files above | none | YES — **the single line to change for a backend implementation** | `CRITICAL` |
 
 ## Pages

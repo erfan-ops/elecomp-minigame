@@ -135,7 +135,8 @@ Wiring:
 - widens `GameResult` into `GameSessionResult` (adds `userId`, `mobile`, survey answers, `attempt`,
   `sectorId`, `sectorName`, `gameId`, `playedAt`),
 - hands the record to `session.submitResult` (localStorage persistence) and to
-  `exportGameResult` (the pywebview on-disk export, a silent no-op outside the wrapper),
+  `exportGameResult` (the host on-disk export — pywebview bridge, else an HTTP POST to the admin
+  panel, else a silent no-op),
 - after `onComplete` swaps the game for `GameResultScreen` (frames 6–8: win / loss / game over) —
   all retry/continue chrome lives there, **outside** the game subtree.
 
@@ -175,11 +176,13 @@ Full detail: `06_STATE_AND_DATA_FLOW.md`.
 | Haptics | `NumberWheelGame.handleStop` → `navigator.vibrate?.()` | Optional-call, no feature detection needed |
 | `crypto.randomUUID` | `src/domain/user.ts` `makeUserId()` | Falls back to `Math.random` + `Date.now` |
 | `new Date().toISOString()` | `src/pages/GamePage.tsx` | The only timestamp source |
-| `window.pywebview.api` call | `src/services/gameExporter.ts` only | `exportGameResult` pushes each completed iteration to `window.pywebview.api.export_game_result`; fully silent when the bridge is absent, `console.warn` when the bridge is present but the method is missing or the call fails |
+| `window.pywebview.api` call | `src/services/gameExporter.ts` only | `exportGameResult` pushes each completed iteration to `window.pywebview.api.export_game_result`; `console.warn` when the bridge is present but the method is missing or the call fails |
+| `fetch` | `src/services/gameExporter.ts` only | The export's fallback transport: `POST http://localhost:8239/api/results` (the admin panel's ingest endpoint) when the pywebview bridge is absent or failed. `AbortSignal.timeout(3000)`, every error swallowed |
 | Randomness | `Math.random` via `gameEngine` defaults, and `Confetti.tsx` | See "Randomness" in `05_MINIGAME.md` |
 
-There are **no** network requests anywhere in `src/` — the pywebview bridge is an in-process
-function call to the desktop host, not a network request.
+`src/services/gameExporter.ts` holds the **only** network request in `src/`, and it is a
+fire-and-forget local-loopback POST that no UI state depends on. Everything else in the app is
+in-process: the pywebview bridge is a direct function call into the desktop host, not a request.
 
 ## Data Flow: User Input → UI/Game Response
 
@@ -262,7 +265,10 @@ everything cleared — the panels re-mount and re-fetch, so they refresh on ever
 | Mobile number as the sole identity (no names collected) | `EXPLICIT` | `src/domain/user.ts` doc comment |
 | The stop button and the presenter keyboard both drive STOP (the 288×128 touchscreen button reads «توقف» while running; PageUp/PageDown/b/F5/Ctrl+R mirror it) | `EXPLICIT` | `NumberWheelGame.tsx` comments; `CLAUDE.md` input model |
 | Retry offered only after a zero-win result, capped by `MAX_GAME_ATTEMPTS` | `EXPLICIT` | `src/config/appConfig.ts` comment; `GamePage.canRetry` |
-| Every completed iteration is exported to disk through a semantic pywebview API; Python owns the directory, dates, sequence numbers, and writes | `EXPLICIT` | `<repo-root>/backend/main.py` doc comments; `src/services/gameExporter.ts` doc comment |
+| Every completed iteration is exported to disk through a semantic host API; Python owns the directory, dates, sequence numbers, and writes | `EXPLICIT` | `<repo-root>/backend/main.py`, `<repo-root>/backend/store.py` doc comments; `src/services/gameExporter.ts` doc comment |
+| The on-disk export files are the admin panel's database — no second store, no migration | `EXPLICIT` | `<repo-root>/backend/store.py` doc comment |
+| The admin panel never mutates game state and its failure never stops the kiosk | `EXPLICIT` | `<repo-root>/backend/admin_server.py` (`start_admin_server` returns `None` on bind failure) |
+| The admin panel is a separate interface on a separate port; the game frontend is untouched by it | `EXPLICIT` | `<repo-root>/backend/admin/index.html` doc comment; nothing in `src/` imports or renders it |
 | Anti-replay check fails open | `EXPLICIT` | `src/pages/RegistrationPage.tsx` comment |
 | One Context provider rather than a state library | `INFERRED` | Only `AppSessionContext` exists; zero external state deps |
 | Pure-core / imperative-shell split (`gameEngine` + `prizeCalculator` pure, components effectful) | `INFERRED` | Consistent across the game module; doc comments call the engine "pure" |

@@ -227,10 +227,28 @@ button.slot-game__target-digit::after {
 }
 
 .wheel-group {
+  position: relative; /* anchors the single stop-line pointer (below) */
   display: flex;
   justify-content: center;
   gap: 1.5rem; /* 24 */
   direction: ltr; /* wheel 0 (رقم ۱) leftmost — matches game semantics */
+}
+
+/* One pointer for all three wheels — a cyan triangle sitting at the stop-line
+   height (the horizontal center of every reel) and pointing right at it, so
+   the player knows the level where a digit locks. Static, purely decorative. */
+.wheel-group__pointer {
+  position: absolute;
+  top: 50%;
+  left: -1.5rem; /* 24 — sits in the reel-machine's left padding, clear of the first wheel */
+  width: 0;
+  height: 0;
+  border-top: 0.875rem solid transparent; /* 14 */
+  border-bottom: 0.875rem solid transparent; /* 14 */
+  border-left: 1.25rem solid var(--ds-eyebrow); /* 20 — solid left edge ⇒ triangle points right */
+  transform: translateY(-50%);
+  filter: drop-shadow(0 0 6px rgba(111, 228, 242, 0.7));
+  pointer-events: none;
 }
 
 /* --- Individual reel ------------------------------------------------------- */
@@ -311,6 +329,7 @@ button.slot-game__target-digit::after {
 }
 
 .number-wheel__digit {
+  position: relative; /* anchors the inter-digit separator (::after) */
   height: var(--digit-font);
   flex-shrink: 0;
   font-family: var(--ds-font-fanum);
@@ -320,6 +339,22 @@ button.slot-game__target-digit::after {
   color: #a6f0f8;
   text-align: center;
   user-select: none;
+}
+
+/* A thin translucent divider between consecutive digits — inset from the reel's
+   side walls (equal left/right ⇒ horizontally centered) with a little
+   transparency. It sits at each digit's bottom edge, so as the strip scrolls
+   it lands exactly between two digits; the seamless wrap makes the last cell
+   also border the first. */
+.number-wheel__digit::after {
+  content: "";
+  position: absolute;
+  left: 14%;
+  right: 14%;
+  bottom: 0;
+  height: 1px;
+  background: rgba(120, 210, 225, 0.25);
+  pointer-events: none;
 }
 
 /* Top/bottom fades — the neighbors of the centered digit dim out. */

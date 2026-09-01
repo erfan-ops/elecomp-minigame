@@ -144,18 +144,21 @@ client code, and any such value would be **embedded in the public bundle** — i
 
 ## Required External Services
 
-**None.** Verified: no `fetch`, `XMLHttpRequest`, `axios`, `WebSocket`, `EventSource`, or
+**None hosted remotely.** Verified: no `XMLHttpRequest`, `axios`, `WebSocket`, or
 `navigator.sendBeacon` call anywhere in `src/`. There is no database, no auth provider, no analytics, no
-error-reporting service, and no CDN dependency (the font is bundled in `public/`).
+error-reporting service, and no CDN dependency (the font is bundled in `public/`). The single `fetch`
+call in `src/` targets `localhost` (below).
 
-**Optional host bridge:** when the built app runs inside the Python pywebview wrapper
+**Optional host bridge:** when the built app runs inside the Python host
 (`<repo-root>/backend/main.py`, dependency `pywebview>=6.2.1`), the host exposes
 `window.pywebview.api.export_game_result` (the Python method's verbatim name — pywebview 6 does no
 camelCase conversion), through which each completed game iteration is written to
-`backend/output` as JSON (see `06_STATE_AND_DATA_FLOW.md`). The wrapper logs requests, written file
-paths, and failures to the console and to `backend/pywebview.log`, and logs the exposed JS API method
-list once at startup. This is an in-process function call, not a network request; in any other
-environment the bridge is absent and the export silently no-ops — the app runs fully without it.
+`backend/output` as JSON (see `06_STATE_AND_DATA_FLOW.md`). That is an in-process function call, not a
+network request. When it is unavailable the exporter falls back to a fire-and-forget
+`POST http://localhost:8239/api/results` — the admin panel's ingest endpoint on the same machine,
+never a remote service. The host logs requests, written file paths, and failures to the console and to
+`backend/pywebview.log`, and logs the exposed JS API method list once at startup. With neither
+transport reachable the export silently no-ops — the app runs fully without it.
 
 The only persistence is the browser's own `localStorage` (key `smartis-game.results.v1`). Consequences:
 
@@ -190,18 +193,45 @@ There is no CI. Two runtime arrangements exist in the repo:
 - `exhibition.sh` — runs `docker-compose -f docker-compose.yml up -d --build`, prints
   `docker-compose ps` and the frontend URL.
 
-Under this arrangement the app runs in a plain browser, so the pywebview bridge is absent and the
-on-disk export silently no-ops (localStorage remains the only persistence).
+Under this arrangement the app runs in a plain browser, so the pywebview bridge is absent. The
+on-disk export then falls back to `POST http://localhost:8239/api/results`, which lands only if the
+Python host is running on the same machine; otherwise it silently no-ops and localStorage remains the
+only persistence.
 
-**Python pywebview wrapper (`backend/`):**
+**Python host (`backend/`):**
 
 1. Build the frontend (`npm run build`).
 2. Copy the build into `backend/frontend/` (replace `index.html` and `assets/`; stale hashed bundles
    should be removed — the directory is a mirror of `dist/`).
-3. Run `backend/main.py` with its venv (`uv` lockfile + `pyproject.toml`; dependency `pywebview`).
-   It opens a fullscreen `webview` window rendering `backend/frontend/index.html` with
-   `js_api=Api()` — completed game iterations are exported to `backend/output` (directory created
-   automatically).
+3. Run `backend/main.py` with its venv (`uv` lockfile + `pyproject.toml`; dependencies `pywebview`,
+   `pyinstaller`). It opens a fullscreen `webview` window rendering `backend/frontend/index.html`
+   with `js_api=Api(store)` — completed game iterations are exported to `backend/output` (directory
+   created automatically) — **and** starts the admin dashboard on `http://localhost:8239` (bound to
+   `0.0.0.0`, so other machines on the same LAN can open `http://<kiosk-ip>:8239`).
+
+```bash
+cd backend
+uv sync                                    # first time
+.venv/Scripts/python.exe main.py           # game window + admin panel
+.venv/Scripts/python.exe main.py --no-window   # admin panel only (monitoring/verification)
+.venv/Scripts/python.exe main.py --no-admin    # game window only
+.venv/Scripts/python.exe main.py --port 9000   # move the admin panel off 8239
+```
+
+The packaged `smartis-game.exe` accepts the same flags. Both the window and the panel share one
+process and one `GameStore`, which is what makes the dashboard update live without polling; the
+dashboard's data is read back from `backend/output`, so restarting either side loses nothing. If the
+port is already taken the panel is skipped with a logged error and the game runs normally
+(`13_ADMIN_PANEL.md`).
+
+**Packaging (`<repo-root>/build.ps1`):** one command does the whole chain — `npm run build`,
+wipe-and-mirror `frontend/dist` into `backend/frontend`, then PyInstaller onedir
+(`-y -D -w -n smartis-game --add-data "frontend;frontend" --add-data "admin;admin"`), producing
+`backend/dist/smartis-game/smartis-game.exe`. Onedir rather than onefile because `output/` must
+outlive the process; the script moves an existing `output/` aside and back, because `-y` would delete
+it. Both `--add-data` payloads are required: the frontend for the window, `admin` for the dashboard
+page. The file must stay pure ASCII (Windows PowerShell 5.1 decodes `.ps1` as the system ANSI
+codepage, and a UTF-8 em dash then terminates a string early).
 
 What IS documented (`README.md` → "Kiosk mode"), i.e. how the app is intended to be *run*, not hosted:
 
@@ -248,6 +278,7 @@ clicks. Real touch events are separate tasks and do not hit this.
 | `4173` | `vite preview` | Vite default (not set) |
 | `9222` / `9234` | Chrome remote-debugging during verification only | `CLAUDE.md` documents `9222`; past harness drivers used `9234` / `9333` |
 | `3000` | Docker: frontend nginx (production compose) and the vite dev server (dev compose / `Dockerfile.dev`) | `docker-compose*.yml` `ports:` |
+| `8239` | The admin dashboard (page + JSON API + SSE + CSV), bound to `0.0.0.0` by default (LAN-reachable, **no authentication**; `--host 127.0.0.1` restores loopback only) | `DEFAULT_PORT` / `DEFAULT_HOST` in `<repo-root>/backend/admin_server.py`; overridable with `--port` / `--host`. The frontend's fallback POST target is `ADMIN_INGEST_URL` in `src/services/gameExporter.ts` — change both together |
 
 ## Secrets
 
