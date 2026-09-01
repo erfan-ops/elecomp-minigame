@@ -352,9 +352,11 @@ button.slot-game__target-digit::after {
   left: 14%;
   right: 14%;
   bottom: 0;
-  height: 1px;
+  height: 2px;
   background: rgba(120, 210, 225, 0.25);
   pointer-events: none;
+  border-radius: 999px;
+  transform: translateY(-8px);
 }
 
 /* Top/bottom fades — the neighbors of the centered digit dim out. */
